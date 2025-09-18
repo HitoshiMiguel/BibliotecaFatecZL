@@ -1,0 +1,97 @@
+/* Reseta estilos padrão */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Corpo da página */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;  /* Cor de fundo */
+  color: #333;
+  padding: 20px;
+}
+
+/* Cabeçalho */
+header {
+  background-color: #d01c2d;
+  color: white;
+  padding: 10px 0;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+/* Barra de navegação */
+nav {
+  background-color: #e7e7e7;
+  padding: 10px 0;
+  text-align: center;
+}
+
+nav a {
+  color: #333;
+  text-decoration: none;
+  margin: 0 15px;
+  font-size: 1.1rem;
+}
+
+nav a:hover {
+  color: #d01c2d;
+}
+
+/* Conteúdo principal */
+main {
+  padding: 30px;
+  text-align: center;
+}
+
+main h2 {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+main p {
+  font-size: 1.2rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+/* Botão */
+button {
+  background-color: #0d6efd; /* Cor azul do botão */
+  color: white;
+  font-size: 1rem;
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+button:hover {
+  background-color: #0a58ca;
+}
+
+/* Rodapé */
+footer {
+  background-color: #333;
+  color: white;
+  padding: 20px 0;
+  text-align: center;
+  width: 100%;
+}
+footer a {
+  color: white;
+  text-decoration: none;
+  margin: 0 15px;
+}
+
+footer a:hover {
+  color: #d01c2d;
+}

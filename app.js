@@ -9,6 +9,7 @@ app.set('view engine', 'ejs'); // Usando EJS como motor de templates
 // Servindo arquivos estáticos da pasta 'public'
 app.use(express.static(path.join(__dirname, 'src', 'public')));
 
+
 // Rota principal
 app.get('/', (req, res) => {
   res.render('index');  // Renderiza 'index.ejs'

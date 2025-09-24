@@ -1,93 +1,251 @@
-/* Reseta estilos padrão */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* RESET */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
 
-/* Corpo da página */
+/* Corpo */
 body {
   font-family: Arial, sans-serif;
-  background-color: #f4f4f4;  /* Cor de fundo */
+  background-color: #f4f4f4;
   color: #333;
-  padding: 20px;
+  padding-top: 80px;
 }
 
-/* Cabeçalho */
+/* Header geral sem padding extra */
 header {
-  background-color: #d01c2d;
-  color: white;
-  padding: 10px 0;
-  text-align: center;
+  background-color: #ffffff;
 }
 
-header h1 {
-  font-size: 2rem;
-  margin-bottom: 10px;
+/* Faixa superior (governo) */
+.govsp-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background: #fff;
+  border-bottom: 1px solid #dadada;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  height: 80px;
 }
 
-/* Barra de navegação */
-nav {
-  background-color: #e7e7e7;
-  padding: 10px 0;
-  text-align: center;
+.logo-governo {
+  background-color: #000;
+  border-radius: 0 50px 50px 0;
+  height: 80px;
+  width: 305px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
-nav a {
+.logo-governo img {
+  height: 38px;
+  width: auto;
+}
+
+.icones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 20px;
+}
+
+.icones img {
+  width: 25px;
+  height: 25px;
+}
+
+.icones .govsp {
+  font-size: 14px;
   color: #333;
-  text-decoration: none;
-  margin: 0 15px;
-  font-size: 1.1rem;
+  margin-left: 5px;
 }
 
-nav a:hover {
-  color: #d01c2d;
+/* Faixa inferior (Fatec/CPS + busca) */
+.CPS-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: nowrap;
 }
 
-/* Conteúdo principal */
-main {
-  padding: 30px;
-  text-align: center;
+.CPS-header {
+  background: #fff;
+  padding: 12px 20px;
+  border-bottom: 1px solid #dadada;
 }
 
-main h2 {
-  font-size: 2rem;
-  color: #333;
-  margin-bottom: 20px;
+.logos {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-main p {
-  font-size: 1.2rem;
+.logos img {
+  height: 80px;
+  margin-right: 12px;
+  display: block;
+}
+
+/* Barra de busca */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.campo-de-busca {
+  height: 50px;
+  width: 350px;
+  padding: 0 16px;
+  font-size: 15px;
+  border: 1px solid #dadada;
+  border-radius: 30px 0 0 30px;
+  outline: none;
+  background: #fff;
   color: #666;
-  line-height: 1.6;
-  margin-bottom: 30px;
+  flex: 0 0 auto;
 }
 
-/* Botão */
-button {
-  background-color: #0d6efd; /* Cor azul do botão */
-  color: white;
-  font-size: 1rem;
-  padding: 10px 20px;
-  border: none;
+.btn-search {
+  height: 50px;
+  width: 64px;
+  padding: 0 14px;
+  border: 1px solid #dadada;
+  border-left: none;
+  background: #fff;
+  border-radius: 0 30px 30px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border-radius: 5px;
 }
 
-button:hover {
-  background-color: #0a58ca;
+.btn-search i {
+  color: #B20000;
+  font-size: 18px;
+  -webkit-text-stroke: 1px currentColor;
 }
 
-/* Rodapé */
+.btn-search:hover {
+  background: #B20000;
+  border-color: #B20000;
+}
+
+.btn-search:hover i {
+  color: #fff;
+}
+
+/* NAVBAR */
+.fatec-nav {
+  background-color: #B20000 !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin-bottom: 0 !important;
+  position: relative;
+  z-index: 10;
+}
+
+.navbar-nav .nav-item {
+  position: relative;
+}
+
+.navbar-nav .nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.70rem 1.10rem;
+  font-size: 0.95rem;
+  color: #fff !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Divisórias verticais (cinza suave) */
+.navbar-nav .nav-item + .nav-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0,0,0,.18);
+  pointer-events: none;
+}
+
+/* Hover */
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link:focus,
+.navbar-nav .nav-link.show {
+  background-color: #8e0d0d;
+}
+
+/* Dropdown abre no hover */
+@media (min-width: 992px) {
+  .navbar .dropdown:hover .dropdown-menu {
+    display: block;
+    margin-top: 0;
+  }
+}
+
+/* BREADCRUMB */
+.breadcrumb-wrap {
+  background: #6b747b;
+  padding: .5rem 0;
+  border: none;
+  margin-top: 0 !important;
+}
+
+.breadcrumb {
+  background: transparent;
+  margin: 0;
+}
+
+.breadcrumb a,
+.breadcrumb .breadcrumb-item,
+.breadcrumb .breadcrumb-item.active {
+  text-decoration: none !important;
+  color: #fff !important;
+}
+
+.breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+  color: #fff;
+  opacity: .8;
+}
+
+.breadcrumb .home-bold a {
+  font-weight: 700;
+  color: #fff !important;
+}
+
+.breadcrumb a:hover {
+  text-decoration: none;
+  color: #f0f0f0 !important;
+}
+
+/* MAIN e FOOTER */
+main { padding: 30px 20px; text-align: center; }
+
 footer {
-  background-color: #333;
-  color: white;
-  padding: 20px 0;
+  background: #333;
+  color: #fff;
+  padding: 20px;
   text-align: center;
   width: 100%;
 }
+
 footer a {
-  color: white;
+  color: #fff;
   text-decoration: none;
   margin: 0 15px;
 }

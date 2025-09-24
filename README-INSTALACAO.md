@@ -80,24 +80,72 @@ O servidor estará disponível em:
 
 ---
 
-## 👥 Contribuição
+## 👥 Contribuição – Fluxo de Trabalho com Git
 
-1. Crie uma branch para sua feature/fix:
+### 🔹 Criando uma nova branch e enviando alterações
 
-   ```bash
-   git checkout -b minha-feature
-   ```
-2. Faça o commit das alterações:
+1. Criar e entrar em uma nova branch:
 
    ```bash
-   git commit -m "Descrição da minha alteração"
+   git checkout -b nome-da-branch
    ```
-3. Envie a branch para o repositório remoto:
+
+2. Fazer alterações no código.
+
+3. Adicionar os arquivos modificados:
 
    ```bash
-   git push origin minha-feature
+   git add .
    ```
-4. Abra um Pull Request.
+
+4. Criar um commit com mensagem descritiva:
+
+   ```bash
+   git commit -m "Descrição da alteração"
+   ```
+
+5. Enviar a branch para o GitHub:
+
+   ```bash
+   git push origin nome-da-branch
+   ```
+
+---
+
+### 🔹 Trabalhando em uma branch já existente
+
+1. Entrar na branch desejada:
+
+   ```bash
+   git checkout nome-da-branch
+   ```
+
+2. Fazer as alterações necessárias.
+
+3. Adicionar e commitar:
+
+   ```bash
+   git add .
+   git commit -m "Descrição da alteração"
+   ```
+
+4. Enviar as alterações para o GitHub:
+
+   ```bash
+   git push origin nome-da-branch
+   ```
+
+---
+
+### 🔹 Criando um Pull Request no GitHub
+
+1. Acesse o repositório no GitHub.
+2. Você verá uma notificação para abrir um **Pull Request** para a branch recém enviada.
+3. Clique em **“Compare & Pull Request”**.
+4. Preencha o título e a descrição das alterações.
+5. Clique em **“Create Pull Request”**.
+
+👉 O Pull Request será revisado e, após aprovação, mesclado na branch principal (`main`).
 
 ---
 
@@ -107,4 +155,3 @@ Este projeto é de uso acadêmico e não possui fins comerciais.
 
 ---
 
-Quer que eu já adicione uma seção de **estrutura de pastas** (ex: `src/`, `views/`, `public/`) para o time não se perder?

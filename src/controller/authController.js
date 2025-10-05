@@ -23,22 +23,21 @@ async function postCadastro(req, res) {
     }
 
     // verifica RA duplicado (se informado)
-    if (ra) {
-      const raExiste = await findByRA(ra);
-      if (raExiste) {
-        return res.status(400).render('cadastro', {
-          old: { nome, ra: '', email },
-          errors: { ra: 'RA já cadastrado.' },
-          success: null,
-        });
-      }
-    }
+    const raExiste = await findByRA(ra);
+     if (raExiste) {
+       return res.status(400).render('cadastro', {
+         old: { nome, ra: '', email },
+         errors: { ra: 'RA já cadastrado.' },
+         success: null,
+       });
+     }
+    
 
     // gera hash e cria usuário
     const rounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
     const senhaHash = await bcrypt.hash(senha, rounds);
 
-    await createUser({ nome, ra: ra || null, email, senhaHash });
+    await createUser({ nome, ra: ra, email, senhaHash });
 
     // sucesso
     return res.status(201).render('cadastro', {

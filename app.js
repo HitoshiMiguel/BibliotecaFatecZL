@@ -26,7 +26,7 @@ const cadastroRules =
 [
   body('nome').trim().notEmpty().withMessage('Nome é obrigatório.').isLength({min: 2, max: 100}).withMessage('Nome deve ter entre 2 e 100 caracteres'),
   body('email').trim().notEmpty().withMessage('E-mail é obrigatório.').isEmail().withMessage('E-mail inválido.').isLength({max: 100}).withMessage('E-mail deve ter no máximo 100 caracteres.'),
-  body('ra').optional({values: 'falsy'}).trim().isLength({min: 3, max: 20}).withMessage('Ra deve ter entre 3 e 20 caracteres').matches(/^[A-Za-z0-0\-\.]+$/).withMessage('Ra deve conter apenas letras, números hífen ou ponto.'),
+  body('ra').trim().customSanitizer(v => (v || '').replace(/\D/g, '')).notEmpty().withMessage('Ra é obrigatório.').matches(/^\d{13}$/).withMessage('RA inserido tem formato incompatível.'),
   body('senha').notEmpty().withMessage('Senha é obrigatória.').isLength({min: 8}).withMessage('Senha deve ter pelo menos 8 caracteres.'),
   body('confirmarSenha').custom
   (

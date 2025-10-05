@@ -66,17 +66,21 @@
       </div>
 
       <div class="field">
-        <label for="ra">RA (opcional)</label>
+        <label for="ra">RA *</label>
         <input
           type="text"
           id="ra"
           name="ra"
-          value="<%= (old && old.ra) || '' %>"
-        >
+          required
+          inputmode="numeric"
+          pattern="^\d{13}$"
+          minlength="13"
+          maxlength="13"
+          value="<%= (old && old.ra) ? old.ra : '' %>"
+        />
         <% if (errors && errors.ra) { %>
-          <small style="color: red;"><%= errors.ra %></small>
+          <div class="erro"><%= errors.ra %></div>
         <% } %>
-      </div>
 
       <div class="field">
         <label for="email">Email *</label>

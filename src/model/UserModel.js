@@ -31,7 +31,7 @@ async function createUser({nome, ra, email, senhaHash})
         INSERT INTO dg_usuarios (nome, ra, email, senha_hash, perfil)
         VALUES (?, ?, ?, ?, 'comum')
     `;
-    const params = [nome, ra || null, email, senhaHash];
+    const params = [nome, ra, email, senhaHash];
     const [result] = await pool.query(sql, params);
     return result.insertId;
 }

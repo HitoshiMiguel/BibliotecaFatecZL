@@ -1,248 +1,248 @@
+
+-----
+
 # 📚 Biblioteca Fatec ZL
 
-Plataforma digital para modernização da biblioteca acadêmica, com interface web e backend em Node.js + MySQL.
+Plataforma digital para modernização da biblioteca acadêmica, construída com uma arquitetura moderna de serviços. O projeto consiste em uma API RESTful (backend) desenvolvida em Node.js e Express, e uma interface de usuário reativa (frontend) desenvolvida com React e Next.js.
 
----
+-----
 
-## 🛠️ Stack
+## 🛠️ Stack de Tecnologias
 
-* **Node.js** + **Express**
-* **EJS** (views)
-* **MySQL** (**mysql2/promise**)
-* **dotenv** (variáveis de ambiente)
-* **express-validator** (validações)
-* **bcryptjs** (hash de senha)
-* **nodemon** (dev)
+#### Backend (API)
 
-> Ícones/estilos são opcionais — ex.: **Bootstrap Icons** (não obrigatório para rodar o CRUD).
+  * **Node.js** + **Express**: Construção da API REST.
+  * **MySQL** com **mysql2/promise**: Conexão e queries assíncronas com o banco de dados.
+  * **JSON Web Token (jsonwebtoken)**: Autenticação e gerenciamento de sessões seguras.
+  * **bcryptjs**: Criptografia (hash) de senhas.
+  * **CORS**: Habilita a comunicação segura entre o frontend e o backend.
+  * **cookie-parser**: Interpreta os cookies de sessão enviados pelo navegador.
+  * **dotenv**: Gerenciamento de variáveis de ambiente.
+  * **express-validator**: Validação e sanitização dos dados recebidos.
 
----
+#### Frontend (Interface do Usuário)
+
+  * **React**: Biblioteca para construção de interfaces de usuário dinâmicas.
+  * **Next.js**: Framework React com renderização híbrida, otimizações e roteamento baseado em sistema de arquivos.
+  * **CSS Modules**: Para estilização de componentes de forma escopada e organizada.
+
+-----
 
 ## ✅ Pré-requisitos
 
-* [Node.js](https://nodejs.org/) (versão LTS recomendada)
-* npm (vem com o Node)
-* **MySQL Server** (local)
-* Git (para clonar)
+  * [Node.js](https://nodejs.org/) (versão LTS recomendada)
+  * npm (gerenciador de pacotes, vem com o Node.js)
+  * **MySQL Server** (instalado localmente ou via Docker)
+  * Git (para clonar o repositório)
 
----
+-----
 
 ## 🗄️ Banco de Dados
 
-1. **Criar o banco e as tabelas** (no MySQL):
+1.  **Criar o banco de dados e as tabelas** (execute o script abaixo no seu cliente MySQL):
 
-```sql
-CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
-USE acervo_digitalv2;
+    ```sql
+    CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
+    USE acervo_digitalv2;
 
--- Usuários
-CREATE TABLE IF NOT EXISTS dg_usuarios (
-  usuario_id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL,
-  ra CHAR(13) NOT NULL UNIQUE,                 -- RA obrigatório (13 dígitos)
-  email VARCHAR(100) UNIQUE NOT NULL,
-  senha_hash VARCHAR(255) NOT NULL,
-  perfil ENUM('comum','bibliotecario','admin') NOT NULL DEFAULT 'comum'
-);
+    -- Tabela de Usuários
+    CREATE TABLE IF NOT EXISTS dg_usuarios (
+      usuario_id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      ra CHAR(13) NOT NULL UNIQUE,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      senha_hash VARCHAR(255) NOT NULL,
+      perfil ENUM('comum','bibliotecario','admin') NOT NULL DEFAULT 'comum'
+    );
 
--- Submissões
-CREATE TABLE IF NOT EXISTS dg_submissoes (
-  submissao_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  titulo_proposto VARCHAR(200) NOT NULL,
-  descricao TEXT,
-  caminho_anexo VARCHAR(255),
-  status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
-  revisado_por_id INT,
-  data_submissao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-  FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id)
-);
+    -- Tabela de Submissões
+    CREATE TABLE IF NOT EXISTS dg_submissoes (
+      submissao_id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      titulo_proposto VARCHAR(200) NOT NULL,
+      descricao TEXT,
+      caminho_anexo VARCHAR(255),
+      status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
+      revisado_por_id INT,
+      data_submissao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
+      FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id)
+    );
 
--- Itens Digitais
-CREATE TABLE IF NOT EXISTS dg_itens_digitais (
-  item_id INT AUTO_INCREMENT PRIMARY KEY,
-  titulo VARCHAR(200) NOT NULL,
-  autor VARCHAR(100),
-  ano YEAR,
-  descricao TEXT,
-  caminho_arquivo VARCHAR(255),
-  data_publicacao DATE,
-  submissao_id INT UNIQUE,
-  FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id)
-);
+    -- Tabela de Itens Digitais
+    CREATE TABLE IF NOT EXISTS dg_itens_digitais (
+      item_id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(200) NOT NULL,
+      autor VARCHAR(100),
+      ano YEAR,
+      descricao TEXT,
+      caminho_arquivo VARCHAR(255),
+      data_publicacao DATE,
+      submissao_id INT UNIQUE,
+      FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id)
+    );
 
--- Avaliações
-CREATE TABLE IF NOT EXISTS dg_avaliacoes (
-  avaliacao_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  item_id INT NOT NULL,
-  nota TINYINT CHECK (nota BETWEEN 1 AND 5),
-  data_avaliacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-  FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id)
-);
-```
+    -- Tabela de Avaliações
+    CREATE TABLE IF NOT EXISTS dg_avaliacoes (
+      avaliacao_id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      item_id INT NOT NULL,
+      nota TINYINT CHECK (nota BETWEEN 1 AND 5),
+      data_avaliacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
+      FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id)
+    );
+    ```
 
-> Se já existirem dados e a coluna `ra` não for obrigatória, ajuste após normalizar registros nulos/vazios:
->
-> ```sql
-> SELECT usuario_id, ra FROM dg_usuarios WHERE ra IS NULL OR ra = '';
-> -- Preencha/ajuste antes de:
-> ALTER TABLE dg_usuarios MODIFY ra CHAR(13) NOT NULL UNIQUE;
-> ```
+2.  **(Opcional, recomendado)** **Criar um usuário dedicado** para a aplicação no MySQL:
 
-2. *(Opcional, recomendado)* **Usuário dedicado da app** (privilégios mínimos):
+    ```sql
+    CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY 'TroqueEstaSenha!';
+    GRANT SELECT, INSERT, UPDATE ON acervo_digitalv2.* TO 'acervo_app'@'localhost';
+    FLUSH PRIVILEGES;
+    ```
 
-```sql
-CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY 'TroqueEstaSenha!';
-GRANT SELECT, INSERT, UPDATE ON acervo_digitalv2.* TO 'acervo_app'@'localhost';
-FLUSH PRIVILEGES;
-```
-
----
+-----
 
 ## 🔧 Configuração do Projeto
 
-1. **Clonar e entrar na pasta:**
+A aplicação consiste em dois projetos separados que precisam ser configurados.
 
-```bash
-git clone <URL_DO_REPOSITORIO>
-cd <PASTA_DO_PROJETO>
-```
+1.  **Clonar o repositório:**
 
-2. **Instalar dependências:**
+    ```bash
+    git clone <URL_DO_REPOSITORIO>
+    cd <PASTA_PRINCIPAL_DO_PROJETO>
+    ```
 
-```bash
-npm install
-# caso falte algo, rode:
-npm i express ejs mysql2 dotenv express-validator bcryptjs
-npm i -D nodemon
-```
+2.  **Configurar o Backend:**
 
-3. **Variáveis de ambiente (.env):**
-   Crie um arquivo `.env` na raiz do projeto com:
+      * Navegue até a pasta do backend:
+        ```bash
+        cd biblioteca-backend
+        ```
+      * Instale as dependências:
+        ```bash
+        npm install
+        ```
+      * Crie um arquivo `.env` na raiz da pasta `biblioteca-backend` e preencha com suas credenciais:
+        ```env
+        # Configuração do Banco de Dados
+        DB_HOST=localhost
+        DB_USER=acervo_app
+        DB_PASSWORD=TroqueEstaSenha!
+        DB_DATABASE=acervo_digitalv2
 
-```
-DB_HOST=localhost
-DB_USER=acervo_app
-DB_PASSWORD=TroqueEstaSenha!
-DB_NAME=acervo_digitalv2
-BCRYPT_SALT_ROUNDS=10
-PORT=3000
-```
+        # Configuração da Aplicação
+        PORT=4000
+        JWT_SECRET=sua-chave-secreta-muito-forte-e-dificil-de-adivinhar
+        ```
 
-> **Importante:** mantenha `.env` fora do Git. Garanta que exista um `.env.example` sem segredos.
+3.  **Configurar o Frontend:**
 
----
+      * Volte para a pasta raiz e navegue até a pasta do frontend:
+        ```bash
+        cd ../biblioteca-frontend 
+        ```
+      * Instale as dependências:
+        ```bash
+        npm install
+        ```
+
+-----
 
 ## ▶️ Execução
 
-### Com script (recomendado)
+Para rodar a aplicação completa, você precisará de **dois terminais abertos** simultaneamente.
 
-Adicione no `package.json` (se ainda não tiver):
-
-```json
-"scripts": {
-  "dev": "nodemon app.js",
-  "start": "node app.js"
-}
-```
-
-Rode:
+**No Terminal 1 (inicie o Backend):**
 
 ```bash
+cd biblioteca-backend
+npm start
+```
+
+> 🕒 Aguarde a mensagem de confirmação: `🚀 Servidor API rodando na porta 4000`
+
+**No Terminal 2 (inicie o Frontend):**
+
+```bash
+cd biblioteca-frontend
 npm run dev
 ```
 
-### Direto
+> 🕒 Aguarde a mensagem de confirmação: `- Local: http://localhost:3000`
 
-```bash
-nodemon app.js
-# ou
-node app.js
-```
+Após iniciar os dois servidores, abra seu navegador e acesse a URL do frontend: **[http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)**
 
-Acesse: **[http://localhost:3000](http://localhost:3000)**
+**Healthcheck do banco de dados:**
+Para verificar se a API está conectada ao banco, abra **[http://localhost:4000/\_\_dbcheck](https://www.google.com/search?q=http://localhost:4000/__dbcheck)** → deve retornar `{"ok": true}`.
 
-**Healthcheck do banco:**
-Abra **[http://localhost:3000/__dbcheck](http://localhost:3000/__dbcheck)** → deve retornar `{"ok": true}`.
-
----
+-----
 
 ## 🧩 Funcionalidades atuais (MVP)
 
-* **Cadastro de usuário**
+  * **Cadastro e Login de Usuários:**
+      * Comunicação via API REST com frontend reativo em Next.js/React.
+      * Autenticação baseada em tokens (JWT) com cookies `HttpOnly` para maior segurança.
+      * Validações robustas no backend com `express-validator`.
+      * Senha armazenada de forma segura como **hash** (usando bcrypt).
+      * Login unificado por Email ou RA.
+  * **Rotas Protegidas:** O dashboard só pode ser acessado por usuários autenticados.
+  * **Logout:** Funcionalidade para invalidar a sessão do usuário.
 
-  * Campos: `nome`, `ra`, `email`, `senha` (+ confirmar senha na view)
-  * **RA obrigatório com 13 dígitos** (ex.: `1111392421034`)
-  * `email` e `ra` **únicos**
-  * `senha` armazenada como **hash** (bcrypt)
-  * Validações no backend com **express-validator**
-  * Renderização de erros/sucesso via **EJS**
+-----
 
----
+## 📁 Estrutura do Projeto
 
-## 📁 Estrutura (resumo)
+O repositório está organizado em uma arquitetura de monorepo com duas pastas principais:
 
 ```
 .
-├─ app.js
-├─ .env              # (local, não commitar)
-├─ src/
-│  ├─ config/
-│  │   └─ db.js
-│  ├─ controller/
-│  │   └─ authController.js
-│  ├─ model/
-│  │   └─ UserModel.js
-│  ├─ public/
-│  │   ├─ CSS/
-│  │   └─ imagens/
-│  └─ views/
-│      ├─ index.ejs
-│      ├─ cadastro.ejs
-│      ├─ login.ejs
-│      └─ consulta.ejs
-└─ ...
+├─ biblioteca-backend/    # Projeto da API em Node.js/Express
+│  ├─ app.js              # Arquivo principal do servidor
+│  ├─ .env                # Variáveis de ambiente (local)
+│  └─ src/
+│     ├─ controller/    # Lógica de negócio (o que fazer)
+│     ├─ middleware/    # Funções intermediárias (ex: auth)
+│     ├─ model/          # Funções de acesso ao banco de dados
+│     └─ routes/        # Definição dos endpoints da API
+│
+└─ biblioteca-frontend/   # Projeto da Interface em React/Next.js
+   └─ src/
+      └─ app/
+         ├─ (page).js    # Página inicial
+         ├─ login/
+         │  └─ page.jsx
+         ├─ cadastro/
+         │  └─ page.jsx
+         └─ api/          # (Opcional) Rotas de API do Next.js
 ```
 
----
+-----
 
 ## 🧪 Testes manuais rápidos
 
-* **Sem RA** → formulário deve acusar “RA é obrigatório”.
-* **RA ≠ 13 dígitos** → acusar “RA deve ter exatamente 13 dígitos.”
-* **Duplicar RA/E-mail** → acusar duplicidade.
-* **Cadastro válido** → inserir e redirecionar/mensagem de sucesso.
+  * Acesse `http://localhost:3000/cadastro`.
+  * **Cadastro sem RA** → formulário deve acusar erro.
+  * **RA com formato inválido** → backend deve retornar erro `400`.
+  * **Duplicar RA/E-mail** → backend deve retornar erro `409 Conflict` (ou similar).
+  * **Cadastro válido** → deve redirecionar para a tela de login.
+  * **Login válido** → deve redirecionar para o dashboard.
+  * **Acessar `/dashboard` sem logar** → deve redirecionar para a tela de login.
+  * **Fazer logout** → deve redirecionar para o login e impedir o acesso ao dashboard.
 
----
+-----
 
 ## 🆘 Troubleshooting
 
-* `MODULE_NOT_FOUND: mysql2` → `npm i mysql2`.
-* `{"ok": false}` em `/__dbcheck` → verifique `.env` (host, usuário, senha, db).
-* Erro “first argument must be of type string” ao consultar DB → verifique **ordem dos argumentos** no `pool.query(sql, params)` e **vírgula** entre SQL e array.
-* RA rejeitado → garanta que o valor tem **13 dígitos**; no backend usamos sanitizer para manter só dígitos.
-
----
-
-## 👥 Contribuição (Git)
-
-Fluxo sugerido:
-
-```bash
-git checkout -b feature/nome
-# código...
-git add .
-git commit -m "feat: descrição"
-git push -u origin feature/nome
-# abrir Pull Request no GitHub
-```
-
----
-
-## 📄 Licença
-
-Projeto acadêmico, sem fins comerciais.
-
+  * **`Failed to fetch` no navegador:**
+    1.  Verifique se o servidor do **backend** está rodando.
+    2.  Confirme se a porta no `fetch` do frontend (ex: `http://localhost:4000`) corresponde à porta em que o backend está rodando (`PORT` no arquivo `.env` do backend).
+  * **Erro de CORS no console:**
+      * Verifique se a `origin` no `corsOptions` do `app.js` (backend) corresponde exatamente à URL e porta do frontend (ex: `http://localhost:3000`).
+  * **Erro `401 Unauthorized` ou redirecionamento para o login:**
+      * Verifique se a `JWT_SECRET` está definida no `.env` do backend.
+      * Confirme que a opção `credentials: 'include'` está presente nas chamadas `fetch` do frontend que precisam de autenticação.
+  * **`{"ok": false}` no healthcheck `/__dbcheck`:**
+      * Verifique todas as variáveis `DB_*` no seu arquivo `.env` do backend.

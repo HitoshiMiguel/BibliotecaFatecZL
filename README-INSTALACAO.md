@@ -246,24 +246,3 @@ O repositório está organizado em uma arquitetura de monorepo com duas pastas p
       * Confirme que a opção `credentials: 'include'` está presente nas chamadas `fetch` do frontend que precisam de autenticação.
   * **`{"ok": false}` no healthcheck `/__dbcheck`:**
       * Verifique todas as variáveis `DB_*` no seu arquivo `.env` do backend.
-
------
-
-## 👥 Contribuição (Git)
-
-Fluxo sugerido para novas funcionalidades:
-
-```bash
-git checkout -b feature/nome-da-feature
-# ... desenvolver código ...
-git add .
-git commit -m "feat: descrição da funcionalidade adicionada"
-git push -u origin feature/nome-da-feature
-# Abrir um Pull Request no GitHub/GitLab
-```
-
------
-
-## 📄 Licença
-
-Projeto acadêmico, desenvolvido para fins educacionais e sem fins comerciais.

@@ -24,6 +24,14 @@ async function findByRA(ra)
     return rows[0] || null;
 }
 
+async function findById(id) {
+    const [rows] = await pool.query(
+        'SELECT * FROM dg_usuarios WHERE usuario_id = ?',
+        [id]
+    );
+    return rows[0] || null;
+}
+
 //cria usuário com perfil comum e retorna o insertId
 async function createUser({nome, ra, email, senhaHash})
 {
@@ -37,4 +45,4 @@ async function createUser({nome, ra, email, senhaHash})
     return result.insertId;
 }
 
-module.exports = {findByEmail, findByRA, createUser};
+module.exports = {findByEmail, findByRA, createUser, findById};

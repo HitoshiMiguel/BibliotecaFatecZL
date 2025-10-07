@@ -1,20 +1,26 @@
-/* Reset */
+/* Reset (Global, mantido como está) */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* Body (Global, mantido como está) */
 body {
   font-family: Arial, Helvetica, sans-serif;
   background: #fff;
   color: #333;
-  /* novo: reserva o espaço do header fixo do governo */
-  padding-top: 80px;
+  padding-top: 80px; /* Reserva o espaço do header fixo */
 }
 
-/* Header geral sem padding extra */
-header { background-color: #ffffff; }
+/* =================================
+   HEADER
+   ================================= */
+
+/* ANTES: header { ... } */
+.app-header { /* Agora é uma classe que você aplicará na tag <header> */
+  background-color: #ffffff;
+}
 
 /* Faixa superior (governo) */
 .govsp-header {
@@ -43,7 +49,11 @@ header { background-color: #ffffff; }
   flex: 0 0 auto;
 }
 
-.logo-governo img { height: 38px; width: auto; }
+/* ANTES: .logo-governo img { ... } */
+.logo-governo-img { /* Classe específica para a imagem do logo */
+  height: 38px;
+  width: auto;
+}
 
 .icones {
   display: flex;
@@ -52,7 +62,11 @@ header { background-color: #ffffff; }
   padding-right: 20px;
 }
 
-.icones img { width: 25px; height: 25px; }
+/* ANTES: .icones img { ... } */
+.icone-img { /* Classe específica para os ícones */
+  width: 25px;
+  height: 25px;
+}
 
 .icones .govsp {
   font-size: 14px;
@@ -65,7 +79,6 @@ header { background-color: #ffffff; }
   background: #fff;
   padding: 12px 20px;
   border-bottom: 1px solid #dadada;
-  /* NÃO precisa mais de margin-top — o body já empurrou tudo */
 }
 
 .CPS-container {
@@ -85,21 +98,29 @@ header { background-color: #ffffff; }
   justify-content: center;
 }
 
-.logos img { height: 80px; margin-right: 12px; display: block; }
+/* ANTES: .logos img { ... } */
+.logo-cps-fatec-img { /* Classe para as logos da Fatec e CPS */
+  height: 80px;
+  margin-right: 12px;
+  display: block;
+}
 
-/* ====== TÍTULO: faixa vermelha com texto branco ====== */
+/* =================================
+   SEÇÃO DE TÍTULO
+   ================================= */
 .title-section {
-  background: #b20000;     /* vermelho CPS */
+  background: #b20000; /* vermelho CPS */
   color: #fff;
   padding: 24px 20px;
   text-align: center;
-  border-bottom: 1px solid #a00000; /* leve profundidade, opcional */
+  border-bottom: 1px solid #a00000;
 }
 
-.title-section h1 {
+/* ANTES: .title-section h1 { ... } */
+.title-section-heading { /* Classe específica para o h1 do título */
   margin: 0;
   font-size: 32px;
   line-height: 1.2;
   font-weight: 700;
-  color: #fff;             /* garante branco mesmo com herança */
+  color: #fff;
 }

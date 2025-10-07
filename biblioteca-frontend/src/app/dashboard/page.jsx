@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import styles from './dashboard.module.css';
+import { BsPerson, BsPersonVcard, BsEnvelope, BsBook, BsHourglassSplit, BsBoxArrowRight } from 'react-icons/bs';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -20,8 +22,6 @@ export default function DashboardPage() {
     const checkAuth = async () => {
       try {
         const response = await fetch('http://localhost:4000/api/me', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           cache: 'no-store',
         });
@@ -39,47 +39,66 @@ export default function DashboardPage() {
       }
     };
     checkAuth();
+  }, [router]);  
 
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow);
-    };
-  }, [router]);
-
-  // ✅ A LÓGICA CORRETA PARA O LOGOUT ESTÁ AQUI DENTRO DO JSX
   const handleLogout = async () => {
     try {
-      // 1. Avisa o backend para apagar o cookie
-      await fetch('http://localhost:4000/api/logout', {
-        method: 'POST',
-        credentials: 'include', // Essencial para o backend saber qual cookie apagar
-      });
-      
-      // 2. Apenas depois, redireciona o usuário
+      await fetch('http://localhost:4000/api/logout', { method: 'POST', credentials: 'include' });
       window.location.href = '/login';
     } catch (error) {
       console.error('Falha ao fazer logout:', error);
-      alert('Erro ao tentar sair.');
     }
   };
 
   if (isLoading) {
-    return <p style={{ padding: '40px', fontFamily: 'sans-serif' }}>Carregando...</p>;
-  }
-  if (!user) {
-    return null;
+    return <p>Carregando...</p>;
   }
 
-  return (
-    <div style={{ padding: '40px', fontFamily: 'sans-serif' }}>
-      <h1>Dashboard do Usuário (ID: {user.id})</h1>
-      <p>Bem-vindo! Seu acesso foi validado.</p>
-      
-      <button 
-        onClick={handleLogout} // Chama a função que definimos acima
-        style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px' }}
-      >
-        Sair
-      </button>
-    </div>
+  if (!user) {
+    return null; // ou uma tela de loading
+  }
+
+ return (
+    <>
+      <section className="title-section">
+        <h1 className="title-section-heading">Meus Dados</h1>
+      </section>
+
+      <div className={styles.contentWrapper}>
+        <div className={styles.dashboardContainer}>
+
+          {/* 👇 A estrutura de dados completa e corrigida 👇 */}
+          <div className={styles.userDetails}>
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}><BsPerson /> Meu Nome</span>
+              <span className={styles.detailValue}>{user.nome}</span>
+            </div>
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
+              <span className={styles.detailValue}>{user.ra}</span>
+            </div>
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}><BsEnvelope /> Email</span>
+              <span className={styles.detailValue}>{user.email}</span>
+            </div>
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}><BsBook /> Livro Atual</span>
+              <span className={styles.detailValue}>Devolver em: --/--/----</span>
+            </div>
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}><BsHourglassSplit /> Status</span>
+              <span className={styles.detailValue}>Em análise</span>
+            </div>
+          </div>
+
+          <div className={styles.logoutButtonWrapper}>
+            <button onClick={handleLogout} className={styles.logoutButton}>
+              <BsBoxArrowRight />
+              Sair
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

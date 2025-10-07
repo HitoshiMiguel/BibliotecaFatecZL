@@ -1,0 +1,87 @@
+/* Arquivo: src/app/login/login.module.css */
+
+.formWrapper {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 30px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.title {
+  text-align: center;  /* Centraliza o título */
+  margin-bottom: 25px; /* Afasta o título do primeiro campo */
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.inputGroup {
+  margin-bottom: 20px;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+/* Estilos para o ícone de mostrar senha */
+.passwordWrapper {
+  position: relative; /* Essencial para posicionar o ícone dentro */
+}
+
+.eyeIcon {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #555;
+  font-size: 20px;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 15px;
+  background-color: #b20000;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px; /* Espaço entre o ícone e o texto */
+}
+
+.submitButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.redirectLink {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #555;
+}
+
+.redirectLink a {
+    color: #0070f3;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.redirectLink a:hover {
+    text-decoration: underline;
+}

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './cadastro.module.css'; // Importa os estilos locais
+import styles from './cadastro.module.css';
+import Link from 'next/link';
 
 export default function CadastroPage() {
   // Estados para controlar os valores de cada input
@@ -18,12 +19,12 @@ export default function CadastroPage() {
 
   const router = useRouter();
 
+  // A função final e corrigida para lidar com o envio do formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
 
-    // A validação de frontend continua aqui, é uma boa prática
     if (senha !== confirmarSenha) {
       setErrors({ confirmarSenha: 'As senhas não coincidem.' });
       setIsLoading(false);
@@ -33,28 +34,35 @@ export default function CadastroPage() {
     try {
       const response = await fetch('http://localhost:4000/api/register', { 
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           nome, 
           email, 
           ra, 
           senha,
-          confirmarSenha // O campo que faltava
+          confirmarSenha
         }), 
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Agora, se houver outros erros de validação do backend (ex: email duplicado), eles aparecerão aqui
-        const errorMessage = data.errors ? data.errors[0].msg : (data.message || 'Erro ao realizar o cadastro.');
-        throw new Error(errorMessage);
-      }
+        if (data.errors) {
+          const newErrors = {};
+          data.errors.forEach(error => {
+            newErrors[error.path] = error.msg;
+          });
+          setErrors(newErrors);
+        } else {
+          throw new error(data.message || 'Erro ao realizar o cadastro.');
+        }
+       } else {
+        alert('Cadastro realizado com sucesso! Você será redirecionado para o login.');
+        router.push('/login');
+        }
+      
 
-      alert('Cadastro realizado com sucesso! Você será redirecionado para o login.');
-      router.push('/login');
+      
 
     } catch (err) {
       setErrors({ global: err.message });
@@ -65,13 +73,12 @@ export default function CadastroPage() {
 
   return (
     <>
-      <section className={styles.titleSection}>
-        <h1>Crie seu cadastro</h1>
+      <section className="title-section">
+        <h1 className="title-section-heading">Crie seu cadastro</h1>
       </section>
 
       <main className={styles.formContainer}>
         <form onSubmit={handleSubmit} noValidate>
-          {/* Mostra um erro global, se houver */}
           {errors.global && <p className={styles.errorGlobal}>{errors.global}</p>}
 
           <div className={styles.field}>
@@ -84,6 +91,7 @@ export default function CadastroPage() {
               onChange={(e) => setNome(e.target.value)}
               required
             />
+            {errors.nome && <small className={styles.errorField}>{errors.nome}</small>}
           </div>
 
           <div className={styles.field}>
@@ -98,10 +106,11 @@ export default function CadastroPage() {
               minLength="13"
               maxLength="13"
             />
+            {errors.ra && <small className={styles.errorField}>{errors.ra}</small>}
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="email">Email *</label>
+            <label htmlFor="email">E-mail *</label>
             <input
               type="email"
               id="email"
@@ -110,6 +119,8 @@ export default function CadastroPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            {errors.email && <small className={styles.errorField}>{errors.email}</small>}
+
           </div>
 
           <div className={styles.field}>
@@ -123,6 +134,8 @@ export default function CadastroPage() {
               required
               minLength="8"
             />
+            {errors.senha && <small className={styles.errorField}>{errors.senha}</small>}
+
           </div>
 
           <div className={styles.field}>
@@ -135,13 +148,16 @@ export default function CadastroPage() {
               onChange={(e) => setConfirmarSenha(e.target.value)}
               required
             />
-            {/* Mostra o erro específico de confirmação de senha */}
             {errors.confirmarSenha && <small className={styles.errorField}>{errors.confirmarSenha}</small>}
           </div>
 
           <button type="submit" className={styles.btnSubmit} disabled={isLoading}>
             {isLoading ? 'Cadastrando...' : 'Cadastrar-se'}
           </button>
+
+          <p className={styles.redirectLink}>
+            Já possui uma conta? <Link href="/login">Clique aqui para entrar!</Link>
+          </p>
         </form>
       </main>
     </>

@@ -25,6 +25,7 @@ Plataforma digital para modernização da biblioteca acadêmica, construída com
   * **React**: Biblioteca para construção de interfaces de usuário dinâmicas.
   * **Next.js**: Framework React com renderização híbrida, otimizações e roteamento baseado em sistema de arquivos.
   * **CSS Modules**: Para estilização de componentes de forma escopada e organizada.
+  * **React Icons**: Biblioteca para inclusão de ícones populares (Bootstrap Icons, Ionicons, etc.).
 
 -----
 
@@ -104,56 +105,54 @@ Plataforma digital para modernização da biblioteca acadêmica, construída com
 
 -----
 
-## 🔧 Configuração do Projeto
+## 🚀 Instalação e Execução
 
-A aplicação consiste em dois projetos separados que precisam ser configurados.
+A aplicação consiste em dois projetos separados que precisam ser configurados e executados simultaneamente.
 
-1.  **Clonar o repositório:**
+#### 1\. Clonar o Repositório
 
+```bash
+git clone <URL_DO_REPOSITORIO>
+cd <PASTA_PRINCIPAL_DO_PROJETO>
+```
+
+#### 2\. Configurar o Backend
+
+  * Navegue até a pasta do backend:
     ```bash
-    git clone <URL_DO_REPOSITORIO>
-    cd <PASTA_PRINCIPAL_DO_PROJETO>
+    cd biblioteca-backend
+    ```
+  * Instale todas as dependências:
+    ```bash
+    npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator
+    ```
+  * Crie um arquivo `.env` na raiz da pasta `biblioteca-backend` e preencha com suas credenciais:
+    ```env
+    # Configuração do Banco de Dados
+    DB_HOST=localhost
+    DB_USER=acervo_app
+    DB_PASSWORD=TroqueEstaSenha!
+    DB_DATABASE=acervo_digitalv2
+
+    # Configuração da Aplicação
+    PORT=4000
+    JWT_SECRET=sua-chave-secreta-muito-forte-e-dificil-de-adivinhar
     ```
 
-2.  **Configurar o Backend:**
+#### 3\. Configurar o Frontend
 
-      * Navegue até a pasta do backend:
-        ```bash
-        cd biblioteca-backend
-        ```
-      * Instale as dependências:
-        ```bash
-        npm install
-        ```
-      * Crie um arquivo `.env` na raiz da pasta `biblioteca-backend` e preencha com suas credenciais:
-        ```env
-        # Configuração do Banco de Dados
-        DB_HOST=localhost
-        DB_USER=acervo_app
-        DB_PASSWORD=TroqueEstaSenha!
-        DB_DATABASE=acervo_digitalv2
+  * Volte para a pasta raiz e navegue até a pasta do frontend:
+    ```bash
+    cd ../biblioteca-frontend 
+    ```
+  * Instale as dependências (o `npm install` padrão deve funcionar, mas para garantir que a biblioteca de ícones seja incluída, rode o comando específico):
+    ```bash
+    npm install react-icons
+    ```
 
-        # Configuração da Aplicação
-        PORT=4000
-        JWT_SECRET=sua-chave-secreta-muito-forte-e-dificil-de-adivinhar
-        ```
+#### 4\. Executar a Aplicação (Fluxo de Dois Terminais)
 
-3.  **Configurar o Frontend:**
-
-      * Volte para a pasta raiz e navegue até a pasta do frontend:
-        ```bash
-        cd ../biblioteca-frontend 
-        ```
-      * Instale as dependências:
-        ```bash
-        npm install
-        ```
-
------
-
-## ▶️ Execução
-
-Para rodar a aplicação completa, você precisará de **dois terminais abertos** simultaneamente.
+Você precisará de **dois terminais abertos**.
 
 **No Terminal 1 (inicie o Backend):**
 
@@ -199,24 +198,23 @@ O repositório está organizado em uma arquitetura de monorepo com duas pastas p
 
 ```
 .
-├─ biblioteca-backend/    # Projeto da API em Node.js/Express
-│  ├─ app.js              # Arquivo principal do servidor
-│  ├─ .env                # Variáveis de ambiente (local)
-│  └─ src/
-│     ├─ controller/    # Lógica de negócio (o que fazer)
-│     ├─ middleware/    # Funções intermediárias (ex: auth)
-│     ├─ model/          # Funções de acesso ao banco de dados
-│     └─ routes/        # Definição dos endpoints da API
+├─ biblioteca-backend/    # Projeto da API em Node.js/Express
+│  ├─ app.js              # Arquivo principal do servidor
+│  ├─ .env                # Variáveis de ambiente (local)
+│  └─ src/
+│     ├─ controller/     # Lógica de negócio (o que fazer)
+│     ├─ middleware/     # Funções intermediárias (ex: auth)
+│     ├─ model/          # Funções de acesso ao banco de dados
+│     └─ routes/         # Definição dos endpoints da API
 │
-└─ biblioteca-frontend/   # Projeto da Interface em React/Next.js
+└─ biblioteca-frontend/   # Projeto da Interface em React/Next.js
    └─ src/
-      └─ app/
-         ├─ (page).js    # Página inicial
-         ├─ login/
-         │  └─ page.jsx
-         ├─ cadastro/
-         │  └─ page.jsx
-         └─ api/          # (Opcional) Rotas de API do Next.js
+     ├─ app/              # Diretório principal de rotas e páginas
+     │  ├─ login/
+     │  │  └─ page.jsx
+     │  └─ cadastro/
+     │     └─ page.jsx
+     └─ components/       # Componentes reutilizáveis (ex: Header)
 ```
 
 -----

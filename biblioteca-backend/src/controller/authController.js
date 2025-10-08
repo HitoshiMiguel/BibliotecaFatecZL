@@ -81,7 +81,25 @@ const login = async (req, res) => {
 
 // --- FUNÇÃO PARA VERIFICAR O USUÁRIO LOGADO ---
 const getCurrentUser = async (req, res) => {
-  res.status(200).json({ id: req.user.id });
+  try {
+    const userId = req.user.id;
+    console.log(`[getCurrentUser] Tentando encontrar usuário com ID: ${userId}`); // Log 1
+
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      console.log(`[getCurrentUser] ERRO: Usuário com ID ${userId} não foi encontrado no banco.`); // Log 2
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+
+    console.log(`[getCurrentUser] SUCESSO: Usuário encontrado:`, user.nome); // Log 3
+    delete user.senha_hash;
+    res.status(200).json(user);
+
+  } catch (error) {
+    console.error('[getCurrentUser] ERRO CATASTRÓFICO:', error); // Log de erro grave
+    res.status(500).json({ message: 'Erro interno no servidor.' });
+  }
 };
 
 

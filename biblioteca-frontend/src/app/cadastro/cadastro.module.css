@@ -1,105 +1,73 @@
 
 
 .formContainer {
-  /* removemos a gambiarra do min-height calculado */
-  min-height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 20px;
-  text-align: center;
-}
-
-/* Formulário de busca central (maior e mais arredondado) */
-.search-form {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 0;
-}
-
-/* campo maior e arredondado */
-.search-form input[type="text"] {
-  height: 64px;               /* maior */
-  width: min(720px, 92vw);    /* mais largo, responsivo */
-  padding: 0 20px;
-  font-size: 18px;
-  border: 1px solid #dadada;
-  border-right: none;
-  border-radius: 999px 0 0 999px; /* cantos mais arredondados */
-  outline: none;
-  background: #fff;
-  color: #333;
-  transition: box-shadow .15s ease, border-color .15s ease;
-}
-
-.search-form input[type="text"]:focus {
-  border-color: #B20000;
-  box-shadow: 0 0 0 3px rgba(178,0,0,0.12);
-}
-
-/* Formulário */
-.form-container {
-  display: flex;
-  justify-content: center;
+  max-width: 600px;
+  margin: 40px auto;
   padding: 30px;
-}
-
-.cadastro-form {
-  width: 100%;
-  max-width: 500px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.row {
-  display: flex;
-  gap: 20px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background-color: #f9f9f9;
 }
 
 .field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+  margin-bottom: 20px;
 }
 
 .field label {
-  margin-bottom: 5px;
+  display: block;
+  margin-bottom: 8px;
   font-weight: bold;
-  font-size: 14px;
 }
 
 .field input {
-  padding: 10px;
-  border: 1px solid #bbb;
-  border-radius: 5px;
-  font-size: 14px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
 }
 
-.btn-submit {
-  background: #b30000;
+.btnSubmit {
+  width: 100%;
+  padding: 15px;
+  background-color: #b20000;
   color: white;
-  font-weight: bold;
-  padding: 12px;
   border: none;
   border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background-color 0.3s;
 }
 
-.btn-submit:hover {
-  background: #900000;
+.btnSubmit:hover {
+  background-color: #8c0000;
 }
 
-.terms {
-  font-size: 12px;
+.btnsubmit:disabled {
+  background-color: #ccc;
+  cursor:not-allowed;
+}
+
+.errorField {
+  color: #b20000;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.redirectLink {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
   color: #555;
-  line-height: 1.4;
 }
 
-.terms a {
-  color: #b30000;
+.redirectLink a {
+  color: #0070f3;
   text-decoration: none;
+  font-weight: bold;
+}
+
+.redirectLink a:hover {
+  text-decoration: underline;
 }

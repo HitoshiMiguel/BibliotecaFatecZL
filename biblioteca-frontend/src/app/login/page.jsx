@@ -31,9 +31,8 @@ export default function LoginPage() {
         const data = await response.json();
         throw new Error(data.message || 'Falha no login');
       }
-      
-      router.push('/dashboard');
 
+      router.push('/dashboard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -49,6 +48,7 @@ export default function LoginPage() {
 
       <div className={styles.formWrapper}>
         <h1 className={styles.title}>Login</h1>
+
         <form onSubmit={handleSubmit}>
           <div className={styles.inputGroup}>
             <label htmlFor="identifier">E-mail ou RA</label>
@@ -77,18 +77,28 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-          
-          {error && <p style={{ color: 'red', textAlign: 'center', marginBottom: '15px' }}>{error}</p>}
-          
+
+          {error && (
+            <p style={{ color: 'red', textAlign: 'center', marginBottom: 15 }}>
+              {error}
+            </p>
+          )}
+
           <button type="submit" className={styles.submitButton} disabled={isLoading}>
-            <BsBoxArrowInRight size={22} /> 
+            <BsBoxArrowInRight size={22} />
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          <p className={styles.redirectLink}>
-            Ainda não possui conta? <Link href="/cadastro">Clique aqui para se registrar</Link>
+          {/* Links de redirecionamento */}
+          <p className={styles.redirectLink} style={{ marginTop: 12 }}>
+            Esqueceu a senha?{' '}
+            <Link href="/redefinir-senha">Redefinir senha</Link>
           </p>
 
+          <p className={styles.redirectLink}>
+            Ainda não possui conta?{' '}
+            <Link href="/cadastro">Clique aqui para se registrar</Link>
+          </p>
         </form>
       </div>
     </>

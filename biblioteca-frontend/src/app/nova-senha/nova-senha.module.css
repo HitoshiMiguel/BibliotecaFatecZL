@@ -1,0 +1,99 @@
+.formWrapper {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 30px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 25px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #222;
+}
+
+.inputGroup {
+  margin-bottom: 20px;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.inputGroup input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inputGroup input:focus {
+  border-color: #b20000;
+  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.15);
+}
+
+/* Wrapper pro olho de mostrar senha */
+.passwordWrapper {
+  position: relative;
+}
+
+.eyeIcon {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #555;
+  font-size: 20px;
+}
+
+.passwordStrength {
+  height: 8px;
+  border-radius: 4px;
+  background: #eee;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.passwordStrength div {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+  transition: width 0.3s ease;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 15px;
+  background-color: #b20000;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.submitButton:hover {
+  background-color: #8e0000;
+  transform: scale(1.02);
+}
+
+.submitButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

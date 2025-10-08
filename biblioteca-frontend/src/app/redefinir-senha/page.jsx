@@ -1,5 +1,7 @@
 'use client';
+
 import { useState } from 'react';
+import styles from './redefinir-senha.module.css';
 
 export default function RedefinirSenha() {
   const [email, setEmail] = useState('');
@@ -7,32 +9,43 @@ export default function RedefinirSenha() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:4000/api/redefinir-senha', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    const data = await res.json();
-    setMensagem(data.mensagem || 'Verifique seu e-mail!');
+    try {
+      const res = await fetch('http://localhost:4000/api/redefinir-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      setMensagem(data?.mensagem || 'Verifique seu e-mail!');
+    } catch (err) {
+      setMensagem('Erro ao enviar. Tente novamente.');
+    }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: 'auto', padding: 32 }}>
-      <h2>Redefinir Senha</h2>
+    <div className={styles.formWrapper}>
+      <h1 className={styles.title}>Redefinir Senha</h1>
+
       <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Seu e-mail"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          style={{ width: '100%', marginBottom: 12, padding: 8 }}
-        />
-        <button type="submit" style={{ width: '100%', padding: 8 }}>
+        <div className={styles.inputGroup}>
+          <label htmlFor="email">E-mail</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="Digite seu e-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <button className={styles.submitButton} type="submit">
           Enviar link de redefinição
         </button>
       </form>
-      {mensagem && <p>{mensagem}</p>}
+
+      {mensagem && <p className={styles.redirectLink}>{mensagem}</p>}
     </div>
   );
 }

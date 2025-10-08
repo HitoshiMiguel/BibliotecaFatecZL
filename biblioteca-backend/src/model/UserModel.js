@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const pool = require('../infra/db/mysql/connection');
+const pool = require('../config/db.js');
 
 //busca um usuario pelo email dps retorna o objeto do banco ou null
 async function findByEmail(email)

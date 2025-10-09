@@ -128,13 +128,16 @@ Instale todas as dependências:
 
 npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator nodemailer
 
+*De o comando npm install dentro da pasta do frontend
 
 Crie um arquivo .env na raiz da pasta biblioteca-backend e preencha com suas credenciais:
 
 # Configuração do Banco de Dados
 DB_HOST=localhost
 DB_USER=acervo_app
-DB_PASSWORD=TroqueEstaSenha!
+DB_PASSWORD=123456
+DB_NAME=acervo_digitalv2
+BCRYPT_SALT_ROUNDS=10
 DB_DATABASE=acervo_digitalv2
 
 # Configuração da Aplicação
@@ -143,8 +146,8 @@ JWT_SECRET=sua-chave-secreta-muito-forte-e-dificil-de-adivinhar
 
 # Configuração do Nodemailer (envio de e-mails)
 EMAIL_SERVICE=gmail
-EMAIL_USER=seuemail@gmail.com
-EMAIL_PASS=sua-senha-ou-app-password
+EMAIL_USER=bibliotecafatecoriginal@gmail.com
+EMAIL_PASS=pjhs qsil nbkf lkcv
 
 
 ⚠️ Importante: se estiver usando Gmail, ative “App Passwords” e use a senha gerada no campo EMAIL_PASS.

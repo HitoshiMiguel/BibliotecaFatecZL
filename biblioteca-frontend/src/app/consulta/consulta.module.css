@@ -1,0 +1,75 @@
+.pageContainer {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.title {
+  margin-bottom: 24px;
+  font-weight: 700;
+  color: #B20000;
+}
+
+/* --- MUDANÇAS PRINCIPAIS ABAIXO --- */
+
+.searchForm {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+
+  /* 1. A borda agora está no formulário pai */
+  border: 1px solid #dadada;
+  border-radius: 999px; /* Borda totalmente arredondada */
+  overflow: hidden; /* Garante que os cantos dos filhos fiquem contidos */
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+/* 2. A MÁGICA DO :focus-within */
+/* Quando qualquer elemento DENTRO do formulário estiver focado... */
+.searchForm:focus-within {
+  border-color: #B20000;
+  box-shadow: 0 0 0 3px rgba(178,0,0,0.12);
+}
+
+.searchInput {
+  height: 64px;
+  width: min(720px, 92vw);
+  padding: 0 20px;
+  font-size: 18px;
+
+  /* 3. Removemos a borda do input */
+  border: none;
+  outline: none;
+
+  background: #fff;
+  color: #333;
+}
+
+.searchButton {
+  height: 64px;
+  width: 80px;
+
+  /* 4. Removemos a borda do botão */
+  border: none;
+  outline: none;
+
+  background: #fff;
+  cursor: pointer;
+  font-size: 24px;
+  color: #B20000;
+  transition: background-color .15s ease, color .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-left: #dadada solid 1px;
+}
+
+.searchButton:hover {
+  background: #B20000;
+  color: #fff;
+}

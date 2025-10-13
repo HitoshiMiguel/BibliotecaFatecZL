@@ -1,3 +1,5 @@
+// app/layout.js
+import 'bootstrap/dist/css/bootstrap.min.css';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -20,11 +22,20 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-br">
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <Header /> {
-          
-        }
-        {children}
+        {/* Header FIXO */}
+        <Header />
+
+        {/* Conteúdo da página */}
+        <main id="page-content" className="page-content">
+          {children}
+        </main>
       </body>
     </html>
   );

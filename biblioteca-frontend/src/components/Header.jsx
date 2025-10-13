@@ -1,53 +1,57 @@
 // Arquivo: src/components/Header.jsx
-import Image from 'next/image'; // Componente de imagem otimizado do Next.js
+'use client';
 
-export default function Header({pageTitle}) {
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import styles from './Header.module.css';
+
+const SearchBar = () => (
+  <div className={styles.searchBar}>
+    <input type="search" className={styles.campoDeBusca} placeholder="O que deseja localizar?" />
+    <button className={styles.btnSearch} aria-label="Buscar">
+      <i className="bi bi-search"></i>
+    </button>
+  </div>
+);
+
+const HamburgerMenu = () => (
+  <div><span style={{ color: '#888' }}>Menu</span></div>
+);
+
+export default function Header() {
+  const pathname = usePathname();
+
+  // A tag <header> agora só tem o className global
   return (
     <header className="app-header">
-      {/* Faixa superior (governo) - classes do seu globals.css */}
+      {/* Faixa Governo */}
       <div className="govsp-header">
         <div className="logo-governo">
-          {/* Ajuste o caminho se o nome da imagem for diferente */}
-          <Image 
-            src="/imagens/logo-governo.png" 
-            alt="Logo Governo de SP" 
-            className="logo-governo-img"
-            width={160}
-            height={38}
-            priority/>
+          <Image src="/imagens/logo-governo.png" alt="Logo Governo de SP" width={200} height={38} priority />
         </div>
         <div className="icones">
-            <Image src="/imagens/i-flickr.png" alt="Logo Flickr" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-linkedin.png" alt="Logo Linkedin" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-tiktok.png" alt="Logo Tiktok" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-youtube.png" alt="Logo Youtube" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-twitter.png" alt="Logo Twitter" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-instagram.png" alt="Logo Instagram" className="icone-img" width={25} height={25} />
-            <Image src="/imagens/i-facebook.png" alt="Logo Facebook" className="icone-img" width={25} height={25} />
-          <span className="govsp">/governosp</span>
+          <a href="#"><Image src="/imagens/i-flickr.png" alt="Flickr" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-linkedin.png" alt="Linkedin" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-tiktok.png" alt="TikTok" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-youtube.png" alt="YouTube" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-twitter.png" alt="Twitter" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-instagram.png" alt="Instagram" width={25} height={25} /></a>
+          <a href="#"><Image src="/imagens/i-facebook.png" alt="Facebook" width={25} height={25} /></a>
+          {/* ... outros ícones ... */}
+            <a href="#" className="govsp">/governosp</a>        
         </div>
       </div>
 
-      {/* Faixa inferior (Fatec/CPS) - classes do seu globals.css */}
+      {/* Faixa CPS/Fatec */}
       <div className="CPS-header">
         <div className="CPS-container">
           <div className="logos">
-            {/* Ajuste os caminhos das imagens */}
-            <Image 
-                src="/imagens/logo-fatec-cps.png" 
-                alt="Logo FATEC Zona Leste" 
-                className="logo-cps-fatec-img" 
-                width={310}
-                height={85}
-                priority/>
+            <Image src="/imagens/logo-fatec-cps.png" alt="Logo Fatec e CPS" width={300} height={80} className="logo-cps-fatec-img" />
           </div>
-          {/* Adicione o menu hamburguer se necessário */}
+          <div className={styles.dynamicSlot}>
+            {pathname === '/' || pathname === '/siteFatec' ? <SearchBar /> : <HamburgerMenu />}
+          </div>
         </div>
-
-    <section className="page-title-section">
-        <h1>{pageTitle}</h1>
-    </section>   
-
       </div>
     </header>
   );

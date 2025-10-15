@@ -1,23 +1,29 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import styles from './nova-senha.module.css';
+import React, { useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
+import styles from './nova-senha.module.css'; // se não tiver, pode remover esta linha
 
 export default function NovaSenha() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const token = searchParams.get('token') || '';
 
   const [senha, setSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
-  const [mensagem, setMensagem] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      Swal.fire({ icon: 'error', title: 'Link inválido', text: 'Token ausente ou expirado.' });
+      return;
+    }
     if (senha !== confirmar) {
-      setMensagem('As senhas não conferem.');
+      Swal.fire({ icon: 'warning', title: 'Atenção', text: 'As senhas não conferem.' });
       return;
     }
 
@@ -30,20 +36,33 @@ export default function NovaSenha() {
       });
 
       const data = await res.json();
-      setMensagem(data?.mensagem || 'Senha atualizada com sucesso!');
+
+      if (res.ok) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Senha redefinida!',
+          text: 'Você já pode fazer login com a nova senha.',
+          showConfirmButton: false,
+          timer: 1600,
+          timerProgressBar: true,
+        });
+        router.push('/login'); // ajuste se sua rota de login for outra
+      } else {
+        Swal.fire({ icon: 'error', title: 'Ops…', text: data?.mensagem || 'Não foi possível redefinir.' });
+      }
     } catch (err) {
-      setMensagem('Erro ao atualizar a senha. Tente novamente.');
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Falha ao conectar ao servidor.' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={styles.formWrapper}>
-      <h1 className={styles.title}>Definir Nova Senha</h1>
+    <div className={styles?.formWrapper ?? ''} style={!styles ? { maxWidth: 420, margin: 'auto', padding: 24 } : undefined}>
+      <h1 className={styles?.title ?? ''}>Definir Nova Senha</h1>
 
       <form onSubmit={handleSubmit}>
-        <div className={styles.inputGroup}>
+        <div className={styles?.inputGroup ?? ''}>
           <label htmlFor="senha">Nova senha</label>
           <input
             id="senha"
@@ -55,7 +74,7 @@ export default function NovaSenha() {
           />
         </div>
 
-        <div className={styles.inputGroup}>
+        <div className={styles?.inputGroup ?? ''}>
           <label htmlFor="confirmar">Confirmar senha</label>
           <input
             id="confirmar"
@@ -67,12 +86,11 @@ export default function NovaSenha() {
           />
         </div>
 
-        <button className={styles.submitButton} type="submit" disabled={loading}>
-          {loading ? 'Salvando...' : 'Salvar nova senha'}
+        <button className={styles?.submitButton ?? ''} type="submit" disabled={loading} style={!styles ? { width: '100%', padding: 10 } : undefined}>
+          {loading ? 'Salvando…' : 'Salvar nova senha'}
         </button>
       </form>
-
-      {mensagem && <p className={styles.redirectLink}>{mensagem}</p>}
     </div>
   );
 }
+

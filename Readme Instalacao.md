@@ -132,6 +132,7 @@ cd <PASTA_PRINCIPAL_DO_PROJETO>
 
     ```bash
     npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator nodemailer
+    npm install nodemailer
     
     ```
 
@@ -171,7 +172,9 @@ cd <PASTA_PRINCIPAL_DO_PROJETO>
     ```bash
     npm install
     npm install react-icons
-    npm install react-bootstrap bootstrap 
+    npm install react-bootstrap bootstrap
+    npm install sweetalert2 
+
     ```
 
 ### 4\. Executar a Aplicação (Fluxo de Dois Terminais)

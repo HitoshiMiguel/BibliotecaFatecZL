@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './login.module.css';
 import { BsBoxArrowInRight, BsEye, BsEyeSlash } from 'react-icons/bs';
+import { extractFriendlyMessage } from '@/services/errors'; // ajuste o path se não usa "@"
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState(''); // e-mail ou RA
+  const [password,   setPassword]   = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,21 +21,33 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:4000/api/login', {
+      // Validação leve no cliente (opcional, melhora UX)
+      if (!identifier.trim() || !password.trim()) {
+        setError('Preencha e-mail/RA e senha.');
+        setIsLoading(false);
+        return;
+      }
+
+      // O backend espera email/senha. Mapeamos o "identifier" para 'email'.
+      const body = { email: identifier.trim(), senha: password };
+
+      const res = await fetch('http://localhost:4000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify(body),
         credentials: 'include',
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Falha no login');
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.ok === false) {
+        const msg = extractFriendlyMessage(data, res.status) || 'Falha no login';
+        throw new Error(msg);
       }
 
       router.push('/dashboard');
-    } catch (err) {
-      setError(err.message);
+    } catch (e) {
+      setError(e.message || 'Falha no login');
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +70,7 @@ export default function LoginPage() {
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="seu@email.com ou 12345678"
+              placeholder="seu@email.com ou 1234567890123"
               required
             />
           </div>
@@ -89,15 +102,12 @@ export default function LoginPage() {
             {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          {/* Links de redirecionamento */}
           <p className={styles.redirectLink} style={{ marginTop: 12 }}>
-            Esqueceu a senha?{' '}
-            <Link href="/redefinir-senha">Redefinir senha</Link>
+            Esqueceu a senha? <Link href="/redefinir-senha">Redefinir senha</Link>
           </p>
 
           <p className={styles.redirectLink}>
-            Ainda não possui conta?{' '}
-            <Link href="/cadastro">Clique aqui para se registrar</Link>
+            Ainda não possui conta? <Link href="/cadastro">Clique aqui para se registrar</Link>
           </p>
         </form>
       </div>

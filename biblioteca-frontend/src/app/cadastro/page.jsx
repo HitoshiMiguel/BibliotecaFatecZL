@@ -5,67 +5,71 @@ import { useRouter } from 'next/navigation';
 import styles from './cadastro.module.css';
 import Link from 'next/link';
 
+// Se você criou "src/services/errors.js" no front com a função extractFriendlyMessage:
+import { extractFriendlyMessage } from '@/services/errors';
+// Se não usa alias "@", troque a importação acima por:
+// import { extractFriendlyMessage } from '../../services/errors';
+
 export default function CadastroPage() {
-  // Estados para controlar os valores de cada input
+  // Estados de formulário
   const [nome, setNome] = useState('');
   const [ra, setRa] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
 
-  // Estados para controlar o loading e as mensagens de erro/sucesso
-  const [errors, setErrors] = useState({});
+  // Estados de UI
+  const [errors, setErrors] = useState({});   // { global, nome, email, ra, senha, confirmarSenha }
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
 
-  // A função final e corrigida para lidar com o envio do formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
 
+    // Validação rápida no cliente
     if (senha !== confirmarSenha) {
-      setErrors({ confirmarSenha: 'As senhas não coincidem.' });
+      setErrors(prev => ({ ...prev, confirmarSenha: 'As senhas não coincidem.' }));
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('http://localhost:4000/api/register', { 
+      const res = await fetch('http://localhost:4000/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          nome, 
-          email, 
-          ra, 
-          senha,
-          confirmarSenha
-        }), 
+        body: JSON.stringify({ nome, email, ra, senha, confirmarSenha }),
+        credentials: 'include',
       });
 
-      const data = await response.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!response.ok) {
-        if (data.errors) {
-          const newErrors = {};
-          data.errors.forEach(error => {
-            newErrors[error.path] = error.msg;
-          });
-          setErrors(newErrors);
+      if (!res.ok || data.ok === false) {
+        const msg = extractFriendlyMessage(data, res.status);
+
+        // Tenta mapear a mensagem para campos específicos
+        const fieldErr = {};
+        if (/nome/i.test(msg)) fieldErr.nome = 'Verifique o nome informado.';
+        if (/email|e-mail/i.test(msg)) fieldErr.email = 'Verifique o e-mail informado.';
+        if (/ra/i.test(msg)) fieldErr.ra = 'Verifique o RA informado.';
+        if (/senha/i.test(msg)) fieldErr.senha = 'Verifique a senha informada.';
+        if (/confirm/i.test(msg) || /coincid/i.test(msg)) fieldErr.confirmarSenha = 'As senhas não coincidem.';
+
+        if (Object.keys(fieldErr).length) {
+          setErrors(prev => ({ ...prev, ...fieldErr, global: undefined }));
         } else {
-          throw new error(data.message || 'Erro ao realizar o cadastro.');
+          setErrors(prev => ({ ...prev, global: msg || 'Erro ao realizar o cadastro.' }));
         }
-       } else {
-        alert('Cadastro realizado com sucesso! Você será redirecionado para o login.');
-        router.push('/login');
-        }
-      
+        return;
+      }
 
-      
+      alert('Cadastro realizado com sucesso! Você será redirecionado para o login.');
+      router.push('/login');
 
-    } catch (err) {
-      setErrors({ global: err.message });
+    } catch (e2) {
+      setErrors(prev => ({ ...prev, global: e2.message || 'Falha inesperada no cadastro.' }));
     } finally {
       setIsLoading(false);
     }
@@ -103,8 +107,8 @@ export default function CadastroPage() {
               value={ra}
               onChange={(e) => setRa(e.target.value)}
               required
-              minLength="13"
-              maxLength="13"
+              minLength={13}
+              maxLength={13}
             />
             {errors.ra && <small className={styles.errorField}>{errors.ra}</small>}
           </div>
@@ -120,7 +124,6 @@ export default function CadastroPage() {
               required
             />
             {errors.email && <small className={styles.errorField}>{errors.email}</small>}
-
           </div>
 
           <div className={styles.field}>
@@ -132,10 +135,9 @@ export default function CadastroPage() {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               required
-              minLength="8"
+              minLength={8}
             />
             {errors.senha && <small className={styles.errorField}>{errors.senha}</small>}
-
           </div>
 
           <div className={styles.field}>

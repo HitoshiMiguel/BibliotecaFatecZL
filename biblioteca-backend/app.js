@@ -2,40 +2,29 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
 const cookieParser = require('cookie-parser');
-// --- CONFIGURAÇÃO DE MIDDLEWARE ---
 
-// Configuração do CORS
-const corsOptions = {
-  origin: 'http://localhost:3000',
-  credentials: true,
-};
-app.use(cors(corsOptions));
+const authRoutes = require('./src/routes/authRoutes');
+const dbTestRoute = require('./src/routes/dbTestRoute');
+const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 
-// Middlewares para entender JSON e dados de formulário
+const app = express();
+
+// CORS / parsers
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// --- ROTAS DA API ---
 
-// Conecta o arquivo de rotas de autenticação
-// Todas as rotas definidas em 'authRoutes.js' começarão com /api
-app.use('/api', require('./src/routes/authRoutes')); 
+// ROTAS (sempre antes do 404/erros)
+app.use('/api', authRoutes);
+app.use('/db-test', dbTestRoute);
+app.get('/__dbcheck', (req, res) => res.redirect(307, '/db-test'));
 
-// --- ROTA DE TESTE (Opcional) ---
-const pool = require('./src/config/db'); // Mova a importação do pool para onde for usada
-app.get('/__dbcheck', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT 1 AS ok');
-    res.json({ ok: rows[0].ok === 1 });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
+// 404 e erros (sempre por último)
+app.use(notFound);
+app.use(errorHandler);
 
-// --- INICIAR O SERVIDOR ---
-const PORT = process.env.PORT || 4000; // Sugiro usar outra porta (ex: 4000) para não conflitar com o Next.js (3000)
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor API rodando na porta ${PORT}`);
-});
+// Start
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`🚀 API na porta ${PORT}`));

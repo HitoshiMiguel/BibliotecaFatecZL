@@ -171,7 +171,8 @@ cd <PASTA_PRINCIPAL_DO_PROJETO>
     ```bash
     npm install
     npm install react-icons
-    npm install react-bootstrap bootstrap 
+    npm install react-bootstrap bootstrap
+    npm install sweetalert2 
     ```
 
 ### 4\. Executar a Aplicação (Fluxo de Dois Terminais)

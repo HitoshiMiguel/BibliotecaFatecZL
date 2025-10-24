@@ -1,0 +1,25 @@
+/* ====== Alerts (banner) ====== */
+.alert {
+  border-radius: 10px; padding: 12px 14px; margin: 12px 0;
+  font-size: .95rem; line-height: 1.35; display: flex; gap: 8px; align-items: flex-start;
+}
+.alert svg { flex-shrink: 0; }
+.alert--error  { background: #FDE8E8; color: #8A0D0D; border: 1px solid #F7CACA; }
+.alert--success{ background: #E8F7EE; color: #0D6B2D; border: 1px solid #BCE7CC; }
+.alert--info   { background: #E8F0FE; color: #1E40AF; border: 1px solid #C7D2FE; }
+.alert--warning{ background: #FFF7E6; color: #8A5A00; border: 1px solid #FFE2A8; }
+
+/* ====== Erro inline ====== */
+.field-error { margin-top: 6px; color: #B91C1C; font-size: .85rem; }
+
+/* ====== Realce input inválido (aplique junto do seu módulo CSS) ====== */
+.input-invalid {
+  border-color: #EF4444 !important;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+}
+
+/* ====== Util ====== */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}

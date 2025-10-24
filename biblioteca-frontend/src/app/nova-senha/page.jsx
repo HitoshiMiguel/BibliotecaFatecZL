@@ -29,7 +29,7 @@ export default function NovaSenha() {
 
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:4000/api/nova-senha', {
+      const res = await fetch('http://localhost:4000/api/auth/redefinir-senha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, senha }),

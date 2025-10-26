@@ -14,6 +14,10 @@ export default function RedefinirSenha() {
   const [banner, setBanner] = useState({ kind: 'info', message: '' });
 
   useEffect(() => {
+        document.title = 'Redefinir Senha - Biblioteca Fatec ZL'; // Define o título da aba
+    }, []);
+
+  useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
       return () => clearTimeout(timer);
@@ -32,7 +36,7 @@ export default function RedefinirSenha() {
       setLoading(true);
       setBanner({ kind: 'info', message: '' });
 
-      const res = await fetch('http://localhost:4000/api/redefinir-senha', {
+      const res = await fetch('http://localhost:4000/api/auth/redefinir-senha-solicitacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

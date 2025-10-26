@@ -1,14 +1,16 @@
-// No seu ficheiro da PÁGINA DE LOGIN (ex: app/login/page.jsx ou pages/login.js)
+// src/app/login/page.jsx
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import styles from './login.module.css'; // Mantenha o seu CSS
+import styles from './login.module.css'; // Mantenha a sua importação de CSS Modules
 import { BsBoxArrowInRight, BsEye, BsEyeSlash } from 'react-icons/bs';
 import Alert from '@/components/Alert';
 import '@/styles/feedback.css';
+
+// REMOVIDO: export const metadata = { ... }
 
 export default function LoginPage() {
     const [identifier, setIdentifier] = useState('');
@@ -26,6 +28,12 @@ export default function LoginPage() {
     const passRef = useRef(null);
 
     const router = useRouter();
+
+    // --- Definir o título da página dinamicamente ---
+    useEffect(() => {
+        document.title = 'Login - Biblioteca Fatec ZL'; // Define o título da aba do navegador
+    }, []); // Executa apenas uma vez quando o componente monta
+    // ---------------------------------------------
 
     useEffect(() => {
         // Lógica de foco em erro (mantida)
@@ -45,43 +53,31 @@ export default function LoginPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ identifier, password }),
-                credentials: 'include', // Necessário para cookies httpOnly cross-origin
+                credentials: 'include',
             });
 
-            // Tenta ler o corpo da resposta JSON (mesmo em caso de erro)
             let data = {};
             try { data = await response.json(); } catch {}
 
-            if (response.ok) { // Status 200-299
+            if (response.ok) {
                 setUi({ status: 'success', message: 'Login realizado com sucesso.', kind: 'success', fieldErrors: {} });
-
-                // --- LÓGICA DE REDIRECIONAMENTO CONDICIONAL ---
-                const perfil = data.perfil; // Pega o perfil retornado pela API
-                console.log("Perfil recebido no login:", perfil); // Log para debug
+                const perfil = data.perfil;
+                console.log("Perfil recebido no login:", perfil);
 
                 if (perfil === 'admin' || perfil === 'bibliotecario') {
-                    // Se for admin ou bibliotecário, vai para o painel admin
-                    router.push('/admin/dashboard'); 
+                    router.push('/admin/dashboard'); // Corrigido para a rota admin
                 } else {
-                    // Caso contrário (comum, professor), vai para o dashboard normal
-                    router.push('/dashboard'); 
+                    router.push('/dashboard');
                 }
-                // ----------------------------------------------
-                return; // Interrompe a execução aqui
+                return;
 
-            } else { // Tratamento de erros (mantido)
+            } else { // Tratamento de erros
                  if (response.status === 401 || response.status === 403) {
                     setUi({
                         status: 'error', kind: 'error',
                         message: data?.message || 'Login ou senha inválidos.',
                         fieldErrors: { identifier: '', password: '' }
                     });
-                 } else if (response.status === 422) { // Erro de validação (pouco provável no login)
-                     setUi({
-                         status: 'error', kind: 'error',
-                         message: data?.message || 'Dados inválidos.',
-                         fieldErrors: data?.fieldErrors || {}
-                     });
                  } else { // Erro 500 ou outros
                     setUi({
                         status: 'error', kind: 'error',
@@ -90,7 +86,7 @@ export default function LoginPage() {
                     });
                  }
             }
-        } catch (error){ // Erro de rede/conexão
+        } catch (error){
             console.error("Erro na chamada da API de login:", error);
             setUi({
                 status: 'error', kind: 'error',
@@ -102,7 +98,7 @@ export default function LoginPage() {
 
     // --- JSX do Formulário (mantido como antes) ---
     return (
-        <>
+         <>
             <section className="title-section">
                 <h1 className="title-section-heading">Entrar no Sistema</h1>
             </section>

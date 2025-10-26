@@ -34,6 +34,11 @@ export default function CadastroPage() {
 
     const router = useRouter();
 
+    // --- Definir o título da página dinamicamente ---
+    useEffect(() => {
+        document.title = 'Cadastro - Biblioteca Fatec ZL'; // Define o título da aba
+    }, []);
+
     // Lógica de foco em caso de erro (ajustada para incluir RA)
     useEffect(() => {
         if (Object.keys(errors).length) {

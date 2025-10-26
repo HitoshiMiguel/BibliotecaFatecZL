@@ -2,28 +2,33 @@
 
 const express = require('express');
 const router = express.Router();
-const AdminController = require('../controller/adminController'); // Corretamente em camelCase
-const authMiddleware = require('../middleware/authMiddleware'); 
+const AdminController = require('../controller/adminController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// --- ROTAS DE ADMIN (Níveis de Acesso: ADM/BIBLIOTECÁRIO) ---
+// --- ROTAS DE GESTÃO DE SOLICITAÇÕES (Existentes) ---
+router.get('/solicitacoes', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.getAllSolicitacoes);
+router.post('/solicitacoes/:id/aprovar', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.aprovarSolicitacao);
+router.post('/solicitacoes/:id/rejeitar', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.rejeitarSolicitacao);
 
-// Para o teste de Admin, deixaremos a rota de criação SEM o middleware por enquanto.
-// TODAS AS OUTRAS ROTAS ABAIXO PRECISAM DO MIDDLEWARE!
+// --- ROTA DE CRIAÇÃO DIRETA DE UTILIZADOR (Existente) ---
+// Usar isAdminOrBibliotecario para permitir que ambos criem contas
+router.post('/usuarios', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.createUsuarioDireto);
 
-// 1. Listar solicitações pendentes (GET /solicitacoes)
-router.get('/solicitacoes', authMiddleware.isAuthenticated, authMiddleware.isAdmin, AdminController.getAllSolicitacoes);
 
-// 2. Aprovar solicitação (POST /solicitacoes/:id/aprovar)
-router.post('/solicitacoes/:id/aprovar', authMiddleware.isAuthenticated, authMiddleware.isAdmin, AdminController.aprovarSolicitacao);
+// --- NOVAS ROTAS CRUD PARA UTILIZADORES ---
 
-// 3. Rejeitar solicitação (POST /solicitacoes/:id/rejeitar) - LINHA 15
-router.post('/solicitacoes/:id/rejeitar', authMiddleware.isAuthenticated, authMiddleware.isAdmin, AdminController.rejeitarSolicitacao);
+// GET /api/admin/usuarios - Listar todos os utilizadores
+router.get('/usuarios', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.listAllUsers);
 
-// 4. Criação Direta (Admin/Bibliotecário)
-// MODO TEMPORÁRIO PARA CRIAÇÃO DO ADMIN DE TESTE (Sem Middleware)
-router.post('/usuarios', AdminController.createUsuarioDireto);
+// GET /api/admin/usuarios/:id - Obter detalhes de um utilizador
+router.get('/usuarios/:id', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.getUserById);
 
-// MODO SEGURO (DEPOIS DO TESTE):
-// router.post('/usuarios', authMiddleware.isAuthenticated, authMiddleware.isAdmin, AdminController.createUsuarioDireto);
+// PUT /api/admin/usuarios/:id - Atualizar um utilizador
+// Usamos PUT para atualização completa ou parcial aqui
+router.put('/usuarios/:id', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.updateUser);
+
+// DELETE /api/admin/usuarios/:id - Excluir um utilizador
+router.delete('/usuarios/:id', authMiddleware.isAuthenticated, authMiddleware.isAdmin, AdminController.deleteUser); // Talvez só Admin possa excluir? Ajuste se necessário.
+
 
 module.exports = router;

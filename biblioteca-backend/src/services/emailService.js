@@ -73,40 +73,81 @@ const sendResetPasswordEmail = async (to, link) => {
     }
 };
 
-// Adicione aqui a função sendActivationEmail se ainda não existir ou precisar de ajustes
-const sendActivationEmail = async (to, link) => {
-    // Implementação similar a sendResetPasswordEmail, mas com texto de ativação
-    const subject = `Ative sua conta - ${APP_NAME}`;
+
+
+const sendConfirmationEmail = async (to, confirmationLink) => {
+    const subject = `Confirme sua conta - ${APP_NAME}`;
+    // HTML Ultra Simplificado e Limpo
     const html = `
-    <!doctype html>
-    <html>
-     <head>
-       {/* Estilos similares ao de redefinição */}
-     </head>
-     <body>
-       <div class="wrapper">
-         <h1 class="title">Ativação de Conta</h1>
-         <p class="muted">Olá! Sua conta como professor na <strong>${APP_NAME}</strong> foi aprovada.</p>
-         <p style="margin:16px 0 24px;">Clique no botão abaixo para definir sua senha e ativar sua conta:</p>
-         <p style="text-align:center;margin-bottom:24px;">
-           <a class="btn" href="${link}" target="_blank" rel="noopener" style="color: #ffffff;">Ativar Conta e Definir Senha</a>
-         </p>
-         <p class="muted" style="margin-top:0;">Se o botão não funcionar, copie e cole este link no navegador:</p>
-         <p class="link-fallback">${link}</p>
-         <p class="note">Este link é válido por <strong>24 horas</strong>.</p> {/* Duração diferente? */}
-       </div>
-       <p class="footer">© ${new Date().getFullYear()} ${APP_NAME}</p>
-     </body>
-    </html>`;
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #b71c1c; margin-top: 0;">Confirmação de Conta</h2>
+        <p>Olá!</p>
+        <p>Sua conta como professor na <strong>${APP_NAME}</strong> foi criada com sucesso.</p>
+        <p>Clique no botão abaixo para confirmar seu endereço de e-mail e ativar completamente sua conta:</p>
+        <p style="text-align: center; margin: 25px 0;">
+            <a href="${confirmationLink}" target="_blank" rel="noopener" style="background-color: #b71c1c; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                Confirmar E-mail
+            </a>
+        </p>
+        <p style="font-size: 0.9em; color: #555;">Se o botão não funcionar, copie e cole este link no seu navegador:</p>
+        <p style="font-size: 0.9em; word-break: break-all; color: #007bff;">${confirmationLink}</p>
+        <p style="font-size: 0.8em; color: #777; margin-top: 20px;">Este link é válido por 24 horas.</p>
+        <p style="font-size: 0.8em; color: #999; text-align: center; margin-top: 20px;">© ${new Date().getFullYear()} ${APP_NAME}</p>
+    </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+             from: `"${APP_NAME}" <${FROM}>`,
+             to,
+             subject,
+             html // Apenas HTML limpo
+        });
+        console.log(`E-mail de confirmação enviado para ${to}`);
+    } catch (error) {
+        console.error(`Falha ao enviar e-mail de confirmação para ${to}:`, error);
+        throw new Error('Falha no serviço de envio de e-mail de confirmação.');
+    }
+}
+
+/**
+ * Envia e-mail para ATIVAÇÃO (Professor define a senha).
+ */
+const sendActivationEmail = async (to, activationLink) => {
+    const subject = `Ative sua conta - ${APP_NAME}`;
+    // HTML Corrigido e Simplificado
+    const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #b71c1c; margin-top: 0;">Ativação de Conta</h2>
+        <p>Olá!</p>
+        <p>Sua conta como professor na <strong>${APP_NAME}</strong> foi criada.</p>
+        <p>Clique no botão abaixo para definir sua senha e ativar sua conta:</p>
+        <p style="text-align: center; margin: 25px 0;">
+            <a href="${activationLink}" target="_blank" rel="noopener" style="background-color: #28a745; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                Ativar Conta e Definir Senha
+            </a>
+        </p>
+        <p style="font-size: 0.9em; color: #555;">Se o botão não funcionar, copie e cole este link no seu navegador:</p>
+        <p style="font-size: 0.9em; word-break: break-all; color: #007bff;">${activationLink}</p>
+        <p style="font-size: 0.8em; color: #777; margin-top: 20px;">Este link é válido por 24 horas.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 0.8em; color: #999; text-align: center;">© ${new Date().getFullYear()} ${APP_NAME}</p>
+    </div>
+    `;
 
      try {
-        await transporter.sendMail({ from: `"${APP_NAME}" <${FROM}>`, to, subject, html });
-        console.log(`E-mail de ativação enviado para ${to}`);
+        await transporter.sendMail({
+            from: `"${APP_NAME}" <${FROM}>`,
+            to,
+            subject,
+            html // Envia o HTML correto
+        });
+        console.log(`E-mail de ATIVAÇÃO enviado para ${to}`);
     } catch (error) {
-        console.error(`Falha ao enviar e-mail de ativação para ${to}:`, error);
-        throw new Error('Falha no serviço de envio de e-mail de ativação.'); 
+        console.error(`Falha ao enviar e-mail de ATIVAÇÃO para ${to}:`, error);
+        throw new Error('Falha no serviço de envio de e-mail de ativação.');
     }
 };
 
-
-module.exports = { sendResetPasswordEmail, sendActivationEmail };
+// ... (sendResetPasswordEmail e module.exports)
+module.exports = { sendResetPasswordEmail, sendConfirmationEmail, sendActivationEmail };

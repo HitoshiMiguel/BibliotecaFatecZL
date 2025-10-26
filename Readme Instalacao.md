@@ -1,320 +1,316 @@
-📚 Biblioteca Fatec ZL
+
+# 📚 Biblioteca Fatec ZL
 
 Plataforma digital para modernização da biblioteca acadêmica, construída com uma arquitetura moderna de serviços. O projeto consiste em uma API RESTful (backend) desenvolvida em Node.js e Express, e uma interface de usuário reativa (frontend) desenvolvida com React e Next.js.
 
-🛠️ Stack de Tecnologias
+-----
 
-Backend (API)
+## 🛠️ Stack de Tecnologias
 
-Node.js + Express: Construção da API REST.
+### Backend (API)
 
-MySQL com mysql2/promise: Conexão e queries assíncronas com o banco de dados.
+* **Node.js + Express**: Construção da API REST.
+* **MySQL com `mysql2/promise`**: Conexão e queries assíncronas com o banco de dados.
+* **JSON Web Token (`jsonwebtoken`)**: Autenticação e gerenciamento de sessões seguras.
+* **`bcryptjs`**: Criptografia (hash) de senhas.
+* **`cors`**: Habilita a comunicação segura entre o frontend (`http://localhost:3000`) e o backend.
+* **`cookie-parser`**: Interpreta os cookies de sessão enviados pelo navegador.
+* **`dotenv`**: Gerenciamento de variáveis de ambiente.
+* **`express-validator`**: Validação e sanitização dos dados recebidos nas rotas de cadastro.
+* **`nodemailer`**: Envio de e-mails automáticos (redefinição de senha, ativação/confirmação de conta).
+* **`uuid`**: Geração de tokens únicos (UUID v4) para ativação e redefinição.
+* **Padrão Builder**: Utilizado para a construção controlada e flexível de objetos `Usuario` com diferentes perfis (`comum`, `professor`, `bibliotecario`, `admin`).
 
-JSON Web Token (jsonwebtoken): Autenticação e gerenciamento de sessões seguras.
+### Frontend (Interface do Usuário)
 
-bcryptjs: Criptografia (hash) de senhas.
+* **React**: Biblioteca para construção de interfaces de usuário dinâmicas.
+* **Next.js (App Router)**: Framework React com renderização no servidor/cliente, otimizações e roteamento baseado em ficheiros.
+* **CSS Modules**: Para estilização de componentes de forma escopada.
+* **React Icons**: Biblioteca para inclusão de ícones populares (ex: `react-icons/bs`).
+* **SweetAlert2**: Para exibição de modais e alertas interativos.
+* **`jose` (Opcional, para Middleware)**: Biblioteca para verificação de JWTs no Edge Runtime do Next.js (se implementar proteção de rotas via Middleware).
 
-cors: Habilita a comunicação segura entre o frontend e o backend (configurado para http://localhost:3000).
+-----
 
-cookie-parser: Interpreta os cookies de sessão enviados pelo navegador.
+## ✅ Pré-requisitos
 
-dotenv: Gerenciamento de variáveis de ambiente.
+* **Node.js** (versão LTS recomendada, v22+ utilizada nos testes)
+* **npm** (gerenciador de pacotes, vem com o Node.js)
+* **MySQL Server** (instalado localmente ou via Docker)
+* **Git** (para clonar o repositório)
+* **(Obrigatório) Conta Gmail com "App Passwords" habilitado:** Necessária para o envio de e-mails com Nodemailer via Gmail SMTP. Consulte [como gerar App Passwords](https://support.google.com/accounts/answer/185833).
 
-express-validator: Validação e sanitização dos dados recebidos nas rotas.
+-----
 
-nodemailer: Envio de e-mails automáticos (redefinição de senha, ativação de conta).
+## 🗄️ Banco de Dados
 
-uuid: Geração de tokens únicos para ativação e redefinição.
+1.  **Crie o banco de dados e as tabelas** executando o script SQL consolidado abaixo no seu cliente MySQL. Este script reflete a estrutura final necessária para todas as funcionalidades implementadas.
 
-Padrão Builder: Utilizado para a construção robusta e flexível de objetos Usuario com diferentes perfis.
+    ```sql
+    CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
+    USE acervo_digitalv2;
 
-Frontend (Interface do Usuário)
+    -- Tabela Principal de Usuários (Estrutura Final)
+    CREATE TABLE IF NOT EXISTS dg_usuarios (
+      usuario_id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      ra VARCHAR(20) UNIQUE NULL,                     -- RA opcional (VARCHAR permite flexibilidade futura, NULL para não-alunos)
+      email VARCHAR(100) UNIQUE NOT NULL,
+      senha_hash VARCHAR(255) NULL,                   -- NULLABLE: Permite criação pendente de ativação/definição de senha
+      perfil ENUM('comum','professor','bibliotecario','admin') NOT NULL DEFAULT 'comum', -- Perfil 'professor' adicionado
+      status_conta ENUM('ativa', 'pendente_ativacao', 'inativa') NOT NULL DEFAULT 'ativa', -- Controle granular de status
+      token_ativacao VARCHAR(255) UNIQUE NULL,         -- Token para ativação (professor define senha) OU confirmação (professor já tem senha)
+      reset_token VARCHAR(255) UNIQUE NULL,            -- Token para redefinição de senha
+      reset_token_expira DATETIME NULL                 -- Expiração do token de redefinição
+    );
 
-React: Biblioteca para construção de interfaces de usuário dinâmicas.
+    -- Tabela para Solicitações de Cadastro (Professores/Bibliotecários)
+    CREATE TABLE IF NOT EXISTS dg_solicitacoes_cadastro (
+      solicitacao_id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      perfil_solicitado ENUM('professor', 'bibliotecario') NOT NULL, -- Perfis que requerem aprovação
+      senha_hash VARCHAR(255) NULL,                    -- Guarda o hash da senha original definida no cadastro público
+      data_solicitacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status ENUM('pendente', 'aprovado', 'rejeitado') DEFAULT 'pendente'
+    );
 
-Next.js: Framework React com renderização híbrida, otimizações e roteamento.
+    -- Tabela de Submissões (Mantida)
+    CREATE TABLE IF NOT EXISTS dg_submissoes (
+      submissao_id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      titulo_proposto VARCHAR(200) NOT NULL,
+      descricao TEXT,
+      caminho_anexo VARCHAR(255),
+      status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
+      revisado_por_id INT NULL,
+      data_submissao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id) ON DELETE CASCADE, -- Adicionado ON DELETE CASCADE (ou RESTRICT, dependendo da regra)
+      FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id) ON DELETE SET NULL -- Permite excluir revisor sem apagar submissão
+    );
 
-CSS Modules: Para estilização de componentes de forma escopada e organizada.
+    -- Tabela de Itens Digitais (Mantida)
+    CREATE TABLE IF NOT EXISTS dg_itens_digitais (
+      item_id INT AUTO_INCREMENT PRIMARY KEY,
+      titulo VARCHAR(200) NOT NULL,
+      autor VARCHAR(100),
+      ano YEAR,
+      descricao TEXT,
+      caminho_arquivo VARCHAR(255),
+      data_publicacao DATE,
+      submissao_id INT UNIQUE NULL,
+      FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id) ON DELETE SET NULL -- Permite excluir submissão mantendo o item
+    );
 
-React Icons: Biblioteca para inclusão de ícones populares.
+    -- Tabela de Avaliações (Mantida)
+    CREATE TABLE IF NOT EXISTS dg_avaliacoes (
+      avaliacao_id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      item_id INT NOT NULL,
+      nota TINYINT CHECK (nota BETWEEN 1 AND 5),
+      data_avaliacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id) ON DELETE CASCADE, -- Exclui avaliação se usuário for excluído
+      FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id) ON DELETE CASCADE -- Exclui avaliação se item for excluído
+    );
+    ```
+    *(Nota: Adicionadas algumas regras `ON DELETE` nas chaves estrangeiras. Revise se `CASCADE` ou `SET NULL`/`RESTRICT` é o mais apropriado para cada caso.)*
 
-SweetAlert2: Para exibição de modais e alertas interativos.
+2.  **(Opcional, recomendado)** Crie um utilizador dedicado para a aplicação no MySQL:
+    ```sql
+    CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY '123456'; -- Use a senha do seu .env
+    GRANT SELECT, INSERT, UPDATE, DELETE ON acervo_digitalv2.* TO 'acervo_app'@'localhost';
+    FLUSH PRIVILEGES;
+    ```
 
-✅ Pré-requisitos
+-----
 
-Node.js (versão LTS recomendada, v22+ utilizada nos testes)
+## 🚀 Instalação e Execução
 
-npm (gerenciador de pacotes, vem com o Node.js)
+A aplicação consiste em dois projetos separados (backend e frontend).
 
-MySQL Server (instalado localmente ou via Docker)
+### 1\. Clonar o Repositório
 
-Git (para clonar o repositório)
-
-(Obrigatório) Conta Gmail com "App Passwords" habilitado: Necessária para o envio de e-mails com Nodemailer via Gmail SMTP. Consulte como gerar App Passwords.
-
-🗄️ Banco de Dados
-
-Crie o banco de dados e as tabelas executando o script SQL consolidado abaixo no seu cliente MySQL. Este script inclui as tabelas de usuários, solicitações, submissões, itens e avaliações, já com as colunas necessárias para os novos fluxos.
-
-CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
-USE acervo_digitalv2;
-
--- Tabela Principal de Usuários (Atualizada)
-CREATE TABLE IF NOT EXISTS dg_usuarios (
-  usuario_id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL,
-  ra VARCHAR(20) UNIQUE NULL,                     -- RA é opcional (VARCHAR para flexibilidade, NULL para não-alunos)
-  email VARCHAR(100) UNIQUE NOT NULL,
-  senha_hash VARCHAR(255) NULL,                   -- NULLABLE para permitir ativação via token
-  perfil ENUM('comum','professor','bibliotecario','admin') NOT NULL, -- Inclui 'professor'
-  status_conta ENUM('ativa', 'pendente_ativacao', 'inativa') NOT NULL DEFAULT 'ativa', -- Controle de status
-  token_ativacao VARCHAR(255) UNIQUE NULL,         -- Token para ativação de conta (professores)
-  reset_token VARCHAR(255) UNIQUE NULL,            -- Token para redefinição de senha
-  reset_token_expira DATETIME NULL                 -- Expiração do token de redefinição
-);
-
--- Tabela para Solicitações de Cadastro (Professores/Bibliotecários)
-CREATE TABLE IF NOT EXISTS dg_solicitacoes_cadastro (
-  solicitacao_id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,              -- Garante que o email da solicitação seja único
-  perfil_solicitado ENUM('professor', 'bibliotecario') NOT NULL, -- Perfis que requerem aprovação
-  data_solicitacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  status ENUM('pendente', 'aprovado', 'rejeitado') DEFAULT 'pendente'
-);
-
--- Tabela de Submissões (Mantida)
-CREATE TABLE IF NOT EXISTS dg_submissoes (
-  submissao_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  titulo_proposto VARCHAR(200) NOT NULL,
-  descricao TEXT,
-  caminho_anexo VARCHAR(255),
-  status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
-  revisado_por_id INT NULL, -- Permite NULL se ainda não revisado
-  data_submissao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-  FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id)
-);
-
--- Tabela de Itens Digitais (Mantida)
-CREATE TABLE IF NOT EXISTS dg_itens_digitais (
-  item_id INT AUTO_INCREMENT PRIMARY KEY,
-  titulo VARCHAR(200) NOT NULL,
-  autor VARCHAR(100),
-  ano YEAR,
-  descricao TEXT,
-  caminho_arquivo VARCHAR(255),
-  data_publicacao DATE,
-  submissao_id INT UNIQUE NULL, -- Permite NULL se não veio de submissão
-  FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id)
-);
-
--- Tabela de Avaliações (Mantida)
-CREATE TABLE IF NOT EXISTS dg_avaliacoes (
-  avaliacao_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  item_id INT NOT NULL,
-  nota TINYINT CHECK (nota BETWEEN 1 AND 5),
-  data_avaliacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-  FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id)
-);
-
-
-(Opcional, recomendado) Crie um usuário dedicado para a aplicação no MySQL (se ainda não o fez):
-
-CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY '123456'; -- Use a senha do seu .env
-GRANT SELECT, INSERT, UPDATE, DELETE ON acervo_digitalv2.* TO 'acervo_app'@'localhost';
-FLUSH PRIVILEGES;
-
-
-🚀 Instalação e Execução
-
-A aplicação consiste em dois projetos separados que precisam ser configurados e executados simultaneamente.
-
-1. Clonar o Repositório
-
+```bash
 git clone <URL_DO_SEU_REPOSITORIO>
 cd <PASTA_PRINCIPAL_DO_PROJETO>
-
-
-2. Configurar o Backend
-
-Navegue até a pasta do backend:
-
-cd biblioteca-backend
-
-
-Instale todas as dependências do package.json (incluindo as adicionadas):
-
-npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator nodemailer uuid
-
-
-(Nota: nodemailer já estava incluído na lista original, uuid foi adicionado)
-
-Crie um arquivo .env na raiz da pasta biblioteca-backend e preencha com suas credenciais (exemplo atualizado):
-
-# Configuração do Banco de Dados
-DB_HOST=localhost
-DB_USER=acervo_app
-DB_PASSWORD=123456
-DB_NAME=acervo_digitalv2 # Usar DB_NAME ou DB_DATABASE consistentemente
-BCRYPT_SALT_ROUNDS=10
-
-# Configuração da Aplicação
-PORT=4000
-# JWT_SECRET corrigido (sem duplicação)
-JWT_SECRET=ESTA_E_UMA_NOVA_CHAVE_SECRETA_PARA_TESTE_123 
-# URL do Frontend (IMPORTANTE para links de email)
-FRONTEND_URL=http://localhost:3000
-
-# Configuração do Nodemailer (envio de e-mails)
-EMAIL_SERVICE=gmail
-EMAIL_USER=bibliotecafatecoriginal@gmail.com
-# Use a App Password gerada no Gmail aqui
-EMAIL_PASS=pjhs qsil nbkf lkcv 
-
-
-⚠️ Importante: Use uma App Password do Gmail para EMAIL_PASS, não a senha da sua conta. Ajuste JWT_SECRET para algo seguro.
-
-3. Configurar o Frontend
-
-Volte para a pasta raiz e navegue até a pasta do frontend:
-
-cd ../biblioteca-frontend 
-
-
-(Ajuste o nome da pasta se for diferente)
-
-Instale as dependências:
-
-npm install
-# Adicione outras dependências específicas do frontend se necessário
-# npm install react-icons sweetalert2 jose # jose é para o middleware do Next.js
-
-
-(IMPORTANTE) Crie um ficheiro .env.local na raiz da pasta biblioteca-frontend e adicione as variáveis necessárias, especialmente a JWT_SECRET para o middleware (se o estiver a usar):
-
-NEXT_PUBLIC_API_URL=http://localhost:4000/api 
-JWT_SECRET=ESTA_E_UMA_NOVA_CHAVE_SECRETA_PARA_TESTE_123 # DEVE SER A MESMA DO BACKEND!
-
-
-4. Executar a Aplicação (Fluxo de Dois Terminais)
-
-Você precisará de dois terminais abertos.
-
-No Terminal 1 (inicie o Backend):
-
-cd caminho/para/o/projeto/biblioteca-backend
-npm start
-
-
-🕒 Aguarde a mensagem: 🚀 Servidor API rodando na porta 4000
-
-No Terminal 2 (inicie o Frontend):
-
-cd caminho/para/o/projeto/biblioteca-frontend
-npm run dev
-
-
-🕒 Aguarde a mensagem: - Local: http://localhost:3000
-
-Após iniciar os dois servidores, abra seu navegador e acesse a URL do frontend: http://localhost:3000
-
-Healthcheck do Banco de Dados
-
-Para verificar se a API está conectada ao banco, acesse http://localhost:4000/__dbcheck.
-→ Deve retornar {"ok": true}.
-
-🧩 Funcionalidades Implementadas (Backend)
-
-Cadastro e Login Unificado:
-
-Rota /api/auth/login aceita Email ou RA.
-
-Rota /api/auth/cadastro usa o campo perfilSolicitado para:
-
-Aluno (comum): Cadastro direto, exige RA.
-
-Professor: Cria uma solicitação pendente para aprovação administrativa.
-
-Utiliza o Padrão Builder para criar objetos Usuario de forma segura.
-
-Autenticação JWT: Tokens seguros em cookies HttpOnly.
-
-Fluxo de Aprovação Administrativa:
-
-Rota /api/admin/solicitacoes (GET) para listar solicitações pendentes (protegida).
-
-Rota /api/admin/solicitacoes/:id/aprovar (POST) para aprovar professores (protegida):
-
-Cria o utilizador na tabela principal com status_conta = 'pendente_ativacao'.
-
-Gera um token_ativacao.
-
-Envia e-mail de ativação com link contendo o token.
-
-Rota /api/admin/solicitacoes/:id/rejeitar (POST) para rejeitar solicitações (protegida).
-
-Criação Direta (Admin):
-
-Rota /api/admin/usuarios (POST) permite que Admins/Bibliotecários criem outros Admins, Bibliotecários ou Alunos diretamente (protegida).
-
-Recuperação de Senha:
-
-Rota /api/auth/redefinir-senha-solicitacao para pedir o link via e-mail.
-
-Rota /api/auth/redefinir-senha para definir a nova senha usando o token.
-
-Ativação de Conta (Professor):
-
-Backend: Gera token e envia e-mail na aprovação.
-
-Frontend: Precisa de uma página /ativar-conta?token=... para o professor definir a senha inicial (implementação pendente no frontend).
-
-Proteção de Rotas: Middlewares (isAuthenticated, isAdmin, isAdminOrBibliotecario) protegem as rotas da API.
-
-⚠️ Status Atual e Problemas Conhecidos (Frontend)
-
-O backend implementa os fluxos de cadastro (Aluno, Professor via aprovação), login, logout, redefinição de senha e ativação de conta (geração de token). No entanto, a integração com o frontend (Next.js) requer ajustes pela equipa de frontend:
-
-Redirecionamento Pós-Login: A página de login do frontend (/login) precisa implementar a lógica router.push('/dashboard') ou router.push('/admin/dashboard') após receber a resposta 200 OK da API, baseando-se no perfil retornado.
-
-Fluxo de Redefinição de Senha: A página frontend de solicitação de redefinição (onde se digita o e-mail) está a chamar a rota errada (/api/auth/redefinir-senha). Precisa ser corrigida para chamar /api/auth/redefinir-senha-solicitacao.
-
-Página de Cadastro: O formulário precisa enviar o campo perfilSolicitado ('aluno' ou 'professor') para o backend. A lógica condicional para ocultar/mostrar/validar o campo RA deve estar funcional.
-
-Proteção de Páginas Frontend: O acesso direto a páginas como /dashboard ou /admin/dashboard pela URL precisa ser protegido no frontend, preferencialmente usando o Middleware do Next.js (verificar cookie token) ou, no mínimo, com useEffect robusto que redirecione rapidamente se a API /api/auth/current-user retornar 401.
-
-Página de Ativação de Conta: É necessário criar a página /ativar-conta no frontend que receba o token da URL, permita ao professor definir a senha e chame uma nova rota da API (ainda a ser criada no backend) para finalizar a ativação.
-
-🆘 Troubleshooting
-
-Failed to fetch / Erro de Rede: Verifique se ambos os servidores (backend e frontend) estão a correr nas portas corretas (4000 e 3000).
-
-Erro de CORS: Confirme origin: 'http://localhost:3000', credentials: true no app.js do backend.
-
-Erro 401 Unauthorized / 403 Forbidden:
-
-Verifique JWT_SECRET nos .env de ambos os projetos.
-
-Confirme credentials: 'include' nas chamadas fetch do frontend para rotas protegidas.
-
-Verifique se o perfil do utilizador tem permissão para a rota (Admin vs. Comum).
-
-Erro de envio de e-mail: Confirme EMAIL_USER e EMAIL_PASS (App Password) no .env do backend. Verifique o console do backend.
-
-{"ok": false} no /__dbcheck: Reveja as variáveis DB_* no .env do backend.
-
-👥 Contribuição
+````
+
+### 2\. Configurar o Backend
+
+1.  Navegue até a pasta do backend:
+    ```bash
+    cd biblioteca-backend
+    ```
+2.  Instale as dependências:
+    ```bash
+    npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator nodemailer uuid
+    ```
+3.  Crie um ficheiro `.env` na raiz da pasta `biblioteca-backend` e preencha:
+    ```dotenv
+    # Banco de Dados
+    DB_HOST=localhost
+    DB_USER=acervo_app
+    DB_PASSWORD=123456
+    DB_NAME=acervo_digitalv2
+    BCRYPT_SALT_ROUNDS=10
+
+    # Aplicação
+    PORT=4000
+    JWT_SECRET=SUA_CHAVE_SECRETA_FORTE_AQUI # Use algo seguro e longo
+    FRONTEND_URL=http://localhost:3000     # URL do seu frontend Next.js
+
+    # Nodemailer (Gmail App Password)
+    EMAIL_SERVICE=gmail
+    EMAIL_USER=seu_email_gmail@gmail.com
+    EMAIL_PASS=pjhs qsil nbkf lkcv
+    ```
+    > ⚠️ **Use uma App Password** para `EMAIL_PASS`. Gere uma chave `JWT_SECRET` segura.
+
+### 3\. Configurar o Frontend
+
+1.  Volte para a pasta raiz e navegue até a pasta do frontend:
+    ```bash
+    cd ../biblioteca-frontend
+    ```
+    *(Ajuste o nome da pasta se necessário)*
+2.  Instale as dependências:
+    ```bash
+    npm install
+    # Instale dependências adicionais usadas
+    npm install react-icons sweetalert2 jose
+    ```
+    *(Nota: `jose` é necessário se for usar o Middleware do Next.js para proteção de rotas)*
+3.  Crie um ficheiro `.env.local` na raiz da pasta `biblioteca-frontend`:
+    ```dotenv
+    NEXT_PUBLIC_API_URL=http://localhost:4000/api # URL base da sua API backend
+    JWT_SECRET=SUA_CHAVE_SECRETA_FORTE_AQUI     # DEVE SER A MESMA DO BACKEND! (Necessário para Middleware)
+    ```
+
+### 4\. Executar a Aplicação
+
+Abra **dois terminais**.
+
+  * **Terminal 1 (Backend):**
+
+    ```bash
+    cd caminho/para/biblioteca-backend
+    npm start
+    ```
+
+    > Aguarde: `🚀 Servidor API rodando na porta 4000`
+
+  * **Terminal 2 (Frontend):**
+
+    ```bash
+    cd caminho/para/biblioteca-frontend
+    npm run dev
+    ```
+
+    > Aguarde: `- Local: http://localhost:3000`
+
+Acesse **http://localhost:3000** no seu navegador.
+
+#### Healthcheck
+
+  * **API:** http://localhost:4000/ -\> Deve retornar JSON simples.
+  * **DB:** http://localhost:4000/\_\_dbcheck -\> Deve retornar `{"ok": true}`.
+
+-----
+
+## 🧩 Funcionalidades Implementadas (Backend)
+
+  * **Cadastro Unificado (`POST /api/auth/cadastro`):**
+      * Recebe `perfilSolicitado`.
+      * **Aluno (`comum`):** Valida RA, cria utilizador como `ativa`, salva hash da senha.
+      * **Professor:** Guarda nome, email e hash da senha na `dg_solicitacoes_cadastro`, status `pendente`.
+      * Utiliza **Padrão Builder** para construção dos objetos.
+      * Validação com `express-validator`.
+  * **Login (`POST /api/auth/login`):** Aceita Email ou RA, compara hash `bcrypt`, retorna JWT em cookie `HttpOnly`.
+  * **Logout (`POST /api/auth/logout`):** Limpa o cookie JWT.
+  * **Verificar Utilizador (`GET /api/auth/current-user`):** Retorna dados do utilizador logado (protegido por `isAuthenticated`).
+  * **Atualizar Próprio Perfil (`PUT /api/auth/profile`):** Permite ao utilizador logado alterar `nome` e `email` (com verificação de duplicação de email). Protegido por `isAuthenticated`.
+  * **Fluxo de Aprovação Admin (`POST /api/admin/solicitacoes/:id/aprovar`):**
+      * Lê solicitação pendente (incluindo `senha_hash` original).
+      * Cria o utilizador (Professor) na `dg_usuarios` como `ativa`, usando o hash original.
+      * Gera `token_ativacao` (para confirmação de email).
+      * Envia email (`sendConfirmationEmail`) com link para `/confirmar-conta`.
+      * Protegido por `isAdminOrBibliotecario`.
+  * **Fluxo de Criação Direta Admin (`POST /api/admin/usuarios`):**
+      * Permite criar Aluno, Bibliotecário, Admin (com senha definida pelo admin).
+      * **Professor:** Ignora senha do form, cria utilizador como `pendente_ativacao`, gera `token_ativacao`, envia email (`sendActivationEmail`) com link para `/ativar-conta`.
+      * Protegido por `isAdminOrBibliotecario`.
+  * **Ativação de Conta (`POST /api/auth/ativar-conta`):**
+      * Recebe `token` e `senha`.
+      * Verifica token E `status_conta = 'pendente_ativacao'`.
+      * Define `senha_hash`, muda `status_conta` para `ativa`, limpa `token_ativacao`.
+  * **Confirmação de Conta (`POST /api/auth/confirmar-conta`):**
+      * Recebe `token`.
+      * Verifica token (qualquer status).
+      * Limpa `token_ativacao`.
+  * **Recuperação de Senha:**
+      * `POST /api/auth/redefinir-senha-solicitacao`: Envia link com `reset_token`.
+      * `POST /api/auth/redefinir-senha`: Define nova senha usando `reset_token`.
+  * **CRUD de Utilizadores (Admin):**
+      * `GET /api/admin/usuarios`: Lista todos (protegido).
+      * `GET /api/admin/usuarios/:id`: Detalhes de um (protegido).
+      * `PUT /api/admin/usuarios/:id`: Atualiza (nome, email, ra, perfil, status). Inclui validação de RA vs Perfil (protegido).
+      * `DELETE /api/admin/usuarios/:id`: Exclui utilizador da `dg_usuarios` e tenta excluir da `dg_solicitacoes_cadastro` (protegido, `isAdmin`).
+  * **Proteção de Rotas API:** Middlewares (`isAuthenticated`, `isAdmin`, `isAdminOrBibliotecario`).
+
+-----
+
+## ⚠️ Status Atual e Ajustes Pendentes (Frontend)
+
+O backend possui as funcionalidades centrais implementadas. No entanto, a **integração e finalização no frontend (Next.js)** são cruciais e requerem atenção da equipa:
+
+1.  **Redirecionamento Pós-Login:** A `LoginPage` precisa chamar `router.push` para `/dashboard` ou `/admin/dashboard` após a API retornar sucesso (200 OK), usando o `perfil` da resposta. *(Código base existe, verificar execução)*.
+2.  **Fluxo de Redefinição de Senha:** A página de *solicitação* (com campo de email) deve chamar `POST /api/auth/redefinir-senha-solicitacao`. A página de *definição* (com token e nova senha) deve chamar `POST /api/auth/redefinir-senha`. *(Correção de URL necessária na página de solicitação)*.
+3.  **Proteção de Páginas Frontend:** Implementar proteção robusta para `/dashboard` e `/admin/dashboard` (e outras rotas privadas) usando **Middleware do Next.js** (recomendado, verificar `JWT_SECRET` no `.env.local`) ou aperfeiçoar a verificação com `useEffect` em cada página protegida para redirecionar se `GET /api/auth/current-user` falhar. *(Implementação parcial com useEffect existe, Middleware é melhor)*.
+4.  **Página `/ativar-conta`:** Esta página (para professor criado pelo admin) deve ter formulário para definir senha e chamar `POST /api/auth/ativar-conta`. *(Código base existe, precisa de revisão/teste)*.
+5.  **Página `/confirmar-conta`:** Esta página (para professor aprovado via cadastro) deve chamar `POST /api/auth/confirmar-conta` e exibir mensagem/redirecionar. *(Código base existe, precisa de revisão/teste)*.
+6.  **Dashboard Utilizador (`/dashboard`):** Implementar o formulário/popup para o utilizador editar o próprio perfil (Nome, Email), chamando `PUT /api/auth/profile`. *(Código base existe, precisa de integração final e CSS)*.
+7.  **Painel Admin (`/admin/dashboard`):**
+      * Integrar o CSS Module (`dashboard-admin.module.css`).
+      * Adicionar botão "Criar Novo Utilizador" que abra um popup/modal.
+      * Implementar o formulário e a lógica `fetch` para chamar `POST /api/admin/usuarios`. *(Lógica JS existe, falta botão e popup de criação)*.
+      * Testar exaustivamente as funções de Edição (popup) e Exclusão (Swal).
+8.  **Títulos das Páginas:** Usar `useEffect` com `document.title = '...'` em cada componente cliente (`'use client'`) ou (preferencialmente) refatorar para usar Server Components pais exportando `metadata`. *(Implementação parcial com useEffect existe)*.
+
+-----
+
+## 🆘 Troubleshooting
+
+  * **`404 Not Found` no Frontend:** Verifique se a URL no `fetch` corresponde **exatamente** à rota definida no backend (`/api/auth/cadastro` vs `/api/auth/register`, etc.).
+  * **`401 Unauthorized` / `403 Forbidden`:** Verifique `JWT_SECRET` nos `.env` (devem ser iguais\!), `credentials: 'include'` no `fetch`, e se o perfil do utilizador tem permissão (Middleware).
+  * **Erro de CORS:** Confirme `origin: 'http://localhost:3000', credentials: true` no `app.js` (backend).
+  * **Erro de envio de e-mail:** Confirme `EMAIL_USER` e `EMAIL_PASS` (App Password) no `.env` (backend). Verifique console do backend.
+  * **`TypeError: ... is not a function` (Backend):** Verifique se a função foi definida e **exportada** (`module.exports`) no ficheiro Model ou Controller correspondente.
+  * **`ReferenceError: ... is not defined` (Backend):** Verifique se a função/variável foi **importada** (`require`) corretamente no topo do ficheiro.
+  * **Erro de Hidratação (Frontend):** Evite espaços/texto entre tags `<tbody>`, `<tr>`, `<td>` nas tabelas JSX.
+  * **`Invalid hook call` (Frontend):** Garanta que hooks (`useState`, `useEffect`, `useRouter`) são chamados *dentro* de componentes funcionais React e *depois* da diretiva `'use client';` (se aplicável).
+  * **`Failed to parse URL` (Backend):** O backend **não deve** usar `fetch` para chamar as suas próprias rotas. Remova essas chamadas.
+
+-----
+
+## 👥 Contribuição
 
 (Mantido como original)
 
-# Crie uma nova branch a partir da main/develop
+```bash
 git checkout -b feature/nome-da-feature
-# Desenvolva e adicione seus arquivos
 git add .
-git commit -m "feat: descrição da funcionalidade adicionada"
-# Envie para o repositório remoto
+git commit -m "feat: descrição"
 git push -u origin feature/nome-da-feature
+```
+
+Abra um Pull Request.
+
+-----
+
+## 📄 Licença
+
+(Mantido como original)
+Projeto acadêmico, desenvolvido para fins educacionais e sem fins comerciais.
+
+```
+```

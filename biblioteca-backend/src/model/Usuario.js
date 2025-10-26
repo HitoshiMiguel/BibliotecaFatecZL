@@ -15,10 +15,12 @@ class Usuario {
             nome: this.nome,
             ra: this.ra,
             email: this.email,
+            // --- Conversão para snake_case ---
             senha_hash: this.senhaHash,
             perfil: this.perfil,
-            tokenAtivacao: this.tokenAtivacao,
-            statusConta: this.statusConta
+            token_ativacao: this.tokenAtivacao,
+            status_conta: this.statusConta
+            // ---------------------------------
         };
     }
 }

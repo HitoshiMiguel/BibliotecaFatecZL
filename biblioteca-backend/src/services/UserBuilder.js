@@ -1,76 +1,52 @@
 // src/services/UserBuilder.js
+
 const Usuario = require('../model/Usuario');
 
-/**
- * Responsável por construir e validar a criação do objeto Usuario com Fluent Interface.
- */
 class UsuarioBuilder {
-    constructor(nome, email, senhaHash) {
-        // Validação de campos obrigatórios no construtor do Builder
-        if (!nome || !email) {
-            throw new Error("Nome e Email são obrigatórios para criar um usuário.");
-        }
-        
-        // Propriedade interna para armazenar os dados em construção
-        this.props = {
-            nome,
-            email,
-            senhaHash, // Pode ser uma hash real ou uma string vazia/nula para ativação
-            perfil: null, 
-            ra: null,
-            tokenAtivacao: null,
-            statusConta: 'ativa' // Padrão
-        };
+    constructor(nome, email, senhaHash) { // senhaHash pode ser null
+        if (!nome || !email) throw new Error("Nome e Email são obrigatórios.");
+        this.props = { nome, email, senhaHash: senhaHash || null, perfil: null, ra: null, tokenAtivacao: null, statusConta: 'ativa' };
     }
 
-    // --- Métodos de Perfil (Aplicam as Regras do Domínio) ---
-
+    // Aluno: Requer RA e Senha, entra Ativo
     comoAluno(ra) {
-        if (!ra) {
-            throw new Error("RA é obrigatório para um usuário 'comum' (aluno).");
-        }
-        this.props.perfil = "comum";
-        this.props.ra = ra; 
-        return this;
-    }
-    
-    // Método usado APENAS pelo AdminController após aprovação
-    comoProfessor(tokenAtivacao = null) {
-        this.props.perfil = "professor";
-        this.props.ra = null; // Garante que professores não têm RA
-        
-        // Se houver token, define o status como pendente de ativação
-        if (tokenAtivacao) {
-            this.props.tokenAtivacao = tokenAtivacao;
-            this.props.statusConta = 'pendente_ativacao';
-            this.props.senhaHash = null; // Garante que não há senha antes da ativação
-        }
+        if (!ra) throw new Error("RA é obrigatório para Aluno.");
+        if (!this.props.senhaHash) throw new Error("Senha é obrigatória para Aluno.");
+        this.props.perfil = "comum"; this.props.ra = ra; this.props.tokenAtivacao = null; this.props.statusConta = 'ativa';
         return this;
     }
 
+    // Professor (Pendente): Requer Token, Senha Null, entra Pendente Ativação
+    comoProfessorPendente(tokenAtivacao) {
+        if (!tokenAtivacao) throw new Error("Token de ativação é obrigatório para Professor pendente.");
+        this.props.perfil = "professor"; this.props.ra = null; this.props.senhaHash = null; this.props.tokenAtivacao = tokenAtivacao; this.props.statusConta = 'pendente_ativacao';
+        return this;
+    }
+
+    // Professor (Confirmacao): Requer SenhaHash e Token, entra Ativo
+    comoProfessorConfirmacao(tokenConfirmacao) {
+        if (!this.props.senhaHash) throw new Error("Hash de senha é necessário para Professor confirmado.");
+        this.props.perfil = "professor"; this.props.ra = null; this.props.tokenAtivacao = tokenConfirmacao || null; // Token para confirmar email
+        this.props.statusConta = 'ativa'; // Já entra ativo
+        return this;
+    }
+
+    // Bibliotecário: Requer Senha, entra Ativo
     comoBibliotecario() {
-        this.props.perfil = "bibliotecario";
-        this.props.ra = null; 
-        return this;
-    }
-    
-    comoAdmin() {
-        this.props.perfil = "admin";
-        this.props.ra = null; 
-        return this;
+         if (!this.props.senhaHash) throw new Error("Senha é obrigatória para Bibliotecário.");
+         this.props.perfil = "bibliotecario"; this.props.ra = null; this.props.tokenAtivacao = null; this.props.statusConta = 'ativa';
+         return this;
     }
 
-    // --- Outros Métodos Opcionais (Setters) ---
-    setStatusConta(status) {
-        this.props.statusConta = status;
-        return this;
+    // Admin: Requer Senha, entra Ativo
+    comoAdmin() {
+         if (!this.props.senhaHash) throw new Error("Senha é obrigatória para Admin.");
+         this.props.perfil = "admin"; this.props.ra = null; this.props.tokenAtivacao = null; this.props.statusConta = 'ativa';
+         return this;
     }
-    
-    // --- O Método de Construção Final ---
+
     build() {
-        if (!this.props.perfil) {
-            throw new Error("É necessário definir o perfil do usuário antes de construir.");
-        }
+        if (!this.props.perfil) throw new Error("Perfil não definido.");
         return new Usuario(this.props);
     }
 }

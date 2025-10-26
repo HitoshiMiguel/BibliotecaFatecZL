@@ -1,259 +1,753 @@
-// Use 'use client' se estiver a usar o Next.js App Router
+// app/admin/dashboard/page.jsx (Refatorado com listas separadas, correção de hidratação e mais espaçamento)
+
 'use client';
 
-import React, { useState, useEffect } from 'react'; // Adicionado useEffect
-// CORREÇÃO: Usar 'next/navigation' para o App Router
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
+import styles from './dashboard-admin.module.css';
 
-// Se estiver a usar CSS Modules, mantenha a sua importação original:
-// import styles from './admin-test.module.css';
-
-export default function AdminTestPage() {
-    // Estados existentes
-    const [identifier, setIdentifier] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // Começa como false
+export default function AdminDashboardPage() {
+    // Estados para dados
+    const [users, setUsers] = useState([]);
     const [solicitacoes, setSolicitacoes] = useState([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+    const [isLoadingSolicitacoes, setIsLoadingSolicitacoes] = useState(true);
     const [message, setMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(true); // Começa como true para verificar auth
-    const router = useRouter();
+    const [error, setError] = useState('');
+    const [isActionLoading, setIsActionLoading] = useState(false);
 
+    // --- NOVOS ESTADOS PARA POPUP DE CRIAÇÃO ---
+    const [showCreatePopup, setShowCreatePopup] = useState(false);
+    const [createFormData, setCreateFormData] = useState({ // Estado inicial do formulário de criação
+        nome: '',
+        email: '',
+        ra: '',
+        senha: '',
+        perfil: 'comum', // Padrão pode ser 'comum'
+        status_conta: 'ativa' // Padrão
+    });
+    const createPopupRef = useRef(null); // Ref para o popup de criação
+    // ------------------------------------------
+
+    // Estados para Popup de Edição
+    const [showEditPopup, setShowEditPopup] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editFormData, setEditFormData] = useState({});
+    const editPopupRef = useRef(null);
+
+    // Estados de Pesquisa
+    const [searchTermAlunos, setSearchTermAlunos] = useState('');
+    const [searchTermProfessores, setSearchTermProfessores] = useState('');
+    const [searchTermBibliotecarios, setSearchTermBibliotecarios] = useState('');
+    const [searchTermAdmins, setSearchTermAdmins] = useState('');
+
+    const router = useRouter();
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
-    // --- useEffect PARA VERIFICAR AUTENTICAÇÃO ---
-    useEffect(() => {
-        const checkAuth = async () => {
-             setIsLoading(true); // Indica que estamos a verificar
-             setMessage('');
-             try {
-                // Tenta buscar os dados do utilizador logado
-                const response = await fetch(`${apiUrl}/auth/current-user`, {
-                    method: 'GET',
-                    credentials: 'include', // Envia o cookie
-                    cache: 'no-store',
-                });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    // Verifica se o utilizador retornado é admin ou bibliotecário
-                    if (data.perfil === 'admin' || data.perfil === 'bibliotecario') {
-                        setIsLoggedIn(true); // Utilizador já está logado e é admin/biblio
-                        // Busca solicitações automaticamente após confirmar auth
-                        fetchSolicitacoes();
-                    } else {
-                        // Logado, mas não é admin/biblio - redireciona para dashboard normal
-                        setMessage('Acesso negado. Redirecionando...');
-                        router.push('/dashboard');
-                    }
-                } else if (response.status === 401) {
-                    // Não está logado
-                    setIsLoggedIn(false);
-                    setMessage('Por favor, faça login como Administrador.');
-                } else {
-                     // Outro erro da API
-                     throw new Error('Falha ao verificar status de login.');
+    // --- FUNÇÕES DE BUSCA DE DADOS ---
+
+    const fetchUsers = async () => {
+        setIsLoadingUsers(true);
+        setError('');
+        try {
+            const response = await fetch(`${apiUrl}/admin/usuarios`, { method: 'GET', credentials: 'include', cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            setUsers(data);
+        } catch (err) {
+            console.error("Erro fetchUsers:", err);
+            setError('Falha ao carregar lista de utilizadores.');
+            if (err.message?.includes('401') || err.message?.includes('403')) {
+                setTimeout(() => router.push('/login'), 1500);
+            }
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+
+
+    const fetchSolicitacoes = async () => {
+        setIsLoadingSolicitacoes(true);
+        setError('');
+        try {
+            const response = await fetch(`${apiUrl}/admin/solicitacoes`, { method: 'GET', credentials: 'include', cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            setSolicitacoes(data);
+        } catch (err) {
+             console.error("Erro fetchSolicitacoes:", err);
+            setError('Falha ao carregar lista de solicitações pendentes.');
+            if (err.message?.includes('401') || err.message?.includes('403')) {
+                  setTimeout(() => router.push('/login'), 1500);
+             }
+        } finally {
+            setIsLoadingSolicitacoes(false);
+        }
+    };
+
+
+    // --- EFEITO INICIAL PARA BUSCAR DADOS ---
+
+    useEffect(() => {
+        document.title = 'Painel Admin | Biblioteca Fatec ZL';
+
+        const checkAuth = async () => {
+             try {
+                const res = await fetch(`${apiUrl}/auth/current-user`, {credentials: 'include', cache: 'no-store'});
+                if (!res.ok) {
+                    console.log("CheckAuth falhou, redirecionando para login...");
+                    router.push('/login');
+                    return false;
                 }
-             } catch (error) {
-                 console.error("Erro ao verificar autenticação inicial:", error);
-                 setMessage('Erro ao verificar autenticação. Tente novamente.');
-                 setIsLoggedIn(false); // Garante que não está logado em caso de erro
-             } finally {
-                 setIsLoading(false); // Termina o carregamento inicial
+                 const user = await res.json();
+                 if (user.perfil !== 'admin' && user.perfil !== 'bibliotecario') {
+                     console.log("CheckAuth: Perfil não autorizado, redirecionando para dashboard...");
+                     router.push('/dashboard');
+                     return false;
+                 }
+                 console.log("CheckAuth: Autorizado.");
+                return true;
+             } catch(err) {
+                 console.error("Erro no checkAuth:", err);
+                 router.push('/login');
+                 return false;
              }
         };
 
-        checkAuth(); // Executa a verificação ao carregar a página
-    }, [router]); // Dependência do router
-    // ---------------------------------------------
+        checkAuth().then(isAuthorized => {
+            console.log("CheckAuth concluído. Autorizado:", isAuthorized);
+            if (isAuthorized) {
+                console.log("Buscando dados iniciais...");
+                fetchUsers();
+                fetchSolicitacoes();
+            } else {
+                console.log("Não autorizado, parando carregamento inicial.");
+                setIsLoadingUsers(false);
+                setIsLoadingSolicitacoes(false);
+            }
+        });
+    }, [router]);
 
 
-    // Função para fazer login como Admin (usada APENAS se o useEffect falhar)
-    const handleLogin = async (e) => {
-        e.preventDefault();
+    // --- FUNÇÕES PARA O POPUP DE EDIÇÃO ---
+
+    const handleEditClick = (user) => {
+        console.log("handleEditClick chamado para:", user);
+        setEditingUser(user);
+        setEditFormData({ ...user }); // Clona dados para o form
+        setShowEditPopup(true);
+        setError('');
         setMessage('');
-        setIsLoading(true);
+        setTimeout(() => {
+            editPopupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    };
+
+
+    const handleCancelEdit = () => {
+        console.log("handleCancelEdit chamado.");
+        setShowEditPopup(false);
+        setEditingUser(null);
+        setEditFormData({});
+        setError(''); // Limpa erro do popup ao cancelar
+    };
+
+
+    const handleEditFormChange = (event) => {
+        const { name, value } = event.target;
+        console.log(`handleEditFormChange: Campo ${name} mudou para ${value}`);
+        setEditFormData(prevData => ({
+            ...prevData,
+            [name]: value
+        }));
+    };
+
+
+    const handleUpdateSubmit = async (event) => {
+        event.preventDefault();
+        setIsActionLoading(true);
+        setMessage('');
+        setError('');
+        const userId = editingUser.usuario_id;
+        const dataToUpdate = {
+            nome: editFormData.nome,
+            email: editFormData.email,
+            ra: editFormData.perfil === 'comum' ? (editFormData.ra || null) : null,
+            perfil: editFormData.perfil,
+            status_conta: editFormData.status_conta,
+        };
+        console.log(`handleUpdateSubmit: Enviando para ID ${userId}:`, dataToUpdate);
+
         try {
-            const response = await fetch(`${apiUrl}/auth/login`, {
-                method: 'POST',
+            const response = await fetch(`${apiUrl}/admin/usuarios/${userId}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier, password }),
                 credentials: 'include',
+                body: JSON.stringify(dataToUpdate)
             });
-
             const data = await response.json();
 
             if (response.ok) {
-                if (data.perfil === 'admin' || data.perfil === 'bibliotecario') {
-                    setIsLoggedIn(true);
-                    setMessage('Login como Admin/Bibliotecário bem-sucedido!');
-                    // Após login, busca automaticamente as solicitações
-                    fetchSolicitacoes();
-                } else {
-                    setMessage('Erro: Este utilizador não tem permissão de administrador.');
-                    setIsLoggedIn(false);
-                }
+                console.log(`Update para ID ${userId} bem-sucedido.`);
+                setMessage(`Utilizador ${userId} atualizado.`);
+                handleCancelEdit(); // Fecha popup
+                // Atualiza lista local
+                setUsers(prevUsers => prevUsers.map(u =>
+                    u.usuario_id === userId ? { ...editingUser, ...dataToUpdate, ra: dataToUpdate.ra } : u
+                ));
             } else {
-                setMessage(data.message || 'Falha no login.');
-                setIsLoggedIn(false);
+                console.error(`Falha no update para ID ${userId}:`, data.message);
+                setError(data.message || 'Falha ao atualizar.');
             }
-        } catch (error) {
-            console.error("Erro ao fazer login:", error);
-            setMessage('Erro de rede ao tentar fazer login.');
-            setIsLoggedIn(false);
+        } catch (err) {
+            console.error(`Erro de rede no update para ID ${userId}:`, err);
+            setError('Erro de rede ao atualizar.');
         } finally {
-            setIsLoading(false);
+            setIsActionLoading(false);
         }
     };
 
-    // Função para buscar solicitações pendentes
-    const fetchSolicitacoes = async () => {
+
+    // --- FUNÇÃO DE EXCLUSÃO ---
+
+     const handleDelete = async (userId, userName) => {
+        setError('');
         setMessage('');
-        setIsLoading(true);
-        setSolicitacoes([]);
-        try {
-            const response = await fetch(`${apiUrl}/admin/solicitacoes`, {
-                method: 'GET',
-                credentials: 'include',
-            });
-            const data = await response.json();
-            if (response.ok) {
-                setSolicitacoes(data);
-                if (data.length === 0) setMessage('Nenhuma solicitação pendente encontrada.');
-            } else {
-                setMessage(data.message || 'Falha ao buscar solicitações.');
-                if (response.status === 401 || response.status === 403) setIsLoggedIn(false);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar solicitações:", error);
-            setMessage('Erro de rede ao buscar solicitações.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        console.log(`handleDelete iniciado para ID ${userId}`);
 
-    // Função para aprovar uma solicitação
-    const handleAprovar = async (solicitacaoId) => {
-         setMessage('');
-         setIsLoading(true); // Pode usar um estado de loading específico para o botão se preferir
-         try {
+        const result = await Swal.fire({
+            title: 'Tem a certeza?',
+            text: `Excluir "${userName}" (ID: ${userId})? Esta ação é irreversível!`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            console.log(`Confirmada exclusão para ID ${userId}`);
+            setIsActionLoading(true);
+            try {
+                const response = await fetch(`${apiUrl}/admin/usuarios/${userId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    console.log(`Exclusão de ID ${userId} bem-sucedida.`);
+                    setMessage(`Utilizador ${userId} excluído.`);
+                    setUsers(prevUsers => prevUsers.filter(u => u.usuario_id !== userId)); // Remove da lista
+                } else {
+                    console.error(`Falha na exclusão de ID ${userId}:`, data.message);
+                    setError(data.message || `Falha ao excluir ${userId}.`);
+                }
+            } catch (err) {
+                console.error(`Erro de rede na exclusão de ID ${userId}:`, err);
+                setError('Erro de rede ao excluir.');
+            } finally {
+                setIsActionLoading(false);
+            }
+        } else {
+            console.log(`Exclusão cancelada para ID ${userId}`);
+        }
+     };
+
+
+    // --- FUNÇÕES PARA SOLICITAÇÕES ---
+
+    const handleAprovar = async (solicitacaoId, email) => {
+        setMessage('');
+        setError('');
+        setIsActionLoading(true);
+        console.log(`handleAprovar chamado para ID ${solicitacaoId}`);
+
+        try {
             const response = await fetch(`${apiUrl}/admin/solicitacoes/${solicitacaoId}/aprovar`, {
                 method: 'POST',
-                credentials: 'include',
+                credentials: 'include'
             });
             const data = await response.json();
+
             if (response.ok) {
-                setMessage(`Solicitação ${solicitacaoId} aprovada! E-mail enviado para ${data.email}.`);
+                console.log(`Aprovação de ID ${solicitacaoId} bem-sucedida.`);
+                setMessage(`Solicitação ${solicitacaoId} aprovada! E-mail enviado para ${email}.`);
                 setSolicitacoes(prev => prev.filter(s => s.solicitacao_id !== solicitacaoId));
+                fetchUsers(); // Recarrega lista de utilizadores
             } else {
-                setMessage(data.message || `Falha ao aprovar ${solicitacaoId}.`);
-                 if (response.status === 401 || response.status === 403) setIsLoggedIn(false);
+                console.error(`Falha na aprovação de ID ${solicitacaoId}:`, data.message);
+                setError(data.message || `Falha ao aprovar ${solicitacaoId}.`);
             }
-        } catch (error) {
-            console.error("Erro ao aprovar solicitação:", error);
-            setMessage('Erro de rede ao tentar aprovar.');
+        } catch (err) {
+            console.error(`Erro de rede na aprovação de ID ${solicitacaoId}:`, err);
+            setError('Erro de rede ao aprovar.');
         } finally {
-            setIsLoading(false); // Para o loading geral
+            setIsActionLoading(false);
         }
     };
 
-    // Função de Logout
+
+    const handleRejeitar = async (solicitacaoId, email) => {
+         setMessage('');
+         setError('');
+         setIsActionLoading(true);
+         console.log(`handleRejeitar chamado para ID ${solicitacaoId}`);
+
+        try {
+            const response = await fetch(`${apiUrl}/admin/solicitacoes/${solicitacaoId}/rejeitar`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log(`Rejeição de ID ${solicitacaoId} bem-sucedida.`);
+                setMessage(`Solicitação ${solicitacaoId} (${email}) rejeitada.`);
+                setSolicitacoes(prev => prev.filter(s => s.solicitacao_id !== solicitacaoId));
+            } else {
+                console.error(`Falha na rejeição de ID ${solicitacaoId}:`, data.message);
+                setError(data.message || `Falha ao rejeitar ${solicitacaoId}.`);
+            }
+        } catch (err) {
+            console.error(`Erro de rede na rejeição de ID ${solicitacaoId}:`, err);
+            setError('Erro de rede ao rejeitar.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+
+    // --- FUNÇÕES PARA O POPUP DE CRIAÇÃO ---
+
+    // Abre o popup de criação (limpa formulário)
+    const handleCreateClick = () => {
+        setCreateFormData({ nome: '', email: '', ra: '', senha: '', perfil: 'comum', status_conta: 'ativa' });
+        setShowCreatePopup(true);
+        setError(''); // Limpa erros gerais
+        setMessage('');
+        setTimeout(() => { // Rola para o popup
+            createPopupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    };
+
+    // Fecha o popup de criação
+    const handleCancelCreate = () => {
+        setShowCreatePopup(false);
+        setCreateFormData({}); // Limpa o formulário
+        setError(''); // Limpa erro do popup
+    };
+
+    // Atualiza o estado do formulário de criação
+    const handleCreateFormChange = (event) => {
+        const { name, value } = event.target;
+        setCreateFormData(prevData => ({
+            ...prevData,
+            [name]: value
+        }));
+         // Limpa RA se o perfil não for 'comum'
+         if (name === 'perfil' && value !== 'comum') {
+             setCreateFormData(prev => ({ ...prev, ra: '' }));
+         }
+    };
+
+    // Submete o novo utilizador
+    const handleCreateSubmit = async (event) => {
+        event.preventDefault();
+        setIsActionLoading(true); setMessage(''); setError('');
+
+        // Prepara dados (RA opcional dependendo do perfil)
+        const dataToCreate = {
+            ...createFormData,
+            ra: createFormData.perfil === 'comum' ? createFormData.ra : null
+        };
+        // Remove confirmarSenha se existir no estado, pois não é enviado para a API
+        delete dataToCreate.confirmarSenha; 
+
+        // Validação básica frontend (ex: senha) - pode adicionar mais
+        if (!dataToCreate.senha || dataToCreate.senha.length < 8) {
+            setError('A senha é obrigatória e deve ter pelo menos 8 caracteres.');
+            setIsActionLoading(false);
+            return;
+        }
+        if (dataToCreate.perfil === 'comum' && (!dataToCreate.ra || dataToCreate.ra.length !== 13 || !/^\d+$/.test(dataToCreate.ra))) {
+             setError('RA é obrigatório (13 dígitos numéricos) para o perfil Aluno.');
+             setIsActionLoading(false);
+             return;
+        }
+
+
+        console.log("handleCreateSubmit: Enviando dados:", dataToCreate);
+
+        try {
+            // Chama a API POST /api/admin/usuarios
+            const response = await fetch(`${apiUrl}/admin/usuarios`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(dataToCreate),
+            });
+            const data = await response.json();
+
+            if (response.ok || response.status === 201) {
+                setMessage(data.message || `Utilizador ${dataToCreate.perfil} criado com sucesso.`);
+                handleCancelCreate(); // Fecha o popup
+                fetchUsers(); // Atualiza a lista de utilizadores
+            } else {
+                setError(data.message || 'Falha ao criar utilizador.');
+                // Não fecha o popup em caso de erro
+            }
+        } catch (err) {
+            console.error("Erro ao criar utilizador:", err);
+            setError('Erro de rede ao tentar criar utilizador.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+    // ------------------------------------------
+
+
+    // --- FUNÇÃO DE LOGOUT ---
+
     const handleLogout = async () => {
+        console.log("handleLogout chamado.");
          try {
-            await fetch(`${apiUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
-         } catch {}
-         setIsLoggedIn(false);
-         setIdentifier('');
-         setPassword('');
-         setSolicitacoes([]);
-         setMessage('Logout realizado.');
-         // Redireciona para login após logout
-         router.push('/login');
-    }
+             await fetch(`${apiUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
+         } catch(err) {
+             console.error("Erro ao chamar API de logout:", err);
+         }
+         router.push('/login'); // Redireciona independentemente do erro da API
+    };
 
 
-    // --- Renderização Condicional ---
+    // --- LÓGICA DE FILTRAGEM ---
 
-    // Mostra carregamento durante a verificação inicial de autenticação
-    if (isLoading && !isLoggedIn && solicitacoes.length === 0) {
-        return <div style={inlineStyles.container}>A verificar autenticação...</div>;
-    }
+    const filteredAlunos = useMemo(() => users.filter(user => user.perfil === 'comum' && (user.nome.toLowerCase().includes(searchTermAlunos.toLowerCase()) || user.email.toLowerCase().includes(searchTermAlunos.toLowerCase()) || (user.ra && user.ra.includes(searchTermAlunos)))), [users, searchTermAlunos]);
+    const filteredProfessores = useMemo(() => users.filter(user => user.perfil === 'professor' && (user.nome.toLowerCase().includes(searchTermProfessores.toLowerCase()) || user.email.toLowerCase().includes(searchTermProfessores.toLowerCase()))), [users, searchTermProfessores]);
+    const filteredBibliotecarios = useMemo(() => users.filter(user => user.perfil === 'bibliotecario' && (user.nome.toLowerCase().includes(searchTermBibliotecarios.toLowerCase()) || user.email.toLowerCase().includes(searchTermBibliotecarios.toLowerCase()))), [users, searchTermBibliotecarios]);
+    const filteredAdmins = useMemo(() => users.filter(user => user.perfil === 'admin' && (user.nome.toLowerCase().includes(searchTermAdmins.toLowerCase()) || user.email.toLowerCase().includes(searchTermAdmins.toLowerCase()))), [users, searchTermAdmins]);
+
+    const isPageLoading = isLoadingUsers || isLoadingSolicitacoes;
+
+
+    // --- RENDERIZAÇÃO ---
 
     return (
-        <div style={inlineStyles.container}>
-            <h1>Página de Teste Admin</h1>
+        <div className={styles.container}>
 
-            {/* Mostra mensagens (erro/sucesso) */}
-            {message && <p style={inlineStyles.message}>{message}</p>}
+            <button onClick={handleLogout} className={`${styles.button} ${styles.logoutButton}`}>
+                 Sair (Logout)
+             </button>
 
-            {!isLoggedIn ? (
-                // --- Formulário de Login ---
-                <form onSubmit={handleLogin} style={inlineStyles.form}>
-                    <h2>Login Admin / Bibliotecário</h2>
-                     <div style={inlineStyles.inputGroup}>
-                        <label htmlFor="adminId">Email:</label>
-                        <input type="email" id="adminId" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required placeholder="admin@fatec.com" style={inlineStyles.input} />
-                    </div>
-                    <div style={inlineStyles.inputGroup}>
-                        <label htmlFor="adminPass">Senha:</label>
-                        <input type="password" id="adminPass" value={password} onChange={(e) => setPassword(e.target.value)} required style={inlineStyles.input} />
-                    </div>
-                    <button type="submit" disabled={isLoading} style={isLoading ? {...inlineStyles.button, ...inlineStyles.buttonDisabled} : inlineStyles.button}>
-                        {isLoading ? 'A entrar...' : 'Entrar como Admin'}
-                    </button>
-                </form>
-            ) : (
-                // --- Painel Admin Logado ---
-                <div>
-                    <h2>Painel de Aprovação</h2>
-                    <button onClick={fetchSolicitacoes} disabled={isLoading} style={isLoading ? {...inlineStyles.button, ...inlineStyles.buttonDisabled} : inlineStyles.button}>
-                        {isLoading ? 'A buscar...' : 'Buscar Solicitações Pendentes'}
-                    </button>
-                     <button onClick={handleLogout} style={{...inlineStyles.button, ...inlineStyles.logoutButton}}>
-                        Sair (Logout)
-                    </button>
+            <h1>Painel Administrativo</h1>
 
-                    {/* Lista de Solicitações */}
-                     {/* Mostra "carregando" apenas quando está a buscar e a lista está vazia */}
-                     {isLoading && solicitacoes.length === 0 && <p>A carregar solicitações...</p>}
+            {/* Mensagens de feedback GERAIS */}
+            {!isPageLoading && error && !showEditPopup && <p className={`${styles.message} ${styles.errorText}`}>{error}</p>}
+            {!isPageLoading && message && !showEditPopup && <p className={`${styles.message} ${styles.successText}`}>{message}</p>}
 
-                    {!isLoading && solicitacoes.length > 0 && (
-                        <div style={inlineStyles.listContainer}>
-                            <h3>Solicitações Pendentes:</h3>
-                            <ul style={inlineStyles.list}>
-                                {solicitacoes.map((sol) => (
-                                    <li key={sol.solicitacao_id} style={inlineStyles.listItem}>
-                                         <span>ID: {sol.solicitacao_id}</span>
-                                        <span>Nome: {sol.nome}</span>
-                                        <span>Email: {sol.email}</span>
-                                        <button onClick={() => handleAprovar(sol.solicitacao_id)} disabled={isLoading} style={isLoading ? {...inlineStyles.button, ...inlineStyles.approveButton, ...inlineStyles.buttonDisabled} : {...inlineStyles.button, ...inlineStyles.approveButton}}>
-                                            {/* Usar um estado de loading por item seria ideal, mas para simplificar: */}
-                                            {isLoading ? '...' : 'Aprovar'}
+
+            {/* --- Secção: Aprovação de Professores --- */}
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Solicitações Pendentes</h2>
+
+                {isLoadingSolicitacoes && <p className={styles.loadingText}>A carregar solicitações...</p>}
+
+                {!isLoadingSolicitacoes && solicitacoes.length === 0 && <p>Nenhuma solicitação pendente.</p>}
+
+                {!isLoadingSolicitacoes && solicitacoes.length > 0 && (
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th className={styles.th}>ID</th>
+                                <th className={styles.th}>Nome</th>
+                                <th className={styles.th}>Email</th>
+                                <th className={styles.th}>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {solicitacoes.map((sol) => (
+                                <tr key={sol.solicitacao_id}>
+                                    <td className={styles.td}>{sol.solicitacao_id}</td>
+                                    <td className={styles.td}>{sol.nome}</td>
+                                    <td className={styles.td}>{sol.email}</td>
+                                    <td className={styles.td}>
+                                        <button
+                                            onClick={() => handleAprovar(sol.solicitacao_id, sol.email)}
+                                            className={`${styles.button} ${styles.approveButton}`}
+                                            disabled={isActionLoading}
+                                        >
+                                            Aprovar
                                         </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                    {/* Mensagem de "Nenhuma solicitação" */}
-                     {!isLoading && solicitacoes.length === 0 && message.includes('Nenhuma') && <p>Nenhuma solicitação pendente.</p>}
+                                         <button
+                                            onClick={() => handleRejeitar(sol.solicitacao_id, sol.email)}
+                                            className={`${styles.button} ${styles.rejectButton}`}
+                                            disabled={isActionLoading}
+                                        >
+                                            Rejeitar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </section>
+
+
+           {/* --- Secção: Gerenciar Utilizadores --- */}
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>Gerenciar Utilizadores</h2>
+                 <button onClick={fetchUsers} disabled={isPageLoading || isActionLoading} className={styles.button} style={{marginBottom: '20px'}}>
+                     {isLoadingUsers ? 'A carregar...' : 'Atualizar Listas'}
+                 </button>
+                 {/* --- BOTÃO PARA ABRIR POPUP DE CRIAÇÃO --- */}
+                 <button onClick={handleCreateClick} className={`${styles.button} ${styles.createButton}`} disabled={isPageLoading || isActionLoading}>
+                     Criar Novo Utilizador
+                 </button>
+
+                 {/* <button className={`${styles.button} ${styles.createButton}`}>Criar Novo Utilizador</button> */}
+
+                 {isLoadingUsers && <p className={styles.loadingText}>A carregar utilizadores...</p>}
+
+
+                 {/* --- Sub-Secção: Alunos --- */}
+                 {!isLoadingUsers && (
+                     <div className={styles.subSection}>
+                         <h3 className={styles.subSectionTitle}>Alunos (Comum)</h3>
+                         <div className={styles.searchContainer}>
+                             <input
+                                 type="text"
+                                 placeholder="Pesquisar Aluno por nome, email ou RA..."
+                                 value={searchTermAlunos}
+                                 onChange={(e) => setSearchTermAlunos(e.target.value)}
+                                 className={styles.searchInput}
+                            />
+                         </div>
+                         {filteredAlunos.length === 0 ? (<p>Nenhum aluno encontrado.</p>) : (
+                             <table className={styles.table}>
+                                 <thead>
+                                     <tr>
+                                         <th className={styles.th}>ID</th>
+                                         <th className={styles.th}>Nome</th>
+                                         <th className={styles.th}>Email</th>
+                                         <th className={styles.th}>RA</th>
+                                         <th className={styles.th}>Status</th>
+                                         <th className={styles.th}>Ações</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                    {filteredAlunos.map((user) => (
+                                        <tr key={user.usuario_id}>
+                                            <td className={styles.td}>{user.usuario_id}</td>
+                                            <td className={styles.td}>{user.nome}</td>
+                                            <td className={styles.td}>{user.email}</td>
+                                            <td className={styles.td}>{user.ra}</td>
+                                            <td className={styles.td}>{user.status_conta}</td>
+                                            <td className={styles.td}>
+                                                <button onClick={() => handleEditClick(user)} className={`${styles.button} ${styles.editButton}`} disabled={isActionLoading}>Editar</button>
+                                                <button onClick={() => handleDelete(user.usuario_id, user.nome)} className={`${styles.button} ${styles.deleteButton}`} disabled={isActionLoading}>Excluir</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                 </tbody>
+                             </table>
+                         )}
+                     </div>
+                 )}
+
+
+                 {/* --- Sub-Secção: Professores --- */}
+                  {!isLoadingUsers && (
+                     <div className={styles.subSection}>
+                         <h3 className={styles.subSectionTitle}>Professores</h3>
+                          <div className={styles.searchContainer}>
+                             <input
+                                 type="text"
+                                 placeholder="Pesquisar Professor por nome ou email..."
+                                 value={searchTermProfessores}
+                                 onChange={(e) => setSearchTermProfessores(e.target.value)}
+                                 className={styles.searchInput}
+                            />
+                         </div>
+                         {filteredProfessores.length === 0 ? (<p>Nenhum professor encontrado.</p>) : (
+                             <table className={styles.table}>
+                                 <thead>
+                                     <tr>
+                                         <th className={styles.th}>ID</th>
+                                         <th className={styles.th}>Nome</th>
+                                         <th className={styles.th}>Email</th>
+                                         <th className={styles.th}>Status</th>
+                                         <th className={styles.th}>Ações</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                    {filteredProfessores.map((user) => (
+                                        <tr key={user.usuario_id}>
+                                            <td className={styles.td}>{user.usuario_id}</td>
+                                            <td className={styles.td}>{user.nome}</td>
+                                            <td className={styles.td}>{user.email}</td>
+                                            <td className={styles.td}>{user.status_conta}</td>
+                                            <td className={styles.td}>
+                                                <button onClick={() => handleEditClick(user)} className={`${styles.button} ${styles.editButton}`} disabled={isActionLoading}>Editar</button>
+                                                <button onClick={() => handleDelete(user.usuario_id, user.nome)} className={`${styles.button} ${styles.deleteButton}`} disabled={isActionLoading}>Excluir</button>
+                                            </td>
+                                        </tr>
+                                     ))}
+                                 </tbody>
+                             </table>
+                         )}
+                     </div>
+                 )}
+
+
+                 {/* --- Sub-Secção: Bibliotecários --- */}
+                  {!isLoadingUsers && (
+                     <div className={styles.subSection}>
+                         <h3 className={styles.subSectionTitle}>Bibliotecários</h3>
+                          <div className={styles.searchContainer}>
+                             <input
+                                 type="text"
+                                 placeholder="Pesquisar Bibliotecário por nome ou email..."
+                                 value={searchTermBibliotecarios}
+                                 onChange={(e) => setSearchTermBibliotecarios(e.target.value)}
+                                 className={styles.searchInput}
+                            />
+                         </div>
+                         {filteredBibliotecarios.length === 0 ? (<p>Nenhum bibliotecário encontrado.</p>) : (
+                             <table className={styles.table}>
+                                 <thead>
+                                     <tr>
+                                         <th className={styles.th}>ID</th>
+                                         <th className={styles.th}>Nome</th>
+                                         <th className={styles.th}>Email</th>
+                                         <th className={styles.th}>Status</th>
+                                         <th className={styles.th}>Ações</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                    {filteredBibliotecarios.map((user) => (
+                                        <tr key={user.usuario_id}>
+                                            <td className={styles.td}>{user.usuario_id}</td>
+                                            <td className={styles.td}>{user.nome}</td>
+                                            <td className={styles.td}>{user.email}</td>
+                                            <td className={styles.td}>{user.status_conta}</td>
+                                            <td className={styles.td}>
+                                                <button onClick={() => handleEditClick(user)} className={`${styles.button} ${styles.editButton}`} disabled={isActionLoading}>Editar</button>
+                                                <button onClick={() => handleDelete(user.usuario_id, user.nome)} className={`${styles.button} ${styles.deleteButton}`} disabled={isActionLoading}>Excluir</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                 </tbody>
+                             </table>
+                         )}
+                     </div>
+                 )}
+
+
+                 {/* --- Sub-Secção: Administradores --- */}
+                   {!isLoadingUsers && (
+                     <div className={styles.subSection}>
+                         <h3 className={styles.subSectionTitle}>Administradores</h3>
+                          <div className={styles.searchContainer}>
+                             <input
+                                 type="text"
+                                 placeholder="Pesquisar Administrador por nome ou email..."
+                                 value={searchTermAdmins}
+                                 onChange={(e) => setSearchTermAdmins(e.target.value)}
+                                 className={styles.searchInput}
+                            />
+                         </div>
+                         {filteredAdmins.length === 0 ? (<p>Nenhum administrador encontrado.</p>) : (
+                             <table className={styles.table}>
+                                 <thead>
+                                     <tr>
+                                         <th className={styles.th}>ID</th>
+                                         <th className={styles.th}>Nome</th>
+                                         <th className={styles.th}>Email</th>
+                                         <th className={styles.th}>Status</th>
+                                         <th className={styles.th}>Ações</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody>
+                                    {filteredAdmins.map((user) => (
+                                        <tr key={user.usuario_id}>
+                                             <td className={styles.td}>{user.usuario_id}</td>
+                                            <td className={styles.td}>{user.nome}</td>
+                                            <td className={styles.td}>{user.email}</td>
+                                            <td className={styles.td}>{user.status_conta}</td>
+                                            <td className={styles.td}>
+                                                <button onClick={() => handleEditClick(user)} className={`${styles.button} ${styles.editButton}`} disabled={isActionLoading}>Editar</button>
+                                                {/* Segurança: Talvez impedir exclusão do último admin? Lógica no backend */}
+                                                <button onClick={() => handleDelete(user.usuario_id, user.nome)} className={`${styles.button} ${styles.deleteButton}`} disabled={isActionLoading}>Excluir</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                 </tbody>
+                             </table>
+                         )}
+                     </div>
+                 )}
+            </section>
+
+
+            {/* --- NOVO POPUP / MODAL DE CRIAÇÃO --- */}
+            {showCreatePopup && (
+                <div className={styles.popupOverlay} ref={createPopupRef}>
+                    <div className={styles.popupContent}>
+                        <h2>Criar Novo Utilizador</h2>
+                        {/* Mostra erro específico da criação */}
+                        {error && <p className={`${styles.message} ${styles.errorText}`}>{error}</p>}
+
+                        <form onSubmit={handleCreateSubmit}>
+                            {/* Linha Nome */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="create-nome">Nome:</label>
+                                <input id="create-nome" type="text" name="nome" value={createFormData.nome} onChange={handleCreateFormChange} className={styles.formInput} required />
+                            </div>
+                            {/* Linha Email */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="create-email">Email:</label>
+                                <input id="create-email" type="email" name="email" value={createFormData.email} onChange={handleCreateFormChange} className={styles.formInput} required />
+                            </div>
+                            {/* Linha Senha */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="create-senha">Senha:</label>
+                                <input id="create-senha" type="password" name="senha" value={createFormData.senha} onChange={handleCreateFormChange} className={styles.formInput} required minLength={8}/>
+                            </div>
+                             {/* Linha Perfil */}
+                             <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="create-perfil">Perfil:</label>
+                                <select id="create-perfil" name="perfil" value={createFormData.perfil} onChange={handleCreateFormChange} className={styles.formSelect} required>
+                                    <option value="comum">Comum (Aluno)</option>
+                                    <option value="professor">Professor</option>
+                                    <option value="bibliotecario">Bibliotecário</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                             {/* Linha RA (Condicional baseado no perfil selecionado) */}
+                             <div className={styles.formRow} style={{ display: createFormData.perfil === 'comum' ? 'flex' : 'none' }}>
+                                <label className={styles.formLabel} htmlFor="create-ra">RA:</label>
+                                <input id="create-ra" type="text" name="ra" value={createFormData.ra} onChange={handleCreateFormChange} maxLength={13} className={styles.formInput} placeholder="(Obrigatório se Aluno)"/>
+                            </div>
+                            {/* Linha Status (Padrão Ativa, talvez não precise no form de criação) */}
+                            {/* <div className={styles.formRow}>... Status ...</div> */}
+
+                            {/* Botões */}
+                            <div className={styles.formActions}>
+                                <button type="submit" className={`${styles.button} ${styles.saveButton}`} disabled={isActionLoading}>
+                                     {isActionLoading ? 'A criar...' : 'Criar Utilizador'}
+                                 </button>
+                                <button type="button" onClick={handleCancelCreate} className={`${styles.button} ${styles.cancelButton}`} disabled={isActionLoading}>
+                                     Cancelar
+                                 </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            )}
-        </div>
+             )}
+
+        </div> // Fim do container principal
     );
 }
-
-// --- Estilos CSS Básicos (Inline) ---
-const inlineStyles = {
-     container: { fontFamily: 'Arial, sans-serif', maxWidth: '800px', margin: '30px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' },
-    form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-    inputGroup: { display: 'flex', flexDirection: 'column', gap: '5px' },
-    input: { padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '1rem' },
-    button: { padding: '10px 15px', border: 'none', borderRadius: '4px', backgroundColor: '#007bff', color: 'white', fontSize: '1rem', cursor: 'pointer', transition: 'background-color 0.2s', marginRight: '10px', marginTop: '10px' },
-    buttonDisabled: { backgroundColor: '#ccc', cursor: 'not-allowed' },
-    logoutButton: { backgroundColor: '#dc3545'},
-    message: { padding: '10px', marginBottom: '15px', border: '1px solid', borderRadius: '4px', backgroundColor: '#f8d7da', borderColor: '#f5c6cb', color: '#721c24' }, // Estilo de erro padrão
-    listContainer: { marginTop: '20px' },
-    list: { listStyle: 'none', padding: 0 },
-    listItem: { borderBottom: '1px solid #eee', padding: '15px 5px', marginBottom: '10px', borderRadius: '4px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' },
-    approveButton: { backgroundColor: '#28a745', marginLeft: 'auto' }
-};

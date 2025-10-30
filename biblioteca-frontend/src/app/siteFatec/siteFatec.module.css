@@ -1,180 +1,105 @@
-/* Nossa classe principal para a Navbar */
-.fatecNav {
-  background-color: #b20000; /* Vermelho mais vibrante, como no conceito */
-  border-bottom: none; /* Remove a borda se não for necessária */
-}
+/* ...existing code... */
 
-.fatecNav :global(.navbar-nav) {
-    flex-direction: row; /* Garante que os itens fiquem na linha, para desktops */
-    justify-content: center; /* Centraliza os itens na Navbar */
-    width: 100%; /* Permite que o justify-content funcione */
-}
-
-.fatecNav :global(.nav-link), 
-.fatecNav :global(.dropdown-toggle) {
-  color: #fff !important;
-  font-size: 0.95rem;
-  padding: 1rem 1rem; /* Aumenta o padding vertical para mais altura */
-  transition: background-color 0.2s ease;
-  border-right: 1px solid rgba(0,0,0,.18);
-}
-
-.fatecNav :global(.nav-item:first-child .nav-link) {
-    border-left: 1px solid rgba(0,0,0,.18);
-}
-
-.fatecNav :global(.nav-link:hover), 
-.fatecNav :global(.dropdown-toggle:hover),
-.fatecNav :global(.nav-link.active) { /* Estilo para o item ativo */
-  background-color: #af0012; /* Cor de hover ligeiramente diferente, mais escura */
-}
-
-/* Nossa classe principal para o Breadcrumb */
-.breadcrumbWrap {
-  background: #6b747b;
-  padding: .5rem 1rem;
-}
-
-.breadcrumbWrap :global(.breadcrumb-item),
-.breadcrumbWrap :global(.breadcrumb-item a) {
-  color: #fff !important;
-  text-decoration: none;
-}
-
-.breadcrumbWrap :global(.breadcrumb-item + .breadcrumb-item::before) {
-  color: #fff;
-}
-
-/* Adicione ao final de siteFatec.module.css */
-
-.searchBar {
+/* HERO (imagem de fundo) */
+.hero {
+  background-image: url('/images/home-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 60vh;
   display: flex;
   align-items: center;
-  gap: 0;
-  margin-left: auto; /* Joga a barra de busca para a direita */
-}
-
-.campoDeBusca {
-  height: 50px;
-  width: 350px;
-  padding: 0 16px;
-  font-size: 15px;
-  border: 1px solid #dadada;
-  border-radius: 30px 0 0 30px;
-  outline: none;
-}
-
-.btnSearch {
-  height: 50px;
-  width: 64px;
-  padding: 0 14px;
-  border: 1px solid #dadada;
-  border-left: none;
-  background: #fff;
-  border-radius: 0 30px 30px 0;
-  cursor: pointer;
-}
-
-/* O ícone dentro do botão */
-.btnSearch i {
-  color: #B20000;
-  font-size: 18px;
-}
-
-.btnSearch:hover {
-  background: #B20000;
-  border-color: #B20000;
-}
-
-.btnSearch:hover i {
-  color: #fff;
-}
-
-/* --- CONTEÚDO PRINCIPAL CORRIGIDO --- */
-
-.mainContent {
-  max-width: 960px;
-  /* A MÁGICA DA CENTRALIZAÇÃO DO BLOCO, NÃO DO TEXTO */
-  margin: 50px auto; 
-  padding: 20px;
-  /* Removemos o text-align daqui para que o padrão (esquerda) seja usado */
-}
-
-.pageTitle {
-  font-size: 28px;
-  font-weight: bold;
-  color: #005662;
-  position: relative; 
-  padding-bottom: 15px;
-  margin-bottom: 25px;
-  /* Removemos as regras de display e width. <h1> é um bloco por padrão. */
-}
-
-/* A linha fina (que fica por baixo) */
-.pageTitle::before {
-  content: '';
-  position: absolute;
-  bottom: 3px;
-  left: 0;
-  width: 100%; /* Agora 100% da largura do .mainContent */
-  height: 2px;
-  background-color: #e30016;
-}
-
-/* A barra grossa (que fica por cima) */
-.pageTitle::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0; /* Alinhada à esquerda */
-  width: 150px;
-  height: 8px;
-  background-color: #e30016;
-  border-radius: 4px;
-  z-index: 1; /* Garante que a barra grossa fique na frente da linha fina */
-}
-
-.introText {
-  font-size: 16px;
-  line-height: 1.7;
-  color: #333;
-  text-align: left; /* Força o parágrafo a ser alinhado à esquerda */
-}
-
-.buttonContainer {
-  display: flex;
   justify-content: center;
-  gap: 20px;
-  margin-top: 40px;
+  position: relative;
+  color: #033; /* fallback text color */
 }
 
-.actionButton {
-  background-color: #005662;
-  color: #fff;
-  padding: 15px 30px;
-  font-size: 16px;
-  font-weight: bold;
-  text-decoration: none;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
+/* camada de conteúdo semi-transparente */
+.heroCard {
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+  border-radius: 8px;
+  max-width: 900px;
+  width: calc(100% - 40px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   text-align: center;
-  min-width: 250px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.heroCard:focus-within,
+.heroCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.16);
 }
 
-.actionButton:hover {
-  background-color: #007b8b;
+.heroTitle {
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  color: #b20000; /* cor primária vermelha */
+}
+.heroSubtitle {
+  margin: 0 0 18px;
+  color: #333;
+  line-height: 1.4;
 }
 
-/* Adicione ao final de siteFatec.module.css */
+/* Ações do hero */
+.heroActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.actionButton {
+  background-color: #b20000; /* vermelho */
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  display: inline-block;
+}
+.actionButton:hover,
+.actionButton:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(178,18,18,0.18);
+}
+.actionButtonAlt {
+  background: #fff;
+  color: #b20000;
+  border: 1px solid #b20000;
+  padding: 12px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.actionButtonAlt:hover,
+.actionButtonAlt:focus {
+  background: #fff6f6;
+  transform: translateY(-2px);
+}
 
-/* A mágica do dropdown com hover para telas de desktop (largura > 992px) */
-@media (min-width: 992px) {
-  /* Este seletor diz: Dentro da nossa navbar, quando o mouse passar por cima 
-     de um elemento com a classe .dropdown, encontre o filho dele com a
-     classe .dropdown-menu e o torne visível.
-  */
-  :global(.fatec-nav .dropdown:hover .dropdown-menu) {
-    display: block;
-    margin-top: 0; /* Remove a margem padrão para o menu grudar na barra */
+/* botão secundário padrão (usado em main content) */
+.buttonContainer .actionButton {
+  margin-right: 12px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .hero {
+    height: 45vh;
+  }
+  .heroCard {
+    padding: 18px;
+  }
+  .heroTitle {
+    font-size: 1.25rem;
+  }
+  .actionButton, .actionButtonAlt {
+    min-width: 160px;
+    padding: 10px 14px;
   }
 }
+
+/* ...existing code... */

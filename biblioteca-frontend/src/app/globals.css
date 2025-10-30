@@ -1,3 +1,10 @@
+/* ...existing code... */
+
+/* Tailwind base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Reset (Global, mantido como está) */
 * {
   margin: 0;

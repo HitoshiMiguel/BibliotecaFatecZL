@@ -21,6 +21,9 @@ const pool = require('./src/config/db'); // Para o DB check
 
 // --- Middlewares Globais ---
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -68,6 +71,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor API rodando na porta ${PORT}`);
 });
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

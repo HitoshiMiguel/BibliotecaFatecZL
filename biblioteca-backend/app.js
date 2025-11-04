@@ -20,6 +20,9 @@ const uploadRouter = require('./src/app/api/upload'); // ✅ AQUI (CommonJS)
 const pool = require('./src/config/db'); // Para o DB check
 
 // --- Middlewares Globais ---
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
@@ -64,4 +67,7 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor API rodando na porta ${PORT}`);
 });
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

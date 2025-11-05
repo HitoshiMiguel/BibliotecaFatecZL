@@ -1,66 +1,76 @@
-
------
-
 # 📚 Biblioteca Fatec ZL
 
 Plataforma digital para modernização da biblioteca acadêmica, construída com uma arquitetura moderna de serviços. O projeto consiste em uma API RESTful (backend) desenvolvida em Node.js e Express, e uma interface de usuário reativa (frontend) desenvolvida com React e Next.js.
 
------
+---
 
 ## 🛠️ Stack de Tecnologias
 
 ### Backend (API)
 
-  * **Node.js + Express**: Construção da API REST.
-  * **MySQL com `mysql2/promise`**: Conexão e queries assíncronas com o banco de dados.
-  * **JSON Web Token (`jsonwebtoken`)**: Autenticação e gerenciamento de sessões seguras.
-  * **`bcryptjs`**: Criptografia (hash) de senhas.
-  * **`CORS`**: Habilita a comunicação segura entre o frontend e o backend.
-  * **`cookie-parser`**: Interpreta os cookies de sessão enviados pelo navegador.
-  * **`dotenv`**: Gerenciamento de variáveis de ambiente.
-  * **`express-validator`**: Validação e sanitização dos dados recebidos.
-  * **`nodemailer`**: Envio de e-mails automáticos para redefinição de senha.
+* **Node.js + Express**: Construção da API REST.
+* **MySQL com mysql2/promise**: Conexão e queries assíncronas com o banco de dados.
+* **JSON Web Token (jsonwebtoken)**: Autenticação e gerenciamento de sessões seguras.
+* **bcryptjs**: Criptografia (hash) de senhas.
+* **CORS**: Habilita a comunicação segura entre o frontend e o backend.
+* **cookie-parser**: Interpreta os cookies de sessão enviados pelo navegador.
+* **dotenv**: Gerenciamento de variáveis de ambiente.
+* **express-validator**: Validação e sanitização dos dados recebidos.
+* **nodemailer**: Envio de e-mails automáticos para redefinição de senha.
+* **multer**: Upload de arquivos.
+* **googleapis**: Integração com o Google Drive (OAuth 2.0).
 
 ### Frontend (Interface do Usuário)
 
-  * **React**: Biblioteca para construção de interfaces de usuário dinâmicas.
-  * **Next.js**: Framework React com renderização híbrida, otimizações e roteamento.
-  * **CSS Modules**: Para estilização de componentes de forma escopada e organizada.
-  * **React Icons**: Biblioteca para inclusão de ícones populares.
+* **React**: Biblioteca para construção de interfaces de usuário dinâmicas.
+* **Next.js**: Framework React com renderização híbrida, otimizações e roteamento.
+* **CSS Modules**: Para estilização de componentes de forma escopada e organizada.
+* **React Icons**: Biblioteca para inclusão de ícones populares.
 
------
+---
 
 ## ✅ Pré-requisitos
 
-  * **Node.js** (versão LTS recomendada)
-  * **npm** (gerenciador de pacotes, vem com o Node.js)
-  * **MySQL Server** (instalado localmente ou via Docker)
-  * **Git** (para clonar o repositório)
-  * **(Opcional) Conta de e-mail com SMTP habilitado** (Gmail, Outlook, etc.) — necessária para o envio de e-mails de redefinição de senha com o Nodemailer.
+* **Node.js** (versão LTS recomendada)
+* **npm** (gerenciador de pacotes, vem com o Node.js)
+* **MySQL Server** (instalado localmente ou via Docker)
+* **Git** (para clonar o repositório)
+* **Conta Google com acesso ao [Google Cloud Console](https://console.cloud.google.com)** — necessária para a integração com o Google Drive via OAuth.
 
------
+---
 
 ## 🗄️ Banco de Dados
 
-1.  **Crie o banco de dados e as tabelas** executando o script abaixo no seu cliente MySQL:
-
-    ```sql
+ ```sql
     CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
     USE acervo_digitalv2;
 
-    -- Tabela de Usuários
+    -- Tabela Principal de Usuários (Estrutura Final)
     CREATE TABLE IF NOT EXISTS dg_usuarios (
       usuario_id INT AUTO_INCREMENT PRIMARY KEY,
       nome VARCHAR(100) NOT NULL,
-      ra CHAR(13) NOT NULL UNIQUE,
+      ra VARCHAR(20) UNIQUE NULL,                     -- RA opcional (VARCHAR permite flexibilidade futura, NULL para não-alunos)
       email VARCHAR(100) UNIQUE NOT NULL,
-      senha_hash VARCHAR(255) NOT NULL,
-      perfil ENUM('comum','bibliotecario','admin') NOT NULL DEFAULT 'comum',
-      reset_token VARCHAR(255),
-      reset_token_expira DATETIME
+      senha_hash VARCHAR(255) NULL,                   -- NULLABLE: Permite criação pendente de ativação/definição de senha
+      perfil ENUM('comum','professor','bibliotecario','admin') NOT NULL DEFAULT 'comum', -- Perfil 'professor' adicionado
+      status_conta ENUM('ativa', 'pendente_ativacao', 'inativa') NOT NULL DEFAULT 'ativa', -- Controle granular de status
+      token_ativacao VARCHAR(255) UNIQUE NULL,         -- Token para ativação (professor define senha) OU confirmação (professor já tem senha)
+      reset_token VARCHAR(255) UNIQUE NULL,            -- Token para redefinição de senha
+      reset_token_expira DATETIME NULL                 -- Expiração do token de redefinição
     );
 
-    -- Tabela de Submissões
+    -- Tabela para Solicitações de Cadastro (Professores/Bibliotecários)
+    CREATE TABLE IF NOT EXISTS dg_solicitacoes_cadastro (
+      solicitacao_id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      perfil_solicitado ENUM('professor', 'bibliotecario') NOT NULL, -- Perfis que requerem aprovação
+      senha_hash VARCHAR(255) NULL,                    -- Guarda o hash da senha original definida no cadastro público
+      data_solicitacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status ENUM('pendente', 'aprovado', 'rejeitado') DEFAULT 'pendente'
+    );
+
+    -- Tabela de Submissões (Mantida)
     CREATE TABLE IF NOT EXISTS dg_submissoes (
       submissao_id INT AUTO_INCREMENT PRIMARY KEY,
       usuario_id INT NOT NULL,
@@ -68,13 +78,13 @@ Plataforma digital para modernização da biblioteca acadêmica, construída com
       descricao TEXT,
       caminho_anexo VARCHAR(255),
       status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
-      revisado_por_id INT,
+      revisado_por_id INT NULL,
       data_submissao DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-      FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id)
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id) ON DELETE CASCADE, -- Adicionado ON DELETE CASCADE (ou RESTRICT, dependendo da regra)
+      FOREIGN KEY (revisado_por_id) REFERENCES dg_usuarios(usuario_id) ON DELETE SET NULL -- Permite excluir revisor sem apagar submissão
     );
 
-    -- Tabela de Itens Digitais
+    -- Tabela de Itens Digitais (Mantida)
     CREATE TABLE IF NOT EXISTS dg_itens_digitais (
       item_id INT AUTO_INCREMENT PRIMARY KEY,
       titulo VARCHAR(200) NOT NULL,
@@ -83,198 +93,161 @@ Plataforma digital para modernização da biblioteca acadêmica, construída com
       descricao TEXT,
       caminho_arquivo VARCHAR(255),
       data_publicacao DATE,
-      submissao_id INT UNIQUE,
-      FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id)
+      submissao_id INT UNIQUE NULL,
+      FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id) ON DELETE SET NULL -- Permite excluir submissão mantendo o item
     );
 
-    -- Tabela de Avaliações
+    -- Tabela de Avaliações (Mantida)
     CREATE TABLE IF NOT EXISTS dg_avaliacoes (
       avaliacao_id INT AUTO_INCREMENT PRIMARY KEY,
       usuario_id INT NOT NULL,
       item_id INT NOT NULL,
       nota TINYINT CHECK (nota BETWEEN 1 AND 5),
       data_avaliacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id),
-      FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id)
+      FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id) ON DELETE CASCADE, -- Exclui avaliação se usuário for excluído
+      FOREIGN KEY (item_id) REFERENCES dg_itens_digitais(item_id) ON DELETE CASCADE -- Exclui avaliação se item for excluído
     );
     ```
+    *(Nota: Adicionadas algumas regras `ON DELETE` nas chaves estrangeiras. Revise se `CASCADE` ou `SET NULL`/`RESTRICT` é o mais apropriado para cada caso.)*
 
-2.  **(Opcional, recomendado)** Crie um usuário dedicado para a aplicação no MySQL:
-
+2.  **(Opcional, recomendado)** Crie um utilizador dedicado para a aplicação no MySQL:
     ```sql
-    CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY 'TroqueEstaSenha!';
+    CREATE USER IF NOT EXISTS 'acervo_app'@'localhost' IDENTIFIED BY '123456'; -- Use a senha do seu .env
     GRANT SELECT, INSERT, UPDATE, DELETE ON acervo_digitalv2.* TO 'acervo_app'@'localhost';
     FLUSH PRIVILEGES;
     ```
 
 -----
 
+---
+
 ## 🚀 Instalação e Execução
 
 A aplicação consiste em dois projetos separados que precisam ser configurados e executados simultaneamente.
 
-### 1\. Clonar o Repositório
+### 1. Clonar o Repositório
 
 ```bash
 git clone <URL_DO_SEU_REPOSITORIO>
 cd <PASTA_PRINCIPAL_DO_PROJETO>
 ```
 
-### 2\. Configurar o Backend
+### 2. Configurar o Backend
 
-1.  Navegue até a pasta do backend:
-
-    ```bash
-    cd biblioteca-backend
-    ```
-
-2.  Instale todas as dependências do `package.json`:
-
-    ```bash
-    npm install express mysql2 dotenv jsonwebtoken bcryptjs cors cookie-parser express-validator nodemailer
-    npm install nodemailer
-    
-    ```
-
-3.  Crie um arquivo `.env` na raiz da pasta `biblioteca-backend` e preencha com suas credenciais:
-
-    ```dotenv
-    # Configuração do Banco de Dados
-    DB_HOST=localhost
-    DB_USER=acervo_app
-    DB_PASSWORD=TroqueEstaSenha!
-    DB_DATABASE=acervo_digitalv2
-    DB_NAME=acervo_digitalv2
-    BCRYPT_SALT_ROUNDS=10
-
-    # Configuração da Aplicação
-    PORT=4000
-    JWT_SECRET=sua-chave-secreta-muito-forte-e-dificil-de-adivinhar
-
-    # Configuração do Nodemailer (envio de e-mails)
-    EMAIL_SERVICE=gmail
-    EMAIL_USER=bibliotecafatecoriginal@gmail.com
-    EMAIL_PASS=pjhs qsil nbkf lkcv
-    ```
-
-    > ⚠️ **Importante:** Se estiver usando Gmail, [ative "App Passwords"](https://support.google.com/accounts/answer/185833) e use a senha gerada no campo `EMAIL_PASS`.
-
-### 3\. Configurar o Frontend
-
-1.  Volte para a pasta raiz e navegue até a pasta do frontend:
-
-    ```bash
-    cd ../biblioteca-frontend 
-    ```
-
-2.  Instale as dependências:
-
-    ```bash
-    npm install
-    npm install react-icons
-    npm install react-bootstrap bootstrap
-    npm install sweetalert2 
-
-    ```
-
-### 4\. Executar a Aplicação (Fluxo de Dois Terminais)
-
-Você precisará de **dois terminais** abertos.
-
-#### **No Terminal 1 (inicie o Backend):**
+1. Navegue até a pasta do backend:
 
 ```bash
-cd caminho/para/o/projeto/biblioteca-backend
+cd biblioteca-backend
+```
+
+2. Instale todas as dependências necessárias:
+
+```bash
+npm install express mysql2 dotenv jsonwebtoken bcrypt cors cookie-parser express-validator nodemailer multer googleapis
+```
+
+3. Crie o arquivo `.env` na raiz da pasta `biblioteca-backend` e preencha com suas credenciais:
+
+```dotenv
+# Banco de Dados
+DB_HOST=localhost
+DB_USER=acervo_app
+DB_PASSWORD=TroqueEstaSenha!
+DB_DATABASE=acervo_digitalv2
+BCRYPT_SALT_ROUNDS=10
+
+# Aplicação
+PORT=4000
+JWT_SECRET=sua-chave-secreta-super-forte
+FRONTEND_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3000
+
+# Nodemailer (Envio de E-mails)
+EMAIL_SERVICE=gmail
+EMAIL_USER=bibliotecafatecoriginal@gmail.com
+EMAIL_PASS=pjhs qsil nbkf lkcv
+
+# OAuth Google Drive
+GOOGLE_OAUTH_CLIENT_ID=433533699237-k167u8iqnr8aco53l5u3c5s8cvmadk84.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=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
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4000/api/google/oauth2callback
+
+# IDs das pastas no Google Drive
+GOOGLE_DRIVE_PENDENTES_ID=1C7EOTDtiltYAtvKTwwWz_-2UWtTQV7Tp
+GOOGLE_DRIVE_APROVADOS_ID=1estpWibk4UTuIwaQkQP1_PbnGF2MApby
+```
+
+> ⚠️ **Importante:** Se estiver usando Gmail, [ative "App Passwords"](https://support.google.com/accounts/answer/185833) e use a senha gerada no campo `EMAIL_PASS`.
+
+4. Inicie o servidor backend:
+
+```bash
 npm start
 ```
 
-> 🕒 Aguarde a mensagem de confirmação: `🚀 Servidor API rodando na porta 4000`
+> Aguarde a mensagem: `🚀 API na porta 4000`
 
-#### **No Terminal 2 (inicie o Frontend):**
+### 3. Configurar o Frontend
+
+1. Volte para a pasta raiz e entre no frontend:
 
 ```bash
-cd caminho/para/o/projeto/biblioteca-frontend
+cd ../biblioteca-frontend
+```
+
+2. Instale as dependências:
+
+```bash
+npm install
+npm install react-icons react-bootstrap bootstrap sweetalert2
+```
+
+3. Inicie o servidor do frontend:
+
+```bash
 npm run dev
 ```
 
-> 🕒 Aguarde a mensagem de confirmação: `- Local: http://localhost:3000`
+> Acesse o app em [http://localhost:3000](http://localhost:3000)
 
-Após iniciar os dois servidores, abra seu navegador e acesse a URL do frontend: **[http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)**
+### 4. Autorizar o Google Drive (somente na primeira vez)
 
-#### Healthcheck do Banco de Dados
+1. Inicie o backend (`npm start`).
+2. Acesse [http://localhost:4000/api/google/auth](http://localhost:4000/api/google/auth)
+3. Copie e abra a URL retornada no navegador.
+4. Faça login com sua conta Google e clique em **Permitir**.
+5. O backend criará `tokens/google-oauth.json` confirmando a autorização.
 
-Para verificar se a API está conectada ao banco, acesse **[http://localhost:4000/\_\_dbcheck](https://www.google.com/search?q=http://localhost:4000/__dbcheck)**.
-→ deve retornar `{"ok": true}`.
+### 5. Executar a Aplicação (Dois Terminais)
 
------
-
-## 🧩 Funcionalidades (MVP)
-
-#### Cadastro e Login de Usuários
-
-  - Comunicação via API REST com frontend reativo em Next.js/React.
-  - Autenticação baseada em tokens (JWT) com cookies `HttpOnly` para maior segurança.
-  - Validações robustas no backend com `express-validator`.
-  - Senha armazenada de forma segura como hash (usando `bcrypt`).
-  - Login unificado por Email ou RA.
-  - Rotas Protegidas: O dashboard só pode ser acessado por usuários autenticados.
-
-#### Recuperação de Senha via E-mail
-
-  - Implementação do `Nodemailer` para envio automático de link de redefinição.
-  - Rota para solicitar o e-mail cadastrado e disparar o envio.
-  - Rota para validar o token e permitir a definição da nova senha.
-
------
-
-## 🆘 Troubleshooting
-
-  * **`Failed to fetch` no navegador:**
-
-      * Verifique se o servidor do **backend está rodando**.
-      * Confirme se a porta no `fetch` do frontend (ex: `http://localhost:4000`) corresponde à porta `PORT` no arquivo `.env` do backend.
-
-  * **Erro de CORS no console:**
-
-      * Verifique se a `origin` no `corsOptions` do `app.js` (backend) corresponde exatamente à URL e porta do frontend (`http://localhost:3000`).
-
-  * **Erro `401 Unauthorized` ou redirecionamento para o login:**
-
-      * Verifique se a `JWT_SECRET` está definida no `.env` do backend.
-      * Confirme que a opção `credentials: 'include'` está presente nas chamadas `fetch` do frontend que precisam de autenticação.
-
-  * **Erro de envio de e-mail (`Nodemailer`):**
-
-      * Verifique as variáveis `EMAIL_SERVICE`, `EMAIL_USER` e `EMAIL_PASS` no `.env`.
-      * Se estiver usando Gmail, certifique-se de que está usando uma "App Password".
-      * Observe o console do backend para mensagens de erro ou sucesso.
-
-  * **`{"ok": false}` no healthcheck `/__dbcheck`:**
-
-      * Verifique todas as variáveis `DB_*` no seu arquivo `.env` do backend.
-
------
-
-## 👥 Contribuição
-
-Fluxo sugerido para novas funcionalidades:
+**Terminal 1:**
 
 ```bash
-# Crie uma nova branch a partir da main/develop
-git checkout -b feature/nome-da-feature
-
-# Desenvolva e adicione seus arquivos
-git add .
-git commit -m "feat: descrição da funcionalidade adicionada"
-
-# Envie para o repositório remoto
-git push -u origin feature/nome-da-feature
+cd biblioteca-backend
+npm start
 ```
 
-Depois, abra um Pull Request no GitHub.
+**Terminal 2:**
 
------
+```bash
+cd biblioteca-frontend
+npm run dev
+```
+
+> API → [http://localhost:4000](http://localhost:4000)
+> Front → [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 🧠 Dicas Rápidas
+
+* **Erro `Failed to fetch`:** verifique se o backend está rodando e se as portas coincidem.
+* **Erro de CORS:** confirme que `CORS_ORIGIN` no `.env` é igual à URL do frontend.
+* **Upload indo para a raiz do Drive:** verifique o ID da pasta pendente no `.env`.
+* **Reautorização do OAuth:** apague `tokens/google-oauth.json` e repita o processo.
+
+---
 
 ## 📄 Licença
 
-Projeto acadêmico, desenvolvido para fins educacionais e sem fins comerciais.
+Projeto acadêmico desenvolvido para fins educacionais, sem fins comerciais.

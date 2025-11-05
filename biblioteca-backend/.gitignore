@@ -18,3 +18,5 @@ out/
 # Arquivos de sistema operacional
 .DS_Store
 Thumbs.db
+
+/tokens

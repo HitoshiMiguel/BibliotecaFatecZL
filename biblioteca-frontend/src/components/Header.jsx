@@ -2,6 +2,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import styles from './Header.module.css';
 
@@ -21,9 +22,34 @@ const HamburgerMenu = () => (
 export default function Header() {
   const pathname = usePathname();
 
-  // A tag <header> agora só tem o className global
+  // Define --header-offset com a altura real do header fixo
+  useEffect(() => {
+    const setHeaderOffset = () => {
+      const headerEl =
+        document.querySelector('.app-header') ||
+        document.querySelector('header[role="banner"]') ||
+        document.querySelector('header');
+
+      const h = headerEl ? Math.ceil(headerEl.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--header-offset', `${h}px`);
+      // console.log('[header] height:', h);
+    };
+
+    setHeaderOffset();
+    window.addEventListener('resize', setHeaderOffset);
+    const t1 = setTimeout(setHeaderOffset, 250);
+    const t2 = setTimeout(setHeaderOffset, 800);
+    return () => {
+      window.removeEventListener('resize', setHeaderOffset);
+      clearTimeout(t1); clearTimeout(t2);
+    };
+  }, []);
+
   return (
     <header className="app-header">
+      {/* Skip link global (fora do fluxo; aparece só ao focar) */}
+      <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
+
       {/* Faixa Governo */}
       <div className="govsp-header">
         <div className="logo-governo">
@@ -37,8 +63,7 @@ export default function Header() {
           <a href="#"><Image src="/imagens/i-twitter.png" alt="Twitter" width={25} height={25} /></a>
           <a href="#"><Image src="/imagens/i-instagram.png" alt="Instagram" width={25} height={25} /></a>
           <a href="#"><Image src="/imagens/i-facebook.png" alt="Facebook" width={25} height={25} /></a>
-          {/* ... outros ícones ... */}
-            <a href="#" className="govsp">/governosp</a>        
+          <a href="#" className="govsp">/governosp</a>
         </div>
       </div>
 
@@ -46,7 +71,13 @@ export default function Header() {
       <div className="CPS-header">
         <div className="CPS-container">
           <div className="logos">
-            <Image src="/imagens/logo-fatec-cps.png" alt="Logo Fatec e CPS" width={300} height={80} className="logo-cps-fatec-img" />
+            <Image
+              src="/imagens/logo-fatec-cps.png"
+              alt="Logo Fatec e CPS"
+              width={300}
+              height={80}
+              className="logo-cps-fatec-img"
+            />
           </div>
           <div className={styles.dynamicSlot}>
             {pathname === '/' || pathname === '/siteFatec' ? <SearchBar /> : <HamburgerMenu />}

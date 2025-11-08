@@ -1,4 +1,4 @@
-// app/dashboard/page.jsx (Com Edição de Perfil)
+// app/dashboard/page.jsx (Com Edição de Perfil via MODAL)
 
 'use client';
 export const dynamic = 'force-dynamic';
@@ -9,66 +9,63 @@ import styles from './dashboard.module.css';
 // Adiciona ícones necessários
 import { BsPerson, BsPersonVcard, BsEnvelope, BsBook, BsHourglassSplit, BsBoxArrowRight, BsPencilSquare, BsSave, BsXCircle, BsPersonBadge } from 'react-icons/bs';
 import Alert from '@/components/Alert'; // Componente Alert para feedback
+import Swal from 'sweetalert2';
+import EditProfileModal from '@/components/EditProfileModal'; // --- MUDANÇA: Garantir que está importado
 
 export default function DashboardPage() {
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    // Estado para feedback geral ou de ações (como atualização de perfil)
-    const [actionStatus, setActionStatus] = useState({ message: '', type: '' }); // type: 'success' or 'error'
+    const [actionStatus, setActionStatus] = useState({ message: '', type: '' });
 
     // --- ESTADOS PARA EDIÇÃO DE PERFIL ---
-    const [isEditing, setIsEditing] = useState(false); // Controla visibilidade do form
-    const [profileFormData, setProfileFormData] = useState({ nome: '', email: '' }); // Dados do formulário
-    const [isUpdating, setIsUpdating] = useState(false); // Loading para o botão de guardar
+    const [isEditing, setIsEditing] = useState(false);
+    const [profileFormData, setProfileFormData] = useState({ nome: '', email: '' });
+    const [isUpdating, setIsUpdating] = useState(false);
+    
+    // --- MUDANÇA: Estado do Modal (já estava no seu código, o que é ótimo) ---
+    const [isModalOpen, setIsModalOpen] = useState(false);
     // ------------------------------------
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
-    // useEffect para buscar dados e definir título (mantido)
+    // useEffect (NENHUMA MUDANÇA NECESSÁRIA AQUI)
     useEffect(() => {
         document.title = 'Meu Painel - Biblioteca Fatec ZL';
-
-        // Função para verificar a autenticação e buscar dados
         const checkAuthAndFetchData = async () => {
-            setIsLoading(true); // Garante que loading é true no início
-            setActionStatus({ message: '', type: '' }); // Limpa mensagens
+            setIsLoading(true);
+            setActionStatus({ message: '', type: '' });
             try {
                 const response = await fetch(`${apiUrl}/auth/current-user`, {
                     credentials: 'include', cache: 'no-store',
                 });
                 if (!response.ok) {
                     if (response.status === 401) {
-                         console.log("Dashboard: Não autenticado, redirecionando...");
-                         router.push('/login');
+                        console.log("Dashboard: Não autenticado, redirecionando...");
+                        router.push('/login');
                     } else {
-                         throw new Error(`Falha ao buscar dados: ${response.status}`);
+                        throw new Error(`Falha ao buscar dados: ${response.status}`);
                     }
-                    return; // Interrompe se não OK
+                    return;
                 }
                 const data = await response.json();
-                setUser(data); // Guarda os dados do utilizador
-                setProfileFormData({ nome: data.nome, email: data.email }); // Preenche form inicial
-
+                setUser(data);
+                setProfileFormData({ nome: data.nome, email: data.email });
             } catch (error) {
                 console.error('Falha na autenticação/fetch:', error);
                 setActionStatus({ message: 'Erro ao carregar dados. Redirecionando para login.', type: 'error'});
                 setTimeout(() => router.push('/login'), 2000);
             } finally {
-                setIsLoading(false); // Termina o carregamento inicial
+                setIsLoading(false);
             }
         };
-
-        checkAuthAndFetchData(); // Executa a verificação
-
-        // Limpeza de listener (mantido)
+        checkAuthAndFetchData();
         const handlePageShow = (event) => { if (event.persisted) window.location.reload(); };
         window.addEventListener('pageshow', handlePageShow);
         return () => window.removeEventListener('pageshow', handlePageShow);
+    }, [router, apiUrl]);
 
-    }, [router, apiUrl]); // Adicionado apiUrl como dependência
-
-    // Função de Logout (mantida)
+    // handleLogout (NENHUMA MUDANÇA NECESSÁRIA AQUI)
     const handleLogout = async () => {
         try {
             await fetch(`${apiUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
@@ -78,7 +75,7 @@ export default function DashboardPage() {
 
     // --- FUNÇÕES PARA EDIÇÃO DE PERFIL ---
 
-    // Ativa o modo de edição e preenche o formulário (se user mudar)
+    // --- MUDANÇA: Ativa o MODO DE EDIÇÃO e ABRE O MODAL ---
     const handleEditProfileClick = () => {
         if (!user) return;
         // Garante que o form comece com os dados mais recentes do estado 'user'
@@ -86,89 +83,104 @@ export default function DashboardPage() {
             nome: user.nome,
             email: user.email,
         });
-        setIsEditing(true);
+        setIsModalOpen(true); // <-- ABRE O MODAL
+        setIsEditing(true); // <-- Avisa que estamos editando
         setActionStatus({ message: '', type: '' }); // Limpa mensagens
     };
 
-    // Cancela o modo de edição
-    const handleCancelEditProfile = () => {
+    // --- MUDANÇA: Renomeado para "handleModalClose". Fecha o modal e o modo de edição ---
+    const handleModalClose = () => {
+        setIsModalOpen(false);
         setIsEditing(false);
-        // Não precisa limpar profileFormData, ele será repreenchido se editar novamente
         setActionStatus({ message: '', type: '' });
     };
 
-    // Atualiza o estado do formulário de edição
-    const handleProfileFormChange = (event) => {
-        const { name, value } = event.target;
-        setProfileFormData(prevData => ({
-            ...prevData,
-            [name]: value
-        }));
-    };
+    // --- MUDANÇA: handleProfileFormChange foi REMOVIDO
+    // O modal que fizemos usa `setProfileFormData` diretamente, o que é mais limpo.
+    // Não precisamos mais dessa função aqui.
 
-    // Submete a atualização do perfil para a API
-    const handleProfileUpdateSubmit = async (event) => {
-        event.preventDefault();
+    // --- MUDANÇA: Submete a atualização. Agora recebe 'formData' do modal, NÃO um 'event'.
+    const handleProfileUpdateSubmit = async (formData) => {
+        // event.preventDefault(); // <-- REMOVIDO
         setIsUpdating(true);
-        setActionStatus({ message: '', type: '' });
+        setActionStatus({ message: '', type: '' }); // Limpa alertas antigos da PÁGINA
 
-        // Validação básica frontend (nome e email)
-        if (!profileFormData.nome || profileFormData.nome.trim().length < 2) {
-             setActionStatus({ message: 'Nome inválido (mínimo 2 caracteres).', type: 'error' });
+        // Validação (agora usa 'formData' vindo do modal)
+        if (!formData.nome || formData.nome.trim().length < 2) {
+             Swal.fire({ icon: 'error', title: 'Erro', text: 'Nome inválido (mínimo 2 caracteres).', confirmButtonColor: '#b20000' });
              setIsUpdating(false);
              return;
         }
-         if (!profileFormData.email || !/^\S+@\S+\.\S+$/.test(profileFormData.email)) {
-             setActionStatus({ message: 'Formato de e-mail inválido.', type: 'error' });
+        if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
+             Swal.fire({ icon: 'error', title: 'Erro', text: 'Formato de e-mail inválido.', confirmButtonColor: '#b20000' });
              setIsUpdating(false);
              return;
         }
-
 
         try {
-            const response = await fetch(`${apiUrl}/auth/profile`, { // Chama a rota PUT /api/auth/profile
+            const response = await fetch(`${apiUrl}/auth/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Envia o cookie
-                body: JSON.stringify({ // Envia apenas nome e email
-                    nome: profileFormData.nome.trim(),
-                    email: profileFormData.email.trim().toLowerCase()
+                credentials: 'include',
+                body: JSON.stringify({ // Envia os dados do 'formData'
+                    nome: formData.nome.trim(),
+                    email: formData.email.trim().toLowerCase()
                 }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                // Sucesso! Atualiza o estado local 'user' com os dados retornados pela API
-                setUser(data.user || { ...user, ...profileFormData }); // Usa dados da API se disponíveis
-                setIsEditing(false); // Sai do modo de edição
-                setActionStatus({ message: 'Perfil atualizado com sucesso!', type: 'success' });
+                // Sucesso! Atualiza o estado local 'user'
+                setUser(data.user || { ...user, ...formData });
+
+                // --- MUDANÇA: Fecha o modal e sai do modo de edição ---
+                handleModalClose(); 
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: 'Perfil atualizado com sucesso!',
+                    confirmButtonText: 'Ok',
+                    confirmButtonColor: '#28a745'
+                });
             } else {
-                // Erro (ex: email duplicado 409, validação 400, servidor 500)
-                setActionStatus({ message: data.message || 'Falha ao atualizar perfil.', type: 'error' });
+                // Erro (API)
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro!',
+                    text: data.message || 'Não foi possível atualizar o perfil.',
+                    confirmButtonText: 'Tente Novamente',
+                    confirmButtonColor: '#b20000'
+                });
             }
         } catch (error) {
+            // Erro (Rede)
             console.error("Erro ao atualizar perfil:", error);
-            setActionStatus({ message: 'Erro de rede ao tentar atualizar.', type: 'error' });
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de Rede',
+                text: 'Não foi possível conectar ao servidor.',
+                confirmButtonText: 'Tente Novamente',
+                confirmButtonColor: '#b20000'
+            });
         } finally {
             setIsUpdating(false);
         }
     };
     // ------------------------------------
 
-    // --- Renderização Condicional ---
+    // --- Renderização Condicional (isLoading, !user) (NENHUMA MUDANÇA) ---
     if (isLoading) {
-        return <div className={styles.loading}>A carregar dados...</div>; // Mensagem durante busca inicial
+        return <div className={styles.loading}>A carregar dados...</div>;
     }
     if (!user) {
-         // Se não está a carregar e não tem utilizador (após falha de auth/fetch)
-         // Exibe a mensagem de erro definida no useEffect
-         return (
-             <div className={styles.container}>
-                 <Alert kind={actionStatus.type || 'error'} message={actionStatus.message || 'Não foi possível carregar os dados do utilizador.'} />
-                 <button onClick={() => router.push('/login')} className={styles.button}>Ir para Login</button>
-             </div>
-         );
+        return (
+            <div className={styles.container}>
+                <Alert kind={actionStatus.type || 'error'} message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'} />
+                <button onClick={() => router.push('/login')} className={styles.button}>Ir para Login</button>
+            </div>
+        );
     }
 
     // --- Conteúdo Real do Dashboard ---
@@ -181,127 +193,80 @@ export default function DashboardPage() {
             <div className={styles.contentWrapper}>
                 <div className={styles.dashboardContainer}>
 
-                    {/* Mostra mensagem de sucesso/erro da atualização */}
+                    {/* Alerta (mantido, caso seja útil para outros alertas) */}
                     {actionStatus.message && (
-                         <Alert
+                        <Alert
                             kind={actionStatus.type}
                             message={actionStatus.message}
-                            // style={{ marginBottom: '20px' }} // Use classe CSS em vez de style
-                            className={styles.actionAlert} // Nova classe para estilizar alerta
-                         />
+                            className={styles.actionAlert}
+                        />
                     )}
 
-                    {/* --- MODO DE EXIBIÇÃO --- */}
-                    {!isEditing && (
-                        <div className={styles.userDetails}>
-                            {/* Detalhes do Utilizador */}
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsPerson /> Meu Nome</span>
-                                <span className={styles.detailValue}>{user.nome}</span>
-                            </div>
-                            {user.ra && (
-                                <div className={styles.detailItem}>
-                                    <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
-                                    <span className={styles.detailValue}>{user.ra}</span>
-                                </div>
-                            )}
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsEnvelope /> Email</span>
-                                <span className={styles.detailValue}>{user.email}</span>
-                            </div>
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsBook /> Livro Atual</span>
-                                <span className={styles.detailValue}>Nenhum livro emprestado</span>
-                            </div>
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsHourglassSplit /> Status da Conta</span>
-                                <span className={styles.detailValue}>{user.status_conta || 'ativa'}</span>
-                            </div>
-                            <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
-                                <span className={styles.detailValue}>{user.perfil}</span>
-                            </div>
-
-                            {/* Botão Editar Perfil */}
-                            <div className={styles.editButtonWrapper}>
-                                <button onClick={handleEditProfileClick} className={`${styles.button} ${styles.editButton}`}>
-                                    <BsPencilSquare /> Editar Perfil
-                                </button>
-                            </div>
+                    {/* --- MUDANÇA: MODO DE EXIBIÇÃO (REMOVIDO o '!isEditing') --- */}
+                    {/* Esta parte agora é exibida SEMPRE */}
+                    <div className={styles.userDetails}>
+                        {/* Detalhes do Utilizador */}
+                        <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}><BsPerson /> Meu Nome</span>
+                            <span className={styles.detailValue}>{user.nome}</span>
                         </div>
-                    )}
-
-                    {/* --- MODO DE EDIÇÃO (Formulário) --- */}
-                    {isEditing && (
-                        <form onSubmit={handleProfileUpdateSubmit} className={styles.editForm}>
-                            <h3>Editar Perfil</h3>
-
-                            {/* Campo Nome */}
-                             <div className={styles.detailItem}>
-                                <label className={styles.detailLabel} htmlFor="edit-nome"><BsPerson /> Meu Nome</label>
-                                <input
-                                    id="edit-nome"
-                                    type="text"
-                                    name="nome"
-                                    value={profileFormData.nome}
-                                    onChange={handleProfileFormChange}
-                                    className={styles.editInput} // Classe para input editável
-                                    required
-                                />
-                            </div>
-
-                            {/* Campo Email */}
+                        {user.ra && (
                             <div className={styles.detailItem}>
-                                <label className={styles.detailLabel} htmlFor="edit-email"><BsEnvelope /> Email</label>
-                                <input
-                                    id="edit-email"
-                                    type="email"
-                                    name="email"
-                                    value={profileFormData.email}
-                                    onChange={handleProfileFormChange}
-                                    className={styles.editInput}
-                                    required
-                                />
+                                <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
+                                <span className={styles.detailValue}>{user.ra}</span>
                             </div>
+                        )}
+                        <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}><BsEnvelope /> Email</span>
+                            <span className={styles.detailValue}>{user.email}</span>
+                        </div>
+                        <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}><BsBook /> Livro Atual</span>
+                            <span className={styles.detailValue}>Nenhum livro emprestado</span>
+                        </div>
+                        <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}><BsHourglassSplit /> Status da Conta</span>
+                            <span className={styles.detailValue}>{user.status_conta || 'ativa'}</span>
+                        </div>
+                        <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
+                            <span className={styles.detailValue}>{user.perfil}</span>
+                        </div>
 
-                            {/* Campos Não Editáveis (Apenas Leitura) */}
-                             {user.ra && (
-                                <div className={styles.detailItem}>
-                                    <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
-                                    <span className={styles.detailValueReadOnly}>{user.ra}</span>
-                                </div>
-                             )}
-                              <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
-                                <span className={styles.detailValueReadOnly}>{user.perfil}</span>
-                            </div>
-                             <div className={styles.detailItem}>
-                                <span className={styles.detailLabel}><BsHourglassSplit /> Status da Conta</span>
-                                <span className={styles.detailValueReadOnly}>{user.status_conta || 'ativa'}</span>
-                            </div>
-
-                            {/* Botões de Ação */}
-                            <div className={styles.formActions}>
-                                <button type="submit" className={`${styles.button} ${styles.saveButton}`} disabled={isUpdating}>
-                                    <BsSave /> {isUpdating ? 'A guardar...' : 'Guardar Alterações'}
-                                </button>
-                                <button type="button" onClick={handleCancelEditProfile} className={`${styles.button} ${styles.cancelButton}`} disabled={isUpdating}>
-                                    <BsXCircle /> Cancelar
-                                </button>
-                            </div>
-                        </form>
-                    )}
-
-                    {/* Botão Sair (Fora do modo de edição) */}
-                    {!isEditing && (
-                        <div className={styles.logoutButtonWrapper}>
-                            <button onClick={handleLogout} className={styles.logoutButton}>
-                                <BsBoxArrowRight /> Sair
+                        {/* Botão Editar Perfil (Agora chama a função que abre o modal) */}
+                        <div className={styles.editButtonWrapper}>
+                            <button onClick={handleEditProfileClick} className={`${styles.button} ${styles.editButton}`}>
+                                <BsPencilSquare /> Editar Perfil
                             </button>
                         </div>
-                    )}
+                    </div>
+
+                    {/* --- MUDANÇA: MODO DE EDIÇÃO (Formulário) --- */}
+                    {/* O BLOCO INTEIRO de '{isEditing && ( ... )}' FOI REMOVIDO DAQUI */}
+                    
+
+                    {/* --- MUDANÇA: Botão Sair (REMOVIDO o '!isEditing') --- */}
+                    <div className={styles.logoutButtonWrapper}>
+                        <button onClick={handleLogout} className={styles.logoutButton}>
+                            <BsBoxArrowRight /> Sair
+                        </button>
+                    </div>
+
                 </div>
             </div>
+
+            {/* --- MUDANÇA: O MODAL É ADICIONADO AQUI --- */}
+            {/* Ele é renderizado aqui, mas só aparece quando 'isModalOpen' é true */}
+            <EditProfileModal
+                user={user}
+                isOpen={isModalOpen}
+                onClose={handleModalClose} // Função para fechar (botão Cancelar ou clique fora)
+                setIsEditing={setIsEditing}
+                profileFormData={profileFormData}
+                setProfileFormData={setProfileFormData} // Passa a função de ATUALIZAR o estado
+                handleProfileUpdateSubmit={handleProfileUpdateSubmit} // Passa a função de SUBMIT
+                isUpdating={isUpdating}
+            />
         </>
     );
 }

@@ -48,6 +48,8 @@
   font-size: 20px;
   outline: none;
   box-shadow: none;
+  background: transparent;
+  border: none;
 }
 
 .submitButton {
@@ -64,6 +66,10 @@
   justify-content: center;
   align-items: center;
   gap: 10px; /* Espaço entre o ícone e o texto */
+}
+
+.submitButton:hover {
+  background-color: #8c0000;
 }
 
 .submitButton:disabled {

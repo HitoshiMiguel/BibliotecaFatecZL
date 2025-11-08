@@ -3,7 +3,7 @@
   max-width: 600px;
   margin: 40px auto;
   padding: 30px;
-  border: 1px solid #ddd; /* Suavizei a borda */
+  border: 1px solid #555; /* Suavizei a borda */
   border-radius: 8px;
   background-color: #fff;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Adicionei uma sombra suave */

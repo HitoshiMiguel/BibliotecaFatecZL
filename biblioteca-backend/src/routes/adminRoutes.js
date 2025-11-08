@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const AdminController = require('../controller/adminController');
-const authMiddleware = require('../middleware/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 // --- ROTAS DE GESTÃO DE SOLICITAÇÕES (Existentes) ---
 router.get('/solicitacoes', authMiddleware.isAuthenticated, authMiddleware.isAdminOrBibliotecario, AdminController.getAllSolicitacoes);

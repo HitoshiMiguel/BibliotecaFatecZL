@@ -164,7 +164,7 @@ export default function UploadFormPage() {
           <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`}>
             Upload
           </button>
-          <a href="javascript:history.back()" className={`${styles.btn} ${styles.btnGhost}`}>
+          <a href="/siteFatec" className={`${styles.btn} ${styles.btnGhost}`}>
             Voltar
           </a>
         </div>

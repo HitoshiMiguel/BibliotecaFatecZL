@@ -1,0 +1,119 @@
+/* src/app/components/EditProfileModal.module.css */
+
+.modalOverlay {
+  position: fixed; /* Fixa na tela */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6); /* Fundo semi-transparente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Garante que fique por cima de tudo */
+}
+
+.modalContent {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 500px; /* Largura máxima do modal */
+  position: relative;
+  animation: slideIn 0.3s ease-out forwards; /* Adiciona uma animação */
+  border: 1px solid #ddd;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalContent h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.formGroup {
+  margin-bottom: 15px;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+  display: flex; /* Para alinhar ícones */
+  align-items: center;
+  gap: 8px; /* Espaço entre ícone e texto */
+}
+
+.formGroup input {
+  width: 100%; /* Ocupa 100% da largura */
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box; /* Garante que padding não estoure a largura */
+}
+
+.formGroup input:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+  color: #555;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end; /* Alinha os botões à direita */
+  gap: 30px; /* Espaçamento entre os botões */
+  margin-top: 30px;
+}
+
+/* Reutilizando seus botões de Salvar/Cancelar */
+.saveButton, .cancelButton {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saveButton {
+  background-color: #28a745; /* Verde */
+  color: white;
+}
+
+.saveButton:hover {
+  background-color: #218838;
+}
+
+.cancelButton {
+  background-color: #dc3545; /* Vermelho */
+  color: white;
+}
+
+.cancelButton:hover {
+  background-color: #c82333;
+}
+
+.saveButton:active, .cancelButton:active {
+  transform: scale(0.98); /* Efeito de clique */
+}
+
+.saveButton:disabled, .cancelButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

@@ -58,7 +58,7 @@ export default function AdminDashboardPage() {
             setUsers(data);
         } catch (err) {
             console.error("Erro fetchUsers:", err);
-            setError('Falha ao carregar lista de utilizadores.');
+            setError('Falha ao carregar lista de usuários.');
             if (err.message?.includes('401') || err.message?.includes('403')) {
                 setTimeout(() => router.push('/login'), 1500);
             }
@@ -191,7 +191,14 @@ export default function AdminDashboardPage() {
 
             if (response.ok) {
                 console.log(`Update para ID ${userId} bem-sucedido.`);
-                setMessage(`Utilizador ${userId} atualizado.`);
+
+                Swal.fire({
+                title: 'Sucesso!',
+                text: `Usuário ${dataToUpdate.nome} (ID: ${userId}) foi atualizado.`,
+                icon: 'success',
+                timer: 2000, // Opcional: fecha automaticamente após 2 segundos
+                showConfirmButton: false
+            });
                 handleCancelEdit(); // Fecha popup
                 // Atualiza lista local
                 setUsers(prevUsers => prevUsers.map(u =>
@@ -240,7 +247,7 @@ export default function AdminDashboardPage() {
 
                 if (response.ok) {
                     console.log(`Exclusão de ID ${userId} bem-sucedida.`);
-                    setMessage(`Utilizador ${userId} excluído.`);
+                    setMessage(`Usuário ${userId} excluído.`);
                     setUsers(prevUsers => prevUsers.filter(u => u.usuario_id !== userId)); // Remove da lista
                 } else {
                     console.error(`Falha na exclusão de ID ${userId}:`, data.message);
@@ -392,16 +399,16 @@ export default function AdminDashboardPage() {
             const data = await response.json();
 
             if (response.ok || response.status === 201) {
-                setMessage(data.message || `Utilizador ${dataToCreate.perfil} criado com sucesso.`);
+                setMessage(data.message || `Usuário ${dataToCreate.perfil} criado com sucesso.`);
                 handleCancelCreate(); // Fecha o popup
                 fetchUsers(); // Atualiza a lista de utilizadores
             } else {
-                setError(data.message || 'Falha ao criar utilizador.');
+                setError(data.message || 'Falha ao criar usuário.');
                 // Não fecha o popup em caso de erro
             }
         } catch (err) {
-            console.error("Erro ao criar utilizador:", err);
-            setError('Erro de rede ao tentar criar utilizador.');
+            console.error("Erro ao criar usuário:", err);
+            setError('Erro de rede ao tentar criar usuário.');
         } finally {
             setIsActionLoading(false);
         }
@@ -747,6 +754,105 @@ export default function AdminDashboardPage() {
                     </div>
                 </div>
              )}
+
+             {/* --- POPUP / MODAL DE EDIÇÃO --- */}
+            {showEditPopup && editingUser && (
+                <div className={styles.popupOverlay} ref={editPopupRef}>
+                    <div className={styles.popupContent}>
+                        <h2>Editar Usuário (ID: {editingUser.usuario_id})</h2>
+                        
+                        {/* Mostra erro específico da edição */}
+                        {error && <p className={`${styles.message} ${styles.errorText}`}>{error}</p>}
+
+                        <form onSubmit={handleUpdateSubmit}>
+                            {/* Linha Nome */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="edit-nome">Nome:</label>
+                                <input 
+                                    id="edit-nome" 
+                                    type="text" 
+                                    name="nome" 
+                                    value={editFormData.nome || ''} 
+                                    onChange={handleEditFormChange} 
+                                    className={styles.formInput} 
+                                    required 
+                                />
+                            </div>
+                            {/* Linha Email */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="edit-email">Email:</label>
+                                <input 
+                                    id="edit-email" 
+                                    type="email" 
+                                    name="email" 
+                                    value={editFormData.email || ''} 
+                                    onChange={handleEditFormChange} 
+                                    className={styles.formInput} 
+                                    required 
+                                />
+                            </div>
+                             {/* Linha Perfil */}
+                             <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="edit-perfil">Perfil:</label>
+                                <select 
+                                    id="edit-perfil" 
+                                    name="perfil" 
+                                    value={editFormData.perfil || 'comum'} 
+                                    onChange={handleEditFormChange} 
+                                    className={styles.formSelect} 
+                                    required
+                                >
+                                    <option value="comum">Comum (Aluno)</option>
+                                    <option value="professor">Professor</option>
+                                    <option value="bibliotecario">Bibliotecário</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            {/* Linha RA (Condicional) */}
+                            <div className={styles.formRow} style={{ display: editFormData.perfil === 'comum' ? 'flex' : 'none' }}>
+                                <label className={styles.formLabel} htmlFor="edit-ra">RA:</label>
+                                <input 
+                                    id="edit-ra" 
+                                    type="text" 
+                                    name="ra" 
+                                    value={editFormData.ra || ''} 
+                                    onChange={handleEditFormChange} 
+                                    maxLength={13} 
+                                    className={styles.formInput} 
+                                    placeholder="(Obrigatório se Aluno)"
+                                />
+                            </div>
+                            {/* Linha Status */}
+                            <div className={styles.formRow}>
+                                <label className={styles.formLabel} htmlFor="edit-status">Status:</label>
+                                <select 
+                                    id="edit-status" 
+                                    name="status_conta" 
+                                    value={editFormData.status_conta || 'ativa'} 
+                                    onChange={handleEditFormChange} 
+                                    className={styles.formSelect} 
+                                    required
+                                >
+                                    <option value="ativa">Ativa</option>
+                                    <option value="inativa">Inativa</option>
+                                    {/* Adicione outros status se houver */}
+                                </select>
+                            </div>
+
+                            {/* Botões */}
+                            <div className={styles.formActions}>
+                                <button type="submit" className={`${styles.button} ${styles.saveButton}`} disabled={isActionLoading}>
+                                    {isActionLoading ? 'Salvando...' : 'Salvar Alterações'}
+                                </button>
+                                <button type="button" onClick={handleCancelEdit} className={`${styles.button} ${styles.cancelButton}`} disabled={isActionLoading}>
+                                    Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* FIM DO POPUP DE EDIÇÃO */}
 
         </div> // Fim do container principal
     );

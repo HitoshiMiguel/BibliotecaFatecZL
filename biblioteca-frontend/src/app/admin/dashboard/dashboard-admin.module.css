@@ -1,0 +1,297 @@
+/* app/admin/dashboard/dashboard-admin.module.css */
+
+.container {
+    font-family: Arial, sans-serif;
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.section {
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.section:last-child {
+    border-bottom: none; /* Remove a borda da última secção */
+}
+
+.sectionTitle {
+    color: #b71c1c; /* Cor principal */
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #b71c1c;
+    font-size: 1.5em; /* Tamanho maior */
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.th, .td {
+    border: 1px solid #ddd;
+    padding: 12px 15px; /* Mais padding */
+    text-align: left;
+    vertical-align: middle;
+}
+
+.th {
+    background-color: #f8f9fa; /* Fundo cinza claro para cabeçalho */
+    font-weight: bold;
+    color: #333;
+}
+
+/* Zebra striping for table rows */
+.table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.button {
+    padding: 8px 14px; /* Padding ligeiramente maior */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 8px; /* Espaçamento entre botões */
+    font-size: 0.9em;
+    white-space: nowrap;
+    transition: opacity 0.2s ease-in-out, background-color 0.2s; /* Adiciona transição */
+}
+
+.button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.editButton {
+    background-color: #ffc107; /* Amarelo */
+    color: #212529; /* Texto escuro */
+}
+.editButton:hover:not(:disabled) { background-color: #e0a800; }
+
+.deleteButton {
+    background-color: #dc3545; /* Vermelho */
+    color: white;
+}
+.deleteButton:hover:not(:disabled) { background-color: #c82333; }
+
+.approveButton {
+    background-color: #28a745; /* Verde */
+    color: white;
+}
+.approveButton:hover:not(:disabled) { background-color: #218838; }
+
+.rejectButton {
+    background-color: #6c757d; /* Cinza */
+    color: white;
+}
+.rejectButton:hover:not(:disabled) { background-color: #5a6268; }
+
+.saveButton {
+    background-color: #28a745; /* Verde */
+    color: white;
+}
+.saveButton:hover:not(:disabled) { background-color: #218838; }
+
+.cancelButton {
+    background-color: #6c757d; /* Cinza */
+    color: white;
+}
+.cancelButton:hover:not(:disabled) { background-color: #5a6268; }
+
+.formInput, .formSelect {
+    padding: 10px; /* Padding ajustado */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    flex-grow: 1; /* Permite que o input cresça */
+    box-sizing: border-box;
+}
+
+.formSelect {
+    cursor: pointer;
+}
+
+.message {
+    padding: 12px 15px; /* Padding ajustado */
+    margin: 20px 0; /* Aumentei a margem */
+    border: 1px solid transparent; /* Transparente por defeito */
+    border-radius: 4px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.errorText {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+}
+
+.successText {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.loadingText {
+    font-style: italic;
+    color: #555;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.logoutButton {
+    background-color: #dc3545; /* Vermelho */
+    color: white;
+    float: right; /* Posiciona no canto superior direito */
+    margin-top: -10px; /* Ajusta posição vertical */
+}
+.logoutButton:hover:not(:disabled) { background-color: #c82333; }
+
+/* Estilos para o formulário de edição */
+.editFormContainer {
+    margin-top: 30px;
+    padding: 25px; /* Mais padding */
+    border: 1px solid #dee2e6; /* Borda mais suave */
+    border-radius: 5px;
+    background-color: #f8f9fa; /* Fundo levemente acinzentado */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.editFormContainer h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.formRow {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espaço entre label e input */
+}
+
+.formLabel {
+    width: 120px; /* Largura fixa para labels */
+    flex-shrink: 0; /* Impede que o label encolha */
+    text-align: right;
+    font-weight: bold;
+    color: #495057;
+}
+
+.formActions {
+    margin-top: 25px; /* Espaço acima dos botões */
+    padding-top: 15px;
+    border-top: 1px solid #eee; /* Linha divisória */
+}
+
+/* app/admin/dashboard/dashboard-admin.module.css (Adicionar no final) */
+
+/* Fundo escurecido que cobre a página */
+.popupOverlay {
+    position: fixed; /* Fixa na tela */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Preto semitransparente */
+    display: flex; /* Para centralizar o conteúdo */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Garante que fique por cima de outros elementos */
+}
+
+/* O contentor do formulário do popup */
+.popupContent {
+    background-color: #fff;
+    padding: 30px 40px; /* Mais padding */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%; /* Largura responsiva */
+    max-width: 600px; /* Largura máxima */
+    max-height: 90vh; /* Altura máxima */
+    overflow-y: auto; /* Adiciona scroll se o conteúdo for grande */
+}
+
+.popupContent h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #333;
+    text-align: center;
+}
+
+/* Reutiliza estilos de formulário se já definidos, ou ajuste aqui */
+/* Exemplo: .popupContent .formRow, .popupContent .formLabel, etc. */
+
+.popupContent .formActions {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex; /* Alinha botões */
+    justify-content: flex-end; /* Coloca botões à direita */
+    gap: 10px;
+}
+
+/* Ajuste estilos dos inputs/selects dentro do popup se necessário */
+.popupContent .formInput, .popupContent .formSelect {
+    font-size: 0.95em; /* Ligeiramente menor */
+}
+
+/* app/admin/dashboard/dashboard-admin.module.css (Adicionar/Ajustar) */
+
+/* ... (Estilos anteriores: .container, .section, .sectionTitle, .table, .th, .td, botões, .popupOverlay, .popupContent, etc.) ... */
+
+/* Estilo para as subsecções de utilizadores */
+.subSection {
+    margin-top: 30px; /* Espaço acima de cada sub-lista */
+    padding-top: 20px;
+    border-top: 1px dashed #ddd; /* Linha tracejada entre secções */
+}
+
+.subSectionTitle {
+    font-size: 1.2em;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+/* Contentor para o campo de pesquisa */
+.searchContainer {
+    margin-bottom: 15px;
+}
+
+/* Campo de pesquisa */
+.searchInput {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%; /* Ocupa a largura disponível */
+    max-width: 400px; /* Limita a largura máxima */
+    font-size: 0.95em;
+    box-sizing: border-box;
+}
+
+/* Ajuste no botão de Atualizar Lista principal */
+.section > .button { /* Seleciona o botão diretamente dentro da secção principal */
+    margin-bottom: 20px; 
+}
+
+/* Opcional: Adicionar um botão de Criar Utilizador */
+.createButton {
+    background-color: #17a2b8; /* Cor Ciano */
+    color: white;
+    margin-left: 10px; /* Espaço à esquerda */
+}
+.createButton:hover:not(:disabled) { background-color: #138496; }
+
+
+/* Ajuste para garantir que botões na tabela não quebrem linha facilmente */
+.td button {
+    margin-bottom: 5px; /* Adiciona um pequeno espaço se quebrar */
+}

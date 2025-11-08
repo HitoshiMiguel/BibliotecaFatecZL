@@ -1,12 +1,12 @@
-
-
+/* Estilos existentes */
 .formContainer {
   max-width: 600px;
   margin: 40px auto;
   padding: 30px;
-  border: 1px solid #555;
+  border: 1px solid #ddd; /* Suavizei a borda */
   border-radius: 8px;
   background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Adicionei uma sombra suave */
 }
 
 .field {
@@ -17,6 +17,7 @@
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
+  color: #333; /* Cor mais escura para melhor contraste */
 }
 
 .field input {
@@ -25,12 +26,28 @@
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 16px;
+  box-sizing: border-box; /* Garante que padding não aumente a largura total */
 }
+
+/* Estilo para inputs inválidos (usado com a classe 'input-invalid' do JS) */
+.field input.input-invalid {
+  border-color: #b20000; /* Cor vermelha para erro */
+  background-color: #fffafa; /* Fundo levemente rosado */
+}
+
+/* Mensagem de erro abaixo do campo */
+.field .field-error { /* Ajustei o nome da classe para corresponder ao JSX */
+  color: #b20000;
+  font-size: 0.875em; /* 14px */
+  margin-top: 5px;
+  display: block; /* Garante que ocupe espaço */
+}
+
 
 .btnSubmit {
   width: 100%;
   padding: 15px;
-  background-color: #b20000;
+  background-color: #b20000; /* Cor principal */
   color: white;
   border: none;
   border-radius: 5px;
@@ -38,21 +55,19 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s;
+  display: flex; /* Para alinhar ícone e texto */
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Espaço entre ícone e texto */
 }
 
-.btnSubmit:hover {
-  background-color: #8c0000;
+.btnSubmit:hover:not(:disabled) { /* Evita hover no botão desativado */
+  background-color: #8c0000; /* Tom mais escuro */
 }
 
-.btnsubmit:disabled {
+.btnSubmit:disabled { /* Corrigido o nome da pseudo-classe */
   background-color: #ccc;
-  cursor:not-allowed;
-}
-
-.errorField {
-  color: #b20000;
-  font-size: 14px;
-  margin-top: 5px;
+  cursor: not-allowed;
 }
 
 .redirectLink {
@@ -63,11 +78,78 @@
 }
 
 .redirectLink a {
-  color: #0070f3;
+  color: #b20000; /* Cor principal para links também */
   text-decoration: none;
   font-weight: bold;
 }
 
 .redirectLink a:hover {
   text-decoration: underline;
+}
+
+/* --- NOVOS ESTILOS ADICIONADOS --- */
+
+/* Estilo para os botões de toggle Aluno/Professor */
+.perfilToggle {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 25px; /* Aumentei o espaçamento */
+    gap: 10px;
+}
+
+.perfilToggle button {
+    padding: 10px 18px; /* Ajustei padding */
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    border-radius: 4px;
+    color: #555;
+    font-size: 14px; /* Ajustei tamanho da fonte */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.perfilToggle button:hover {
+    background-color: #e0e0e0;
+}
+
+.perfilToggle button.active {
+    background-color: #b20000; /* Cor principal */
+    color: white;
+    border-color: #a00000; /* Borda um pouco mais escura */
+    font-weight: bold;
+}
+
+/* Estilo para o wrapper da senha (permite posicionar o ícone) */
+.passwordWrapper {
+  position: relative;
+  display: flex; /* Mantém input e botão na mesma linha */
+  align-items: center; /* Alinha verticalmente */
+}
+
+/* Ajusta o input da senha para dar espaço ao ícone */
+.passwordWrapper input {
+  /* O input já tem width: 100% da classe .field input */
+  padding-right: 40px; /* Adiciona espaço à direita para o ícone não sobrepor */
+}
+
+/* Estilo para o botão do ícone de olho */
+.eyeIcon {
+  position: absolute; /* Posiciona relativamente ao .passwordWrapper */
+  right: 10px; /* Distância da borda direita */
+  top: 50%; /* Centraliza verticalmente */
+  transform: translateY(-50%); /* Ajuste fino da centralização vertical */
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666; /* Cor do ícone */
+  padding: 0; /* Remove padding padrão do botão */
+  font-size: 1.3rem; /* Tamanho do ícone (ajuste conforme necessário) */
+  display: flex; /* Para centralizar o ícone dentro do botão */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Remove foco visual padrão do botão do ícone */
+.eyeIcon:focus {
+    outline: none;
 }

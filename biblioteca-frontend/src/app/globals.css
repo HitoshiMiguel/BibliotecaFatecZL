@@ -1,3 +1,10 @@
+/* ...existing code... */
+
+/* Tailwind base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Reset (Global, mantido como está) */
 * {
   margin: 0;
@@ -5,15 +12,15 @@
   box-sizing: border-box;
 }
 
-/* Body (Global, mantido como está) */
+/* Body (Global) */
 body {
   font-family: Arial, Helvetica, sans-serif;
   background: #fff;
   color: #333;
-  /* Define o padding no topo para a altura EXATA do header. Ajuste se necessário. */
-  padding-top: 174px !important;
+  padding-top: var(--header-offset, 0px) !important; /* <-- variável, não número fixo */
   will-change: transform;
 }
+
 
 /* O contêiner principal do header */
 .app-header {
@@ -131,5 +138,29 @@ body {
   font-weight: 700;
   color: #fff;
 }
+/* Skip link global: fica fora do fluxo e não cria espaço */
+.skip-link,
+a[href="#main-content"],
+a[href="#conteudo"],
+a[href="#content"] {
+  position: fixed;       /* tira do fluxo */
+  left: -9999px;         /* escondido até focar */
+  top: 12px;
+  z-index: 10000;
+  background: #000;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus,
+a[href="#main-content"]:focus,
+a[href="#conteudo"]:focus,
+a[href="#content"]:focus {
+  left: 16px;            /* aparece no canto esquerdo ao focar via TAB */
+}
+
 
 .page-content { min-height: 100%; overflow: visible; }

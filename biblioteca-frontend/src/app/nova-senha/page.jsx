@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import styles from './nova-senha.module.css'; // se não tiver, pode remover esta linha
+
 
 export default function NovaSenha() {
   const searchParams = useSearchParams();
@@ -15,8 +16,14 @@ export default function NovaSenha() {
   const [confirmar, setConfirmar] = useState('');
   const [loading, setLoading] = useState(false);
 
+useEffect(() => {
+        document.title = 'Nova senha - Biblioteca Fatec ZL'; // Define o título da aba
+    }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    
 
     if (!token) {
       Swal.fire({ icon: 'error', title: 'Link inválido', text: 'Token ausente ou expirado.' });
@@ -29,11 +36,13 @@ export default function NovaSenha() {
 
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:4000/api/nova-senha', {
+      const res = await fetch('http://localhost:4000/api/auth/redefinir-senha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, senha }),
       });
+
+      
 
       const data = await res.json();
 

@@ -218,7 +218,7 @@ export default function AdminDashboardPage() {
         console.log(`handleDelete iniciado para ID ${userId}`);
 
         const result = await Swal.fire({
-            title: 'Tem a certeza?',
+            title: 'Deseja Excluir?',
             text: `Excluir "${userName}" (ID: ${userId})? Esta ação é irreversível!`,
             icon: 'warning',
             showCancelButton: true,
@@ -498,18 +498,18 @@ export default function AdminDashboardPage() {
 
            {/* --- Secção: Gerenciar Utilizadores --- */}
             <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>Gerenciar Utilizadores</h2>
+                <h2 className={styles.sectionTitle}>Gerenciar Usuários</h2>
                  <button onClick={fetchUsers} disabled={isPageLoading || isActionLoading} className={styles.button} style={{marginBottom: '20px'}}>
-                     {isLoadingUsers ? 'A carregar...' : 'Atualizar Listas'}
+                     {isLoadingUsers ? 'Carregando...' : 'Atualizar Listas'}
                  </button>
                  {/* --- BOTÃO PARA ABRIR POPUP DE CRIAÇÃO --- */}
                  <button onClick={handleCreateClick} className={`${styles.button} ${styles.createButton}`} disabled={isPageLoading || isActionLoading}>
-                     Criar Novo Utilizador
+                     Criar Novo Usuário
                  </button>
 
                  {/* <button className={`${styles.button} ${styles.createButton}`}>Criar Novo Utilizador</button> */}
 
-                 {isLoadingUsers && <p className={styles.loadingText}>A carregar utilizadores...</p>}
+                 {isLoadingUsers && <p className={styles.loadingText}>Carregando Usuários...</p>}
 
 
                  {/* --- Sub-Secção: Alunos --- */}
@@ -696,7 +696,7 @@ export default function AdminDashboardPage() {
             {showCreatePopup && (
                 <div className={styles.popupOverlay} ref={createPopupRef}>
                     <div className={styles.popupContent}>
-                        <h2>Criar Novo Utilizador</h2>
+                        <h2>Criar um novo usuário</h2>
                         {/* Mostra erro específico da criação */}
                         {error && <p className={`${styles.message} ${styles.errorText}`}>{error}</p>}
 
@@ -737,7 +737,7 @@ export default function AdminDashboardPage() {
                             {/* Botões */}
                             <div className={styles.formActions}>
                                 <button type="submit" className={`${styles.button} ${styles.saveButton}`} disabled={isActionLoading}>
-                                     {isActionLoading ? 'A criar...' : 'Criar Utilizador'}
+                                     {isActionLoading ? 'Criando...' : 'Criar Usuário'}
                                  </button>
                                 <button type="button" onClick={handleCancelCreate} className={`${styles.button} ${styles.cancelButton}`} disabled={isActionLoading}>
                                      Cancelar

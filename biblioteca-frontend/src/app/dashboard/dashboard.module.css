@@ -10,8 +10,9 @@
   max-width: 800px;
   margin-top: 50px;
   padding: 40px 50px; /* Aumentei o padding lateral */
-  border: 2px solid #b20000;
+  border: 1px solid #555;
   border-radius: 8px;
+  margin-bottom: 60px;
 }
 
 .userDetails {
@@ -53,15 +54,18 @@
 
 .logoutButton {
   padding: 10px 40px;
-  background-color: transparent;
-  color: #b20000;
+  
+  /* Estado Normal: Botão Vermelho */
+  background-color: #b20000;
+  color: white;
   border: 1px solid #b20000;
-  border-radius: 20px;
+
+  /* Estilos que você já tinha (mantidos) */
+  border-radius: 5px;
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
-  /* Estilos para alinhar o ícone */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -69,8 +73,12 @@
 }
 
 .logoutButton:hover {
-  background-color: #b20000;
-  color: white;
+  /* Estado Hover: Botão Branco */
+  background-color: white;
+  color: #b20000;
+  
+  /* A borda '1px solid #b20000' é herdada,
+     o que cria o efeito de "inversão" */
 }
 
 /* dashboard.module.css (Adicionar/Ajustar) */
@@ -161,7 +169,7 @@
   box-sizing: border-box;
 }
 
-/* Ações do formulário (Guardar/Cancelar) */
+/* Ações do formulário (Salvar/Cancelar) */
 .formActions {
   margin-top: 30px;
   padding-top: 20px;
@@ -178,11 +186,11 @@
 .saveButton:hover:not(:disabled) { background-color: #218838; }
 
 .cancelButton {
-  background-color: #6c757d; /* Cinza */
+  background-color: #b20000; /* Cinza */
   color: white;
   border: 1px solid #6c757d;
 }
-.cancelButton:hover:not(:disabled) { background-color: #5a6268; }
+.cancelButton:hover:not(:disabled) { background-color: #940303; }
 
 /* Para a mensagem de loading inicial */
 .loading {

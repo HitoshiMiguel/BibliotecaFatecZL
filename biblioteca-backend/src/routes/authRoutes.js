@@ -6,7 +6,7 @@ const router = express.Router();
 // --- IMPORTAÇÕES (Apenas uma vez no topo) ---
 const authController = require('../controller/authController');
 // Importa a função necessária do Middleware APENAS UMA VEZ
-const { isAuthenticated } = require('../middleware/authMiddleware');
+const { isAuthenticated } = require('../middlewares/authMiddleware');
 const { body, validationResult } = require('express-validator');
 
 // --- REGRAS DE VALIDAÇÃO (Middleware Local) ---

@@ -175,7 +175,7 @@ function handleChangeColorFilter(e) {
           </p>
           <nav aria-label="Ações principais">
             <a href="/consulta" className={styles.primaryBtn}>Consulte o acervo online</a>
-            <a href="/solicitacao" className={styles.ghostBtn}>Solicitação para a biblioteca</a>
+            <a href="/uploadForm" className={styles.ghostBtn}>Solicitação para a biblioteca</a>
           </nav>
         </div>
       </header>

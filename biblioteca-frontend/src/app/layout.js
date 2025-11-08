@@ -3,6 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

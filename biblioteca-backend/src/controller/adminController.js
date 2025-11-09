@@ -5,10 +5,13 @@ const UserModel = require('../model/UserModel');
 const SolicitacaoModel = require('../model/SolicitacaoModel');
 const UsuarioBuilder = require('../services/UserBuilder');
 const { generateUniqueToken } = require('../services/UserService');
+const connection = require('../config/db');
+const { getDriveWithOAuth } = require('../lib/googleOAuth');
 
 // --- CORREÇÃO DA IMPORTAÇÃO ---
 // Importa a função correta do emailService
 const { sendConfirmationEmail, sendActivationEmail } = require('../services/emailService');
+const { get } = require('../routes/adminRoutes');
 // -----------------------------
 
 // --- 1. FUNÇÕES PARA VISUALIZAR SOLICITAÇÕES ---
@@ -402,6 +405,173 @@ const createUsuarioDireto = async (req, res) => {
     }
 };
 
+// --- NOVO MÉTODO PARA SUBMISSÕES ---
+
+// GET /api/admin/submissoes/pendentes
+const getSubmissoesPendentes = async (req, res, next) => {
+  let pool; // Usado para garantir que a conexão seja tratada
+  try {
+    // 2. Definir a query SQL
+    const sql = `
+      SELECT
+        s.submissao_id,
+        s.titulo_proposto,
+        s.descricao,
+        s.data_submissao,
+        u.nome AS nome_remetente
+      FROM
+        dg_submissoes s
+      JOIN
+        dg_usuarios u ON s.usuario_id = u.usuario_id
+      WHERE
+        s.status = 'pendente'
+      ORDER BY
+        s.data_submissao ASC;
+    `;
+
+    // 3. Executar a query
+    // (Assumindo que você usa mysql2/promise, que retorna [rows, fields])
+    const [rows] = await connection.execute(sql);
+
+    // 4. Retornar os dados como JSON
+    res.status(200).json(rows);
+
+  } catch (error) {
+    // 5. Lidar com erros
+    console.error('Erro ao buscar submissões pendentes:', error);
+    // Passa o erro para seu middleware de erro (errorHandler.js)
+    next(error);
+  }
+  
+  // (Nota: Se seu 'connection()' não retorna um pool, 
+  // e sim uma conexão única, você pode precisar de pool.release() aqui)
+};
+
+// src/controller/adminController.js
+
+// ... (depois da função getSubmissoesPendentes)
+
+// --- NOVAS ROTAS DE MODERAÇÃO ---
+
+/**
+ * POST /api/admin/submissoes/:id/aprovar
+ * Aprova uma submissão, move o arquivo no Google Drive e
+ * cria a entrada final em 'dg_itens_digitais'.
+ */
+const aprovarSubmissao = async (req, res, next) => {
+  const { id: submissaoId } = req.params;
+  const { id: revisorId } = req.user; // ID do bibliotecário logado
+
+  // IDs das pastas do .env
+  const approvedFolderId = process.env.GOOGLE_DRIVE_APROVADOS_ID;
+  const pendingFolderId = process.env.GOOGLE_DRIVE_PENDENTES_ID;
+
+  if (!approvedFolderId || !pendingFolderId) {
+    console.error('IDs das pastas Pendentes/Aprovados não configuradas no .env');
+    return next(new Error('Configuração do servidor incompleta.'));
+  }
+
+  try {
+    // 1. Encontrar a submissão pendente no DB
+    const sqlFind = `
+      SELECT caminho_anexo, titulo_proposto, descricao 
+      FROM dg_submissoes 
+      WHERE submissao_id = ? AND status = 'pendente'
+    `;
+    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
+    }
+
+    const submissao = rows[0];
+    const googleFileId = submissao.caminho_anexo;
+
+    // 2. Mover o arquivo no Google Drive
+    const drive = getDriveWithOAuth();
+    await drive.files.update({
+      fileId: googleFileId,
+      addParents: [approvedFolderId],  // Adiciona na pasta "Aprovados"
+      removeParents: [pendingFolderId], // Remove da pasta "Pendentes"
+      fields: 'id', // Apenas para confirmar
+    });
+
+    // 3. Atualizar o status da submissão
+    const sqlUpdate = `
+      UPDATE dg_submissoes 
+      SET status = 'aprovado', revisado_por_id = ? 
+      WHERE submissao_id = ?
+    `;
+    await connection.execute(sqlUpdate, [revisorId, submissaoId]);
+
+    // 4. (Opcional, mas recomendado) Criar o item final na tabela 'dg_itens_digitais'
+    const sqlInsertItem = `
+      INSERT INTO dg_itens_digitais 
+        (titulo, descricao, caminho_arquivo, data_publicacao, submissao_id) 
+      VALUES (?, ?, ?, NOW(), ?)
+    `;
+    await connection.execute(sqlInsertItem, [
+      submissao.titulo_proposto,
+      submissao.descricao,
+      googleFileId, // Salva o ID do Google no item final
+      submissaoId
+    ]);
+
+    // 5. Sucesso
+    res.status(200).json({ success: true, message: 'Submissão aprovada com sucesso!' });
+
+  } catch (error) {
+    console.error('Erro ao aprovar submissão:', error);
+    next(error);
+  }
+};
+
+/**
+ * POST /api/admin/submissoes/:id/reprovar
+ * Reprova uma submissão, deleta o arquivo do Google Drive e
+ * atualiza o status no banco.
+ */
+const reprovarSubmissao = async (req, res, next) => {
+  const { id: submissaoId } = req.params;
+  const { id: revisorId } = req.user;
+
+  try {
+    // 1. Encontrar a submissão pendente
+    const sqlFind = `
+      SELECT caminho_anexo 
+      FROM dg_submissoes 
+      WHERE submissao_id = ? AND status = 'pendente'
+    `;
+    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
+    }
+
+    const googleFileId = rows[0].caminho_anexo;
+
+    // 2. Deletar o arquivo no Google Drive
+    const drive = getDriveWithOAuth();
+    await drive.files.delete({
+      fileId: googleFileId,
+    });
+
+    // 3. Atualizar o status da submissão para 'rejeitado'
+    const sqlUpdate = `
+      UPDATE dg_submissoes 
+      SET status = 'rejeitado', revisado_por_id = ? 
+      WHERE submissao_id = ?
+    `;
+    await connection.execute(sqlUpdate, [revisorId, submissaoId]);
+
+    // 4. Sucesso
+    res.status(200).json({ success: true, message: 'Submissão reprovada e arquivo deletado.' });
+
+  } catch (error) {
+    console.error('Erro ao reprovar submissão:', error);
+    next(error);
+  }
+};
 
 // --- EXPORTAÇÕES ---
 module.exports = {
@@ -413,4 +583,7 @@ module.exports = {
     getUserById,
     updateUser,
     deleteUser,
+    getSubmissoesPendentes,
+    aprovarSubmissao,
+    reprovarSubmissao
 };

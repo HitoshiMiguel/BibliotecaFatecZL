@@ -142,6 +142,7 @@ export default function UploadFormPage() {
       const res = await fetch('http://localhost:4000/api/upload', {
         method: 'POST',
         body: data,
+        credentials: 'include', // Envia cookies
       });
       const result = await res.json();
       if (result.success) {

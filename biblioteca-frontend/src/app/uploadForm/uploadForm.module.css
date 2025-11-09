@@ -1,32 +1,19 @@
-.page {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
+/* src/app/teste/uploadForm.module.css */
 
-/* barra vermelha do título */
-.headerBar {
-  width: 100%;
-  background: #b20000; /* vermelho Fatec */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px 12px;
-}
-.headerTitle {
-  color: #fff;
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0;
-}
-
-/* formulário */
-.form {
+/* 3. Card branco (novo) */
+.card {
   max-width: 980px;
   width: 100%;
-  margin: 0 auto;
-  padding: 8px 16px 24px;
+  margin: 30px auto;
+  padding: 24px 32px; /* Mais preenchimento */
+  background: #fff;
+  border: 1px solid #555;
+  border-radius: 8px; /* Bordas suaves */
+}
+
+/* 4. Formulário (agora dentro do card) */
+.form {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -39,35 +26,43 @@
 }
 
 .label {
-  font-size: 13px;
-  color: #1f2a37;
+  font-size: 14px; /* Um pouco maior */
+  color: #374151; /* Mais escuro */
   font-weight: 600;
 }
 
-/* inputs “pílula” cinza claro, como nos prints */
+/* 5. Inputs (mantive seu estilo "pílula") */
 .input,
 .select {
   width: 100%;
-  background: #dddddd;
-  border: none;
+  border: 1px solid #ccc; /* Borda sutil */
   outline: none;
-  border-radius: 22px;
-  height: 36px;
+  border-radius: 4px;
+  height: 42px; /* Um pouco mais alto */
   padding: 0 16px;
   font-size: 14px;
   color: #111827;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box; /* Garante que o padding não quebre o layout */
 }
+
+.input:focus,
+.select:focus {
+  border-color: #b20000;
+  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.2);
+}
+
 .input::placeholder { color: #6b7280; }
 
 .textarea {
   height: auto;
   padding: 12px 16px;
-  border-radius: 14px;
+  border-radius: 14px; /* Borda mais suave */
   resize: vertical;
   min-height: 140px;
 }
 
-/* wrapper para a select com setinha visual */
+/* 6. Wrapper do Select */
 .inputWrap {
   position: relative;
   width: 100%;
@@ -81,7 +76,7 @@
 }
 .caret {
   position: absolute;
-  right: 14px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 14px;
@@ -89,7 +84,40 @@
   pointer-events: none;
 }
 
-/* ações */
+/* 7. Input de Arquivo Estilizado (NOVO) */
+.fileInputHidden {
+  display: none; /* Oculta o input real */
+}
+
+.fileInputLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  height: 42px;
+  padding: 0 16px 0 16px;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fileInputLabel:hover {
+  border-color: #b20000;
+}
+
+.fileInputText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #111827;
+}
+
+/* 8. Ações (Botões) */
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -101,29 +129,123 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
-  border-radius: 18px;
+  padding: 12px 18px; /* Mais padding */
+  border-radius: 22px; /* Pílula */
   font-weight: 600;
   text-decoration: none;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: transform .04s ease-in-out, filter .15s ease;
+  transition: all 0.2s ease;
 }
-.btn:active { transform: translateY(1px); }
-.btnPrimary {
-  background: #162f4a; /* azul escuro dos botões do print */
-  color: #fff;
-}
-.btnPrimary:hover { filter: brightness(1.06); }
-.btnGhost {
-  background: #162f4a;
-  color: #fff;
-}
-.btnGhost:hover { filter: brightness(1.06); }
 
-/* responsivo */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Botão Primário (Vermelho) */
+.btnPrimary {
+  background: #b20000;
+  color: #fff;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: #9a0000;
+  box-shadow: 0 4px 10px rgba(178, 0, 0, 0.2);
+}
+
+/* Botão Ghost (Voltar) - Invertido (como o logout) */
+.btnGhost {
+  background: transparent;
+  color: #b20000;
+  border: 1px solid #b20000;
+}
+.btnGhost:hover {
+  background: #b20000;
+  color: #fff;
+}
+
+.tipoToggle {
+ display: flex;
+ justify-content: center; /* Centraliza os botões */
+ margin-top: 5px; /* Pequeno espaço depois do label */
+ gap: 10px;
+}
+
+.tipoToggle button {
+ padding: 10px 18px;
+ border: 1px solid #ccc;
+ background-color: #f0f0f0;
+ cursor: pointer;
+ border-radius: 4px;
+ color: #555;
+ font-size: 14px;
+ transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.tipoToggle button:hover {
+background-color: #e0e0e0;
+}
+
+.tipoToggle button.active {
+ background-color: #b20000; /* Cor principal */
+ color: white;
+ border-color: #a00000; /* Borda um pouco mais escura */
+ font-weight: bold;
+}
+
+/* --- ESTILOS PARA CENTRALIZAR O TOGGLE --- */
+
+.toggleGroup {
+  /* Centraliza o label e a fileira de botões */
+  align-items: center; 
+  
+  /* Adiciona um espaço extra abaixo dos botões */
+  margin-bottom: 10px; 
+}
+
+/* Dando mais destaque (destaque melhor) ao label */
+.toggleGroup > .label {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827; /* Cor mais escura */
+}
+
+/* Aumentando o espaço entre o label e os botões */
+.tipoToggle {
+  margin-top: 10px; 
+}
+
+/* --- NOVOS ESTILOS PARA O BOTÃO DE REMOVER --- */
+
+.fileInputActions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espaço entre o X e o "Procurar" */
+}
+
+.removeFileButton {
+  background: transparent;
+  border: none;
+  color: #dc3545; /* Vermelho "perigo" */
+  font-size: 1.1rem; /* Tamanho do ícone */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.removeFileButton:hover {
+  color: #b20000; /* Vermelho mais escuro */
+}
+
+/* Responsivo */
 @media (max-width: 640px) {
-  .form { padding: 8px 12px 24px; }
+  .card { 
+    padding: 16px;
+    margin: 0 12px;
+  }
   .actions { grid-template-columns: 1fr; }
-  .headerTitle { font-size: 22px; }
+  .headerTitle { font-size: 20px; }
+  .fileInputButton { display: none; } /* Esconde o botão "Procurar" em telas pequenas */
 }

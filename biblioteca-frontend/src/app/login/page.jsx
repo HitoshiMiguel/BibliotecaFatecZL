@@ -28,7 +28,6 @@ export default function LoginPage() {
     const passRef = useRef(null);
 
     const router = useRouter();
-
     // --- Definir o título da página dinamicamente ---
     useEffect(() => {
         document.title = 'Login - Biblioteca Fatec ZL'; // Define o título da aba do navegador
@@ -44,57 +43,77 @@ export default function LoginPage() {
     }, [ui]);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setUi({ status: 'loading', message: '', kind: 'error', fieldErrors: {} });
+        e.preventDefault();
+        setUi({ status: 'loading', message: '', kind: 'error', fieldErrors: {} });
+        
+        console.log('--- TESTE DE LOGIN INICIADO ---'); // LOG 1
 
-        try {
-            // Chama a API de login (URL corrigida)
-            const response = await fetch('http://localhost:4000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier, password }),
-                credentials: 'include',
-            });
+        try {
+            const response = await fetch('http://localhost:4000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier, password }),
+                credentials: 'include',
+            });
 
-            let data = {};
-            try { data = await response.json(); } catch {}
+            let data = {};
+            try { data = await response.json(); } catch {}
 
-            if (response.ok) {
-                setUi({ status: 'success', message: 'Login realizado com sucesso.', kind: 'success', fieldErrors: {} });
-                const perfil = data.perfil;
-                console.log("Perfil recebido no login:", perfil);
+            if (response.ok) {
+                setUi({ status: 'success', message: 'Login realizado com sucesso.', kind: 'success', fieldErrors: {} });
+                const perfil = data.perfil;
+                
+                console.log('--- LOGIN BEM-SUCEDIDO ---'); // LOG 2
+                console.log('Perfil do usuário:', perfil); // LOG 3
 
-                if (perfil === 'admin' || perfil === 'bibliotecario') {
-                    router.push('/admin/dashboard'); // Corrigido para a rota admin
-                } else {
-                    router.push('/dashboard');
-                }
-                return;
+                // --- LÓGICA DE REDIRECIONAMENTO COM LOGS ---
+                
+                const currentUrl = new URL(window.location.href);
+                const redirectUrl = currentUrl.searchParams.get('redirect');
+                
+                console.log('URL atual:', currentUrl.href); // LOG 4
+                console.log('Parâmetro "redirect" encontrado:', redirectUrl); // LOG 5
 
-            } else { // Tratamento de erros
-                 if (response.status === 401 || response.status === 403) {
-                    setUi({
-                        status: 'error', kind: 'error',
-                        message: data?.message || 'Login ou senha inválidos.',
-                        fieldErrors: { identifier: '', password: '' }
-                    });
-                 } else { // Erro 500 ou outros
-                    setUi({
-                        status: 'error', kind: 'error',
-                        message: data?.message || 'Serviço indisponível.',
-                        fieldErrors: {}
-                    });
-                 }
-            }
-        } catch (error){
-            console.error("Erro na chamada da API de login:", error);
-            setUi({
-                status: 'error', kind: 'error',
-                message: 'Falha de conexão. Verifique sua internet.',
-                fieldErrors: {}
-            });
-        }
-    };
+                if (redirectUrl) {
+                    console.log('DECISÃO: Redirecionando para "redirectUrl":', redirectUrl); // LOG 6
+                    router.push(redirectUrl); 
+
+                } else if (perfil === 'admin' || perfil === 'bibliotecario') {
+                    console.log('DECISÃO: Sem redirect. Redirecionando para /admin/dashboard (perfil admin/biblio)'); // LOG 7
+                    router.push('/admin/dashboard');
+
+                } else {
+                    console.log('DECISÃO: Sem redirect. Redirecionando para /dashboard (perfil comum)'); // LOG 8
+                    router.push('/dashboard');
+                }
+                
+                return; // Para a execução aqui
+
+            } else { // Tratamento de erros
+                console.log('--- LOGIN FALHOU ---', response.status); // LOG 9
+                 if (response.status === 401 || response.status === 403) {
+                    setUi({
+                        status: 'error', kind: 'error',
+                        message: data?.message || 'Login ou senha inválidos.',
+                        fieldErrors: { identifier: '', password: '' }
+                    });
+                 } else { // Erro 500 ou outros
+                    setUi({
+                        status: 'error', kind: 'error',
+                        message: data?.message || 'Serviço indisponível.',
+                        fieldErrors: {}
+                    });
+                 }
+            }
+        } catch (error){
+            console.error("Erro na chamada da API de login:", error);
+            setUi({
+                status: 'error', kind: 'error',
+                message: 'Falha de conexão. Verifique sua internet.',
+                fieldErrors: {}
+            });
+        }
+    };
 
     // --- JSX do Formulário (mantido como antes) ---
     return (

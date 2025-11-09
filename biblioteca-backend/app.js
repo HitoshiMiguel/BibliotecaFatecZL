@@ -14,6 +14,7 @@ const googleRouter = require('./src/app/api/google');
 const pool = require('./src/config/db');
 const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const moderationRouter = require('./src/app/api/moderation');
+const { isAuthenticated } = require('./src/middlewares/authMiddleware');
 
 const app = express();
 
@@ -34,7 +35,7 @@ app.use(cookieParser());
  *  ================================ */
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/upload', uploadRouter);
+app.use('/api/upload', isAuthenticated, uploadRouter);
 app.use('/api/google', googleRouter);
 app.use('/db-test', dbTestRoute);
 

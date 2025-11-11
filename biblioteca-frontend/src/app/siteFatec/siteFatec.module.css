@@ -142,7 +142,7 @@
 /* =====================  HERO  ===================== */
 .hero{
   /* fallback + WEBP + cover centralizado */
-background: url('/images/fatecfoto.jpg') center / cover no-repeat;
+background: url('/images/fateczl.jpg') center / cover no-repeat;
 
   /* se o image-set não pegar em algum navegador, mantém um fallback direto: */
   background-color: #e9e9e9;
@@ -532,5 +532,50 @@ background: url('/images/fatecfoto.jpg') center / cover no-repeat;
   .govCenter {
     justify-content: center;
   }
+}
+/* --- Posiciona área de autenticação no canto direito da barra vermelha --- */
+.tabsContainer {
+  /* já existe — mantenha o que você tem */
+  position: relative;              /* ⟵ permite posicionar o login absoluto */
+}
+
+.authArea {
+  position: absolute;
+  right: 12px;                     /* encosta no canto direito da barra */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* Botão circular com ícone de perfil */
+.profileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.15) 100%);
+  transition: background .15s ease, transform .1s ease, border-color .15s ease;
+}
+
+.profileBtn:hover,
+.profileBtn:focus {
+  background: linear-gradient(180deg, #8b0000 0%, #700000 100%);
+  border-color: rgba(255,255,255,0.4);
+  transform: translateY(-1px);
+}
+
+/* some o texto "Entrar" em telas muito pequenas para ficar só o ícone */
+.profileText {
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+@media (max-width: 620px) {
+  .profileText { display: none; }
 }
 

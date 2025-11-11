@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';                // ⟵ import do Link para rotas Next
 import { Container } from 'react-bootstrap';
 import styles from './siteFatec.module.css';
 
@@ -120,18 +121,18 @@ export default function SiteFatecPage() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   };
+
   // Carrega/aplica filtro salvo e expõe handler do <select>
-useEffect(() => {
-  const saved = localStorage.getItem('colorFilter') || 'normal';
-  document.documentElement.setAttribute('data-cf', saved);
-}, []);
+  useEffect(() => {
+    const saved = localStorage.getItem('colorFilter') || 'normal';
+    document.documentElement.setAttribute('data-cf', saved);
+  }, []);
 
-function handleChangeColorFilter(e) {
-  const v = e.target.value;
-  document.documentElement.setAttribute('data-cf', v);
-  localStorage.setItem('colorFilter', v);
-}
-
+  function handleChangeColorFilter(e) {
+    const v = e.target.value;
+    document.documentElement.setAttribute('data-cf', v);
+    localStorage.setItem('colorFilter', v);
+  }
 
   return (
     <>
@@ -150,6 +151,16 @@ function handleChangeColorFilter(e) {
               <li><a href="#acervo" className={styles.tab}>Acervo</a></li>
               <li><a href="#servicos" className={styles.tab}>Serviços</a></li>
             </ul>
+
+            {/* Atalho de Login — canto direito da barra vermelha */}
+            <div className={styles.authArea}>
+              <Link href="/login" className={styles.profileBtn} aria-label="Ir para a tela de login">
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z"/>
+                </svg>
+                <span className={styles.profileText}>Entrar</span>
+              </Link>
+            </div>
           </Container>
         </div>
 
@@ -251,11 +262,11 @@ function handleChangeColorFilter(e) {
           <div className={styles.govLeft}>
             <div className={styles.govAccessibility}>
               <span className={styles.govFilterLabel}>FILTRO DE DALTONISMO</span>
-              <select className={styles.govSelect}>
-                <option>Cores Padrão</option>
-                <option>Deuteranopia</option>
-                <option>Protanopia</option>
-                <option>Tritanopia</option>
+              <select className={styles.govSelect} onChange={handleChangeColorFilter}>
+                <option value="normal">Cores Padrão</option>
+                <option value="deuteranopia">Deuteranopia</option>
+                <option value="protanopia">Protanopia</option>
+                <option value="tritanopia">Tritanopia</option>
               </select>
             </div>
           </div>

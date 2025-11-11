@@ -6,18 +6,72 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import styles from './Header.module.css';
 
+// hook do menu global
+import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
+
+/* ===========================
+   Componentes visuais do topo
+   =========================== */
+
 const SearchBar = () => (
   <div className={styles.searchBar}>
-    <input type="search" className={styles.campoDeBusca} placeholder="O que deseja localizar?" />
+    <input
+      type="search"
+      className={styles.campoDeBusca}
+      placeholder="O que deseja localizar?"
+      aria-label="Buscar no site"
+    />
     <button className={styles.btnSearch} aria-label="Buscar">
       <i className="bi bi-search"></i>
     </button>
   </div>
 );
 
-const HamburgerMenu = () => (
-  <div><span style={{ color: '#888' }}>Menu</span></div>
-);
+/* ===========================================
+   Botão de Menu (3 barrinhas vermelhas)
+   - usa useGlobalMenu internamente
+   - sem texto, só as barras
+   - estilos inline pra não depender de CSS extra
+   =========================================== */
+const HamburgerMenu = () => {
+  const { openMenu } = useGlobalMenu();
+
+  const btnStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    width: 34,           // largura do ícone
+    height: 24,          // altura total do ícone
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
+    alignItems: 'flex-start'
+  };
+
+  const barStyle = {
+    display: 'block',
+    width: '100%',
+    height: 4,           // espessura das barrinhas
+    backgroundColor: '#b20000', // vermelho Fatec
+    borderRadius: 2
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={openMenu}
+      aria-haspopup="dialog"
+      aria-controls="global-menu"
+      aria-label="Abrir menu"
+      style={btnStyle}
+    >
+      <span style={barStyle} />
+      <span style={barStyle} />
+      <span style={barStyle} />
+    </button>
+  );
+};
 
 export default function Header() {
   const pathname = usePathname();
@@ -32,7 +86,6 @@ export default function Header() {
 
       const h = headerEl ? Math.ceil(headerEl.getBoundingClientRect().height) : 0;
       document.documentElement.style.setProperty('--header-offset', `${h}px`);
-      // console.log('[header] height:', h);
     };
 
     setHeaderOffset();
@@ -41,19 +94,26 @@ export default function Header() {
     const t2 = setTimeout(setHeaderOffset, 800);
     return () => {
       window.removeEventListener('resize', setHeaderOffset);
-      clearTimeout(t1); clearTimeout(t2);
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
   }, []);
 
   return (
-    <header className="app-header">
-      {/* Skip link global (fora do fluxo; aparece só ao focar) */}
-      <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
+    <header className="app-header" role="banner">
+      {/* Skip link global (visível ao focar via teclado) */}
+      <a href="#page-content" className="skip-link">Pular para o conteúdo</a>
 
       {/* Faixa Governo */}
       <div className="govsp-header">
         <div className="logo-governo">
-          <Image src="/imagens/logo-governo.png" alt="Logo Governo de SP" width={200} height={38} priority />
+          <Image
+            src="/imagens/logo-governo.png"
+            alt="Logo Governo de SP"
+            width={200}
+            height={38}
+            priority
+          />
         </div>
         <div className="icones">
           <a href="#"><Image src="/imagens/i-flickr.png" alt="Flickr" width={25} height={25} /></a>
@@ -79,8 +139,12 @@ export default function Header() {
               className="logo-cps-fatec-img"
             />
           </div>
+
+          {/* Slot dinâmico à direita: busca (home) OU botão Menu (demais páginas) */}
           <div className={styles.dynamicSlot}>
-            {pathname === '/' || pathname === '/siteFatec' ? <SearchBar /> : <HamburgerMenu />}
+            {(pathname === '/' || pathname === '/siteFatec')
+              ? <SearchBar />
+              : <HamburgerMenu /> }
           </div>
         </div>
       </div>

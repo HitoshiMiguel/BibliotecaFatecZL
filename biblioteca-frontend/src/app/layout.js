@@ -5,6 +5,9 @@ import "./globals.css";
 import Header from "@/components/Header";
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+// ⟵ NOVO: provider do menu global
+import GlobalMenuProvider from "@/components/GlobalMenu/GlobalMenuProvider";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -29,17 +32,26 @@ export default function RootLayout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
         />
       </head>
+
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {/* Skip link para acessibilidade (visível ao focar via teclado) */}
         <a href="#page-content" className="skip-link">Pular para o conteúdo</a>
 
-        {/* Header FIXO */}
-        <Header />
+        {/* ⟵ Envolve tudo com o provider para o menu funcionar em qualquer página */}
+        <GlobalMenuProvider>
+          {/* Header FIXO */}
+          <Header />
 
-        {/* Conteúdo da página */}
-        <main id="page-content" role="main" aria-label="Conteúdo principal" className="page-content">
-          {children}
-        </main>
+          {/* Conteúdo da página */}
+          <main
+            id="page-content"
+            role="main"
+            aria-label="Conteúdo principal"
+            className="page-content"
+          >
+            {children}
+          </main>
+        </GlobalMenuProvider>
       </body>
     </html>
   );

@@ -4,13 +4,12 @@ const express = require('express');
 const multer = require('multer');
 const { Readable } = require('stream');
 const { getDriveWithOAuth } = require('../../../lib/googleOAuth');
-// NOVO: Importar a conexão com o banco
-const connection = require('../../../config/db');
+const connection = require('../../../config/db'); // Importa a conexão
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// A rota '/api/upload' agora está protegida pelo 'isAuthenticated' no app.js
+// A rota '/api/upload' já está protegida pelo 'isAuthenticated' no app.js
 router.post('/', upload.single('file'), async (req, res) => {
   try {
     // 1. VERIFICAÇÕES (Arquivo e Usuário)
@@ -18,14 +17,13 @@ router.post('/', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Arquivo não enviado.' });
     }
-    // Graças ao middleware no app.js, o req.user está disponível
     if (!req.user || !req.user.id) {
       return res.status(401).json({ success: false, error: 'Sessão inválida.' });
     }
 
-    // 2. LÓGICA DO GOOGLE DRIVE (O que você já tinha)
+    // 2. LÓGICA DO GOOGLE DRIVE
     // -------------------------------------------------------------------
-    const { tipo, ...meta } = req.body; // 'meta' contém titulo, descricao, etc.
+    const { tipo, ...meta } = req.body; 
     const buffer = req.file.buffer;
     const filename = req.file.originalname;
     const mimeType = req.file.mimetype;
@@ -33,7 +31,6 @@ router.post('/', upload.single('file'), async (req, res) => {
     const drive = getDriveWithOAuth();
     const stream = Readable.from(buffer);
 
-    // Garante que o ID da pasta "Pendentes" existe
     const pendentesId = process.env.GOOGLE_DRIVE_PENDENTES_ID;
     if (!pendentesId) {
       throw new Error('ID da pasta "Pendentes" não configurado no .env');
@@ -42,20 +39,30 @@ router.post('/', upload.single('file'), async (req, res) => {
     const { data: file } = await drive.files.create({
       requestBody: { name: filename, parents: [pendentesId] },
       media: { mimeType, body: stream },
-      fields: 'id, name', // Só precisamos do ID de volta
+      fields: 'id, name',
     });
 
-    // 3. LÓGICA DO BANCO DE DADOS (A parte nova)
+    // 3. LÓGICA DO BANCO DE DADOS (ATUALIZADA)
     // -------------------------------------------------------------------
-
-    // Pegamos os dados que precisamos para o INSERT
-    const googleFileId = file.id; // O ID do arquivo no Google Drive
-    const usuarioId = req.user.id; // O ID do usuário logado
+    const googleFileId = file.id;
+    const usuarioId = req.user.id;
     
-    // Pegamos os dados do formulário (que estão em 'meta')
-    // O seu formulário envia 'titulo', mas a tabela espera 'titulo_proposto'
-    const { titulo, descricao } = meta; 
+    // NOVO: Pega todos os campos do 'meta' (req.body)
+    const {
+      titulo,
+      descricao,
+      autor,
+      editora,
+      anoPublicacao, // Vem de Artigo/Livro
+      conferencia,
+      periodico,
+      instituicao,
+      orientador,
+      curso,
+      anoDefesa // Vem de TCC
+    } = meta;
 
+    // NOVO: O comando SQL agora inclui todas as novas colunas
     const sql = `
       INSERT INTO dg_submissoes (
         usuario_id,
@@ -63,19 +70,42 @@ router.post('/', upload.single('file'), async (req, res) => {
         descricao,
         caminho_anexo,
         status,
-        data_submissao
-      ) VALUES (?, ?, ?, ?, 'pendente', NOW());
+        data_submissao,
+        
+        -- Novas colunas --
+        autor,
+        editora,
+        ano_publicacao,
+        conferencia,
+        periodico,
+        instituicao,
+        orientador,
+        curso,
+        ano_defesa,
+        tipo
+      ) VALUES (?, ?, ?, ?, 'pendente', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
-    // O 'caminho_anexo' agora armazena o 'googleFileId'
+    // NOVO: O array de valores agora inclui todas as novas variáveis
     const values = [
       usuarioId,
-      titulo, // Mapeado para 'titulo_proposto'
-      descricao || null, // Caso a descrição seja opcional
-      googleFileId
+      titulo, // (para titulo_proposto)
+      descricao || null,
+      googleFileId, // (para caminho_anexo)
+      
+      // Novos valores (ou null se não forem preenchidos)
+      autor || null,
+      editora || null,
+      anoPublicacao || null, // Salva o 'anoPublicacao' (de Livro/Artigo)
+      conferencia || null,
+      periodico || null,
+      instituicao || null,
+      orientador || null,
+      curso || null,
+      anoDefesa || null,
+      tipo || null
     ];
 
-    // Executa a query
     await connection.execute(sql, values);
 
     // 4. SUCESSO

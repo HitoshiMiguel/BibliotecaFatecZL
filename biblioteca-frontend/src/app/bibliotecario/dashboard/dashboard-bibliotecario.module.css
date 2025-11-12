@@ -1,0 +1,111 @@
+/* src/app/bibliotecario/dashboard/dashboard-bibliotecario.module.css */
+
+.container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.tabelaSubmissoes {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabelaSubmissoes th,
+.tabelaSubmissoes td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.tabelaSubmissoes th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+}
+
+.tabelaSubmissoes tr:last-child td {
+  border-bottom: none;
+}
+
+.tabelaSubmissoes td:first-child {
+  font-weight: 500;
+}
+
+/* Botão de Analisar (na tabela) */
+.btnAnalisar {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+  background-color: #007bff;
+  color: white;
+}
+
+.btnAnalisar:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btnAnalisar:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+/* Estilos para a tabela responsiva */
+@media (max-width: 768px) {
+  .tabelaSubmissoes thead {
+    display: none;
+  }
+  .tabelaSubmissoes tr {
+    display: block;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 10px;
+  }
+  .tabelaSubmissoes td {
+    display: block;
+    text-align: right;
+    padding-left: 50%;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .tabelaSubmissoes td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 10px;
+    width: calc(50% - 20px);
+    text-align: left;
+    font-weight: bold;
+  }
+  .acoes {
+    justify-content: flex-end;
+  }
+}
+
+/* --- ADICIONE ESTE NOVO ESTILO --- */
+.btnVisualizar {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+  background-color: #6c757d; /* Cinza */
+  color: white;
+}
+.btnVisualizar:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+.btnVisualizar:hover:not(:disabled) {
+  opacity: 0.8;
+}

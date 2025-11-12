@@ -1,20 +1,19 @@
 'use client';
+
 import React, {
   createContext,
   useContext,
   useState,
   useCallback,
   useEffect,
-  useRef,
 } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-// Importação direta de next/navigation agora é recomendada para usePathname/useRouter em client components
-import { usePathname, useRouter } from 'next/navigation'; 
+import { usePathname, useRouter } from 'next/navigation';
 import styles from './globalMenu.module.css';
 
 /* ============================
-    Contexto e Hook Global
+   Contexto + Hook
 ============================ */
 const Ctx = createContext(null);
 export const useGlobalMenu = () => {
@@ -24,199 +23,129 @@ export const useGlobalMenu = () => {
 };
 
 /* ============================
-    Provider Principal
+   Provider
 ============================ */
 export default function GlobalMenuProvider({ children }) {
   const [open, setOpen] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
-  // CORREÇÃO DE HIDRATAÇÃO: Controla se o componente já foi montado no lado do cliente.
-  const [isMounted, setIsMounted] = useState(false); 
 
-  const API = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000') + '/api';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
+  const LOGOUT_URL = `${API_URL}/api/auth/logout`;
 
-  // 1. CORREÇÃO DE HIDRATAÇÃO: Definir como true apenas após a montagem do lado do cliente.
+  // snapshot rápido para evitar "piscar"
   useEffect(() => {
-    setIsMounted(true);
+    try {
+      if (localStorage.getItem('isAuthed') === '1') setIsAuthed(true);
+    } catch {}
   }, []);
 
-  // Centraliza a atualização do estado de autenticação
   const setAuthState = useCallback((v) => {
     setIsAuthed(v);
     try {
       if (v) localStorage.setItem('isAuthed', '1');
       else localStorage.removeItem('isAuthed');
       window.dispatchEvent(new Event('auth:changed'));
-    } catch (_) {}
+    } catch {}
   }, []);
 
-  // Snapshot rápido a partir do localStorage (evita "piscar" Entrar)
+  // checagem real no backend (cookie httpOnly)
   useEffect(() => {
-    // Só executa se estiver montado no cliente
-    if (!isMounted) return; 
-    try {
-      const snap = localStorage.getItem('isAuthed') === '1';
-      if (snap) setIsAuthed(true);
-    } catch (_) {}
-  }, [isMounted]); // Adiciona isMounted como dependência
-
-  // Checagem real no backend (cookie httpOnly)
-  useEffect(() => {
-    // Só executa se estiver montado no cliente
-    if (!isMounted) return; 
-    let aborted = false;
+    let alive = true;
     (async () => {
       try {
-        const r = await fetch(`${API}/auth/current-user`, {
+        const res = await fetch(AUTH_CHECK_URL, {
           credentials: 'include',
           cache: 'no-store',
         });
-        if (!aborted) setAuthState(r.ok);
+        if (alive) setAuthState(res.ok);
       } catch {
-        if (!aborted) setAuthState(false);
+        if (alive) setAuthState(false);
       }
     })();
-    return () => { aborted = true; };
-  }, [API, setAuthState, isMounted]); // Adiciona isMounted como dependência
 
-  // Mantém sincronizado com outras abas
-  useEffect(() => {
-    // Só executa se estiver montado no cliente
-    if (!isMounted) return; 
-    const sync = () => {
-      try { setIsAuthed(localStorage.getItem('isAuthed') === '1'); } catch (_) {}
+    const sync = async () => {
+      try {
+        const res = await fetch(AUTH_CHECK_URL, { credentials: 'include', cache: 'no-store' });
+        setAuthState(res.ok);
+      } catch {
+        setAuthState(false);
+      }
     };
     window.addEventListener('auth:changed', sync);
     window.addEventListener('storage', sync);
     return () => {
+      alive = false;
       window.removeEventListener('auth:changed', sync);
       window.removeEventListener('storage', sync);
     };
-  }, [isMounted]); // Adiciona isMounted como dependência
+  }, [AUTH_CHECK_URL, setAuthState]);
 
-  // Controles do sheet
-  const openMenu   = useCallback(() => setOpen(true), []);
-  const closeMenu  = useCallback(() => setOpen(false), []);
+  // controls do sheet
+  const openMenu  = useCallback(() => setOpen(true), []);
+  const closeMenu = useCallback(() => setOpen(false), []);
   const toggleMenu = useCallback(() => setOpen(v => !v), []);
 
-  // Bloqueia scroll e ESC quando aberto
+  // bloqueia scroll/ESC quando aberto
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && closeMenu();
     document.addEventListener('keydown', onKey);
-    // Verifica a existência de document antes de manipulá-lo
-    if (typeof document !== 'undefined') {
-      const prev = document.documentElement.style.overflow;
-      document.documentElement.style.overflow = 'hidden';
-      return () => {
-        document.removeEventListener('keydown', onKey);
-        document.documentElement.style.overflow = prev;
-      };
-    }
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.documentElement.style.overflow = prev;
+    };
   }, [open, closeMenu]);
 
-  // Logout unificado
+  // logout unificado
   const logout = useCallback(async () => {
     try {
-      await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-    } catch (_) {}
+      await fetch(LOGOUT_URL, { method: 'POST', credentials: 'include' });
+    } catch {}
     try {
       ['authToken','token','accessToken','refreshToken','user','currentUser']
         .forEach(k => localStorage.removeItem(k));
-    } catch (_) {}
+    } catch {}
     setAuthState(false);
-  }, [API, setAuthState]);
+  }, [LOGOUT_URL, setAuthState]);
 
   return (
     <Ctx.Provider value={{ open, openMenu, closeMenu, toggleMenu, isAuthed, logout }}>
       {children}
-      {/* 2. CORREÇÃO DE HIDRATAÇÃO: Renderiza o Sheet APENAS após a montagem no cliente. */}
-      {isMounted && <GlobalMenuSheet />}
+      <GlobalMenuSheet />
     </Ctx.Provider>
   );
 }
 
 /* ============================
-    Menu Lateral (Sheet)
-    - Função interna, encapsulada no Provider
+   Menu Lateral (Sheet)
 ============================ */
 function GlobalMenuSheet() {
   const { open, closeMenu, isAuthed, logout } = useGlobalMenu();
-  
-  // NOTE: usePathname e useRouter já verificam typeof window. 
-  // Não é necessário o `if (typeof document === 'undefined') return null;`
-  // no topo da função se a renderização for condicional no Provider.
-  const pathname = usePathname(); 
+  const pathname = usePathname();
   const router = useRouter();
 
-  // refs para acessibilidade (focus trap + retorno)
-  const sheetRef = useRef(null);
-  const lastFocusRef = useRef(null);
-
-  // Gerencia foco ao abrir/fechar (focus trap simples + retorno ao trigger)
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    if (!open) {
-      // restaura foco no trigger
-      const el = lastFocusRef.current;
-      if (el && typeof el.focus === 'function') {
-        setTimeout(() => el.focus(), 0);
-      }
-      return;
-    }
-
-    // Se estiver aberto:
-    const getFocusable = (root) =>
-      root?.querySelectorAll(
-        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-      );
-
-    // salva o elemento previamente focado
-    lastFocusRef.current = document.activeElement;
-    // foca o primeiro foco do sheet
-    const focusables = getFocusable(sheetRef.current);
-    if (focusables && focusables.length) {
-      // dá um pequeno delay pra garantir montagem
-      setTimeout(() => focusables[0]?.focus(), 0);
-    }
-
-    // prende TAB dentro do diálogo
-    const onKeyDown = (e) => {
-      if (e.key !== 'Tab') return;
-      const nodes = getFocusable(sheetRef.current);
-      if (!nodes || !nodes.length) return;
-      const first = nodes[0];
-      const last  = nodes[nodes.length - 1];
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    sheetRef.current?.addEventListener('keydown', onKeyDown);
-    return () => sheetRef.current?.removeEventListener('keydown', onKeyDown);
-  }, [open]);
-
+  // Fix de hidratação: só renderiza portal depois de montar no cliente
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+  if (!isMounted) return null;
 
   const baseLinks = [
-    { href: '/siteFatec',  label: 'Home',    icon: '🏠' },
-    { href: '/consulta',   label: 'Consulta', icon: '🔎' },
-    { href: '/acervo',     label: 'Acervo',   icon: '📚' },
-    { href: '/eventos',    label: 'Eventos',  icon: '📅' },
-    { href: '/uploadForm', label: 'Uploads',  icon: '📤' },
-    { href: '/servicos',   label: 'Serviços', icon: '🧰' },
-    { href: '/dashboard',  label: 'Perfil',   icon: '💼' },
+    { href: '/siteFatec', label: 'Home',     icon: '🏠' },
+    { href: '/consulta',  label: 'Consulta', icon: '🔎' },
+    { href: '/acervo',    label: 'Acervo',   icon: '📚' },
+    { href: '/eventos',   label: 'Eventos',  icon: '📅' },
+    { href: '/uploadForm',label: 'Uploads',  icon: '📤' },
+    { href: '/servicos',  label: 'Serviços', icon: '🧰' },
+    { href: '/dashboard', label: 'Perfil',   icon: '💼' },
   ];
 
   const authAction = isAuthed
-    ? { type: 'button', onClick: async () => { await logout(); closeMenu(); router.push('/login'); }, label: 'Sair',  icon: '🚪' }
-    : { type: 'link',   href: '/login',                                                                     label: 'Entrar', icon: '👤' };
+    ? { type: 'button', onClick: async () => { await logout(); closeMenu(); router.push('/login'); }, label: 'Sair', icon: '🚪' }
+    : { type: 'link',   href: '/login', label: 'Entrar', icon: '👤' };
 
-  // O check de typeof document === 'undefined' está no Provider, mas o createPortal 
-  // ainda exige um check aqui se o componente fosse chamado em outro lugar. 
-  // No entanto, como o Provider garante que só será montado no cliente, este bloco será executado.
   return createPortal(
     <>
       <div
@@ -226,8 +155,6 @@ function GlobalMenuSheet() {
         aria-hidden
       />
       <aside
-        ref={sheetRef}
-        id="global-menu"             // <- importante para aria-controls no Header
         className={styles.sheet}
         data-open={open}
         role="dialog"
@@ -241,9 +168,6 @@ function GlobalMenuSheet() {
 
         <nav className={styles.sheetNav}>
           {baseLinks.map(({ href, label, icon }) => {
-            // Nota: O uso de `pathname?.startsWith(href)` para ativo pode causar 
-            // problemas em rotas como `/eventos` vs `/eventos/item`. 
-            // Mantenha assim se for o comportamento desejado.
             const active = pathname === href || (href !== '/' && pathname?.startsWith(href));
             return (
               <Link
@@ -271,11 +195,7 @@ function GlobalMenuSheet() {
               <span>{authAction.label}</span>
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={authAction.onClick}
-              className={styles.sheetLink}
-            >
+            <button type="button" onClick={authAction.onClick} className={styles.sheetLink}>
               <span aria-hidden>{authAction.icon}</span>
               <span>{authAction.label}</span>
             </button>

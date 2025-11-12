@@ -78,9 +78,13 @@ export default function LoginPage() {
                     console.log('DECISÃO: Redirecionando para "redirectUrl":', redirectUrl); // LOG 6
                     router.push(redirectUrl); 
 
-                } else if (perfil === 'admin' || perfil === 'bibliotecario') {
+                } else if (perfil === 'admin') {
                     console.log('DECISÃO: Sem redirect. Redirecionando para /admin/dashboard (perfil admin/biblio)'); // LOG 7
                     router.push('/admin/dashboard');
+
+                } else if (perfil === 'bibliotecario') {
+                                    console.log('DECISÃO: Sem redirect. Redirecionando para /bibliotecario/dashboard (perfil bibliotecario)');
+                                    router.push('/bibliotecario/dashboard');
 
                 } else {
                     console.log('DECISÃO: Sem redirect. Redirecionando para /dashboard (perfil comum)'); // LOG 8

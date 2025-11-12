@@ -7,6 +7,7 @@ const UsuarioBuilder = require('../services/UserBuilder');
 const { generateUniqueToken } = require('../services/UserService');
 const connection = require('../config/db');
 const { getDriveWithOAuth } = require('../lib/googleOAuth');
+const { Readable } = require('stream');
 
 // --- CORREÇÃO DA IMPORTAÇÃO ---
 // Importa a função correta do emailService
@@ -405,20 +406,31 @@ const createUsuarioDireto = async (req, res) => {
     }
 };
 
+// [COMECE A SUBSTITUIÇÃO AQUI (da linha 408 em diante)]
+
 // --- NOVO MÉTODO PARA SUBMISSÕES ---
 
 // GET /api/admin/submissoes/pendentes
 const getSubmissoesPendentes = async (req, res, next) => {
-  let pool; // Usado para garantir que a conexão seja tratada
   try {
-    // 2. Definir a query SQL
+    // 1. Definir a query SQL
     const sql = `
       SELECT
         s.submissao_id,
         s.titulo_proposto,
         s.descricao,
         s.data_submissao,
-        u.nome AS nome_remetente
+        u.nome AS nome_remetente,
+        s.autor,
+        s.editora,
+        s.ano_publicacao,
+        s.conferencia,
+        s.periodico,
+        s.instituicao,
+        s.orientador,
+        s.curso,
+        s.ano_defesa,
+        s.tipo
       FROM
         dg_submissoes s
       JOIN
@@ -429,29 +441,93 @@ const getSubmissoesPendentes = async (req, res, next) => {
         s.data_submissao ASC;
     `;
 
-    // 3. Executar a query
-    // (Assumindo que você usa mysql2/promise, que retorna [rows, fields])
+    // 2. Executar a query
     const [rows] = await connection.execute(sql);
 
-    // 4. Retornar os dados como JSON
+    // 3. Retornar os dados como JSON
     res.status(200).json(rows);
 
   } catch (error) {
-    // 5. Lidar com erros
+    // 4. Lidar com erros
     console.error('Erro ao buscar submissões pendentes:', error);
-    // Passa o erro para seu middleware de erro (errorHandler.js)
     next(error);
   }
+}; // <-- FIM DA FUNÇÃO getSubmissoesPendentes
+
+/**
+ * PUT /api/admin/submissoes/:id
+ * Atualiza os detalhes de uma submissão ANTES de ser aprovada.
+ */
+const updateSubmissao = async (req, res, next) => {
+  const { id: submissaoId } = req.params;
   
-  // (Nota: Se seu 'connection()' não retorna um pool, 
-  // e sim uma conexão única, você pode precisar de pool.release() aqui)
-};
+  // Pega todos os campos editáveis do body
+  const {
+    titulo_proposto,
+    descricao,
+    autor,
+    editora,
+    ano_publicacao,
+    conferencia,
+    periodico,
+    instituicao,
+    orientador,
+    curso,
+    ano_defesa,
+    tipo
+  } = req.body;
 
-// src/controller/adminController.js
+  try {
+    // 1. Validar se a submissão existe e está pendente
+    const sqlFind = "SELECT submissao_id FROM dg_submissoes WHERE submissao_id = ? AND status = 'pendente'";
+    const [rows] = await connection.execute(sqlFind, [submissaoId]);
 
-// ... (depois da função getSubmissoesPendentes)
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
+    }
 
-// --- NOVAS ROTAS DE MODERAÇÃO ---
+    // 2. Construir e executar a query de UPDATE
+    const sqlUpdate = `
+      UPDATE dg_submissoes SET
+        titulo_proposto = ?,
+        descricao = ?,
+        autor = ?,
+        editora = ?,
+        ano_publicacao = ?,
+        conferencia = ?,
+        periodico = ?,
+        instituicao = ?,
+        orientador = ?,
+        curso = ?,
+        ano_defesa = ?,
+        tipo = ?
+      WHERE submissao_id = ?
+    `;
+    
+    await connection.execute(sqlUpdate, [
+      titulo_proposto,
+      descricao || null,
+      autor || null,
+      editora || null,
+      ano_publicacao || null,
+      conferencia || null,
+      periodico || null,
+      instituicao || null,
+      orientador || null,
+      curso || null,
+      ano_defesa || null,
+      tipo || null,
+      submissaoId // O ID vai no final para o WHERE
+    ]);
+
+    // 3. Sucesso
+    res.status(200).json({ success: true, message: 'Submissão atualizada com sucesso.' });
+
+  } catch (error) {
+    console.error('Erro ao atualizar submissão:', error);
+    next(error);
+  }
+}; // <-- FIM DA FUNÇÃO updateSubmissao
 
 /**
  * POST /api/admin/submissoes/:id/aprovar
@@ -473,9 +549,9 @@ const aprovarSubmissao = async (req, res, next) => {
 
   try {
     // 1. Encontrar a submissão pendente no DB
+    // (Atualizado para buscar todos os dados necessários para o 'dg_itens_digitais')
     const sqlFind = `
-      SELECT caminho_anexo, titulo_proposto, descricao 
-      FROM dg_submissoes 
+      SELECT * FROM dg_submissoes 
       WHERE submissao_id = ? AND status = 'pendente'
     `;
     const [rows] = await connection.execute(sqlFind, [submissaoId]);
@@ -504,16 +580,19 @@ const aprovarSubmissao = async (req, res, next) => {
     `;
     await connection.execute(sqlUpdate, [revisorId, submissaoId]);
 
-    // 4. (Opcional, mas recomendado) Criar o item final na tabela 'dg_itens_digitais'
+    // 4. Criar o item final na tabela 'dg_itens_digitais'
+    // (Agora usa todos os dados editados pelo bibliotecário)
     const sqlInsertItem = `
       INSERT INTO dg_itens_digitais 
-        (titulo, descricao, caminho_arquivo, data_publicacao, submissao_id) 
-      VALUES (?, ?, ?, NOW(), ?)
+        (titulo, autor, ano, descricao, caminho_arquivo, data_publicacao, submissao_id) 
+      VALUES (?, ?, ?, ?, ?, NOW(), ?)
     `;
     await connection.execute(sqlInsertItem, [
       submissao.titulo_proposto,
+      submissao.autor,
+      submissao.ano_publicacao || submissao.ano_defesa, // Pega o ano que estiver preenchido
       submissao.descricao,
-      googleFileId, // Salva o ID do Google no item final
+      googleFileId,
       submissaoId
     ]);
 
@@ -524,7 +603,7 @@ const aprovarSubmissao = async (req, res, next) => {
     console.error('Erro ao aprovar submissão:', error);
     next(error);
   }
-};
+}; // <-- FIM DA FUNÇÃO aprovarSubmissao
 
 /**
  * POST /api/admin/submissoes/:id/reprovar
@@ -571,6 +650,162 @@ const reprovarSubmissao = async (req, res, next) => {
     console.error('Erro ao reprovar submissão:', error);
     next(error);
   }
+}; // <-- FIM DA FUNÇÃO reprovarSubmissao
+
+const publicarDireto = async (req, res, next) => {
+  try {
+    // 1. VERIFICAÇÕES (Arquivo e Usuário)
+    // -------------------------------------------------------------------
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Arquivo não enviado.' });
+    }
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, error: 'Sessão inválida.' });
+    }
+
+    // 2. LÓGICA DO GOOGLE DRIVE (COM A PASTA ALTERADA)
+    // -------------------------------------------------------------------
+    const { tipo, ...meta } = req.body; 
+    const buffer = req.file.buffer;
+    const filename = req.file.originalname;
+    const mimeType = req.file.mimetype;
+
+    const drive = getDriveWithOAuth();
+    const stream = Readable.from(buffer);
+
+    // <-- MUDANÇA 1: Usando a variável de ambiente dos APROVADOS
+    const aprovadosId = process.env.GOOGLE_DRIVE_APROVADOS_ID; 
+    if (!aprovadosId) {
+      throw new Error('ID da pasta "Aprovados" não configurado no .env');
+    }
+
+    const { data: file } = await drive.files.create({
+      requestBody: { name: filename, parents: [aprovadosId] }, // <-- MUDANÇA 1
+      media: { mimeType, body: stream },
+      fields: 'id, name',
+    });
+
+    // 3. LÓGICA DO BANCO DE DADOS (COM O STATUS ALTERADO)
+    // -------------------------------------------------------------------
+    const googleFileId = file.id;
+    const usuarioId = req.user.id; // ID do Admin que está publicando
+    
+    // Pega os metadados do form do admin
+    const {
+      titulo_proposto,
+      descricao,
+      autor,
+      editora,
+      ano_publicacao,
+      conferencia,
+      periodico,
+      instituicao,
+      orientador,
+      curso,
+      ano_defesa
+    } = meta;
+
+    // --- PASSO 3.1: INSERIR NA TABELA DE SUBMISSÕES (CORRIGIDO) ---
+    const sqlSubmissao = `
+      INSERT INTO dg_submissoes (
+        usuario_id,
+        titulo_proposto,
+        descricao,
+        caminho_anexo,
+        status,
+        data_submissao,
+        revisado_por_id,  -- << CORRIGIDO (Adicionado)
+        
+        -- Colunas de metadados --
+        autor, editora, ano_publicacao, conferencia, 
+        periodico, instituicao, orientador, curso, 
+        ano_defesa, tipo
+      ) VALUES (?, ?, ?, ?, 'aprovado', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); -- << CORRIGIDO (Removido um NOW())
+    `;
+    
+    const valuesSubmissao = [
+      usuarioId,        // para usuario_id
+      titulo_proposto || null,
+      descricao || null,
+      googleFileId,
+      usuarioId,        // para revisado_por_id
+      
+      // Metadados
+      autor || null,
+      editora || null,
+      ano_publicacao || null, 
+      conferencia || null,
+      periodico || null,
+      instituicao || null,
+      orientador || null,
+      curso || null,
+      ano_defesa || null,
+      tipo || null
+    ];
+
+    const [result] = await connection.execute(sqlSubmissao, valuesSubmissao);
+    const novaSubmissaoId = result.insertId; // Pegamos o ID da submissão
+
+    // 4. SUCESSO
+    // -------------------------------------------------------------------
+    const novaPublicacao = {
+      id: result.insertId,
+      googleFileId,
+      status: 'aprovado',
+      ...meta
+    };
+    
+    res.status(201).json(novaPublicacao);
+
+  } catch (err) {
+    // 5. ERRO
+    // -------------------------------------------------------------------
+    console.error('Erro na publicação direta:', err);
+    // Passa o erro para seu 'errorHandler' global
+    next(err); 
+  }
+};
+
+// ... (no topo, junto com as outras importações)
+// (Você já deve ter 'connection', 'getDriveWithOAuth')
+
+// ... (todos os seus outros métodos, como 'publicarDireto') ...
+
+
+// ==========================================================
+// --- NOVO MÉTODO PARA BUSCAR O LINK DO ARQUIVO ---
+// ==========================================================
+const getSubmissionFileLink = async (req, res, next) => {
+  try {
+    const { id: submissaoId } = req.params;
+
+    // 1. Encontrar a submissão no seu banco de dados
+    const sqlFind = "SELECT caminho_anexo FROM dg_submissoes WHERE submissao_id = ?";
+    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Submissão não encontrada.' });
+    }
+
+    const googleFileId = rows[0].caminho_anexo;
+    if (!googleFileId) {
+      return res.status(404).json({ message: 'Submissão não possui arquivo anexado.' });
+    }
+
+    // 2. Pedir ao Google Drive os metadados do arquivo
+    const drive = getDriveWithOAuth();
+    const fileMeta = await drive.files.get({
+      fileId: googleFileId,
+      fields: 'webViewLink, webContentLink, name', // Pedimos o link de visualização
+    });
+
+    // 3. Enviar os links para o frontend
+    res.status(200).json(fileMeta.data);
+
+  } catch (error) {
+    console.error('Erro ao buscar link do arquivo:', error);
+    next(error);
+  }
 };
 
 // --- EXPORTAÇÕES ---
@@ -585,5 +820,8 @@ module.exports = {
     deleteUser,
     getSubmissoesPendentes,
     aprovarSubmissao,
-    reprovarSubmissao
+    reprovarSubmissao,
+    updateSubmissao,
+    publicarDireto,
+    getSubmissionFileLink
 };

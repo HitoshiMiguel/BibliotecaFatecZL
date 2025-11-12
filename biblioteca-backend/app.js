@@ -4,16 +4,21 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 
+// ================================
 // Rotas / libs
+// ================================
 const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const dbTestRoute = require('./src/routes/dbTestRoute');
 const uploadRouter = require('./src/app/api/upload');
 const googleRouter = require('./src/app/api/google');
-const pool = require('./src/config/db');
-const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const moderationRouter = require('./src/app/api/moderation');
+const publicacoes = require('./src/app/api/publicacoes'); // nova rota de consulta de publicações
+const pool = require('./src/config/db');
+
+const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const { isAuthenticated } = require('./src/middlewares/authMiddleware');
 
 const app = express();
@@ -23,7 +28,7 @@ const app = express();
  *  ================================ */
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .split(',')
-  .map(s => s.trim());
+  .map((s) => s.trim());
 
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json());
@@ -31,20 +36,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /** ================================
- *  Rotas da API (sempre antes dos handlers de erro)
+ *  Rotas principais da API
  *  ================================ */
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', isAuthenticated, uploadRouter);
 app.use('/api/google', googleRouter);
+app.use('/api/moderation', moderationRouter);
+app.use('/api', publicacoes); // <— monta /api/publicacoes e /api/publicacoes/:id
 app.use('/db-test', dbTestRoute);
 
-// Healthcheck simples
+/** ================================
+ *  Healthcheck e diagnóstico
+ *  ================================ */
 app.get('/', (_req, res) => {
   res.json({ message: 'API da Biblioteca Rodando!' });
 });
 
-// Verificação de conexão com o banco
 app.get('/__dbcheck', async (_req, res) => {
   try {
     const [rows] = await pool.query('SELECT 1 AS ok');
@@ -55,17 +63,15 @@ app.get('/__dbcheck', async (_req, res) => {
 });
 
 /** ================================
- *  Handlers 404 e erros (sempre por último)
+ *  Handlers de erro (sempre por último)
  *  ================================ */
 app.use(notFound);
 app.use(errorHandler);
 
 /** ================================
- *  Start
+ *  Inicialização do servidor
  *  ================================ */
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 API na porta ${PORT}`);
+  console.log(`🚀 API da Biblioteca rodando na porta ${PORT}`);
 });
-
-app.use('/api/moderation', moderationRouter);

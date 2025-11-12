@@ -1,0 +1,39 @@
+.wrap { padding-bottom: 48px; }
+.banner {
+  background: #b20000;
+  color: #fff;
+  font-weight: 700;
+  padding: 16px 24px;
+  font-size: 28px;
+  text-align: center;
+}
+.content {
+  margin: 24px auto 0;
+  padding: 0 16px;
+  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 24px;
+}
+.thumb { }
+.coverStub {
+  width: 120px; height: 180px;
+  border: 1px solid #ddd; display: grid; place-items: center;
+  color: #777; font-size: 12px; background: #fafafa;
+}
+.info { }
+.h1 { margin: 0 0 8px; font-size: 24px; }
+.descList { list-style: none; padding: 0; margin: 0 0 16px; }
+.descList li { margin: 6px 0; color: #333; }
+.downloadBtn {
+  display: inline-block;
+  background: #0b63ce;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+@media (max-width: 700px) {
+  .content { grid-template-columns: 1fr; }
+  .thumb { order: 1; }
+}

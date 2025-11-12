@@ -73,3 +73,32 @@
   background: #B20000;
   color: #fff;
 }
+
+/* feedback */
+.metaInfo { margin-top: 16px; color: #666; }
+.erro { margin-top: 16px; color: #b20000; }
+
+/* empty state */
+.emptyBox {
+  margin-top: 32px;
+  text-align: center;
+}
+.emptyEmoji { font-size: 48px; margin-bottom: 8px; }
+.emptyTitle { font-size: 20px; margin: 0 0 6px; color: #444; }
+.emptyText { color: #666; }
+.link { color: #0b63ce; text-decoration: underline; }
+
+/* resultados */
+.resultList {
+  margin-top: 32px;
+  width: min(920px, 92vw);
+  display: grid;
+  gap: 16px;
+}
+.resultItem {
+  border-bottom: 1px solid #e7e7e7;
+  padding: 12px 0;
+}
+.resultLink { text-decoration: none; color: inherit; display: block; }
+.resultTitle { font-size: 18px; color: #0b63ce; margin: 0 0 6px; }
+.resultMeta { color: #666; margin: 0; }

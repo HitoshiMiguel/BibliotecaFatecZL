@@ -163,4 +163,8 @@ a[href="#content"]:focus {
 }
 
 
+html {
+  view-transition-name: none !important;
+}
+
 .page-content { min-height: 100%; overflow: visible; }

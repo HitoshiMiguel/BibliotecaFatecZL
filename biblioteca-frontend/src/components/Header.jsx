@@ -1,4 +1,3 @@
-// Arquivo: src/components/Header.jsx
 'use client';
 
 import Image from 'next/image';
@@ -10,9 +9,8 @@ import styles from './Header.module.css';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
 
 /* ===========================
-   Componentes visuais do topo
-   =========================== */
-
+    Componentes visuais do topo
+    =========================== */
 const SearchBar = () => (
   <div className={styles.searchBar}>
     <input
@@ -28,31 +26,66 @@ const SearchBar = () => (
 );
 
 /* ===========================================
-   Botão de Menu (3 barrinhas vermelhas)
-   - usa useGlobalMenu internamente
-   - sem texto, só as barras
-   - estilos inline pra não depender de CSS extra
-   =========================================== */
-const HamburgerMenu = () => {
-  const { openMenu } = useGlobalMenu();
+    Botão de Ativação Manual VLibras
+    =========================================== */
+const VLibrasButton = () => {
+  const handleClick = () => {
+    // Tenta chamar a função global injetada pelo VLibrasWidget
+    if (typeof window.toggleVLibrasMenu === 'function') {
+      window.toggleVLibrasMenu();
+    } else {
+      console.warn('Função toggleVLibrasMenu não está disponível. O script VLibras não carregou ou foi removido.');
+    }
+  };
 
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={styles.vlibrasBtn} // Usa a classe para garantir fluxo flexível
+      aria-label="Ativar VLibras"
+      title="Acessibilidade VLibras"
+      style={{
+        background: '#008CBA', 
+        color: 'white', 
+        padding: '8px 12px', 
+        borderRadius: '4px',
+        fontWeight: 'bold',
+        border: 'none',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap', // Impede que o texto "VLibras" quebre
+      }}
+    >
+      VLibras
+    </button>
+  );
+};
+
+
+/* ===========================================
+    Botão de Menu (3 barrinhas vermelhas)
+    =========================================== */
+const HamburgerMenu = ({ isOpen, onOpen }) => {
   const btnStyle = {
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between',
-    width: 34,           // largura do ícone
-    height: 24,          // altura total do ícone
+    justifyContent: 'space-around',
+    width: 44, 
+    height: 44, 
     background: 'transparent',
-    border: 'none',
+    border: 'none', 
     cursor: 'pointer',
-    padding: 0,
-    alignItems: 'flex-start'
+    padding: '8px', 
+    alignItems: 'center',
+    transition: 'all 0.2s',
+    minWidth: '44px', 
+    flexShrink: 0, // Garante que o botão não encolha
   };
 
   const barStyle = {
     display: 'block',
     width: '100%',
-    height: 4,           // espessura das barrinhas
+    height: 4,          
     backgroundColor: '#b20000', // vermelho Fatec
     borderRadius: 2
   };
@@ -60,10 +93,12 @@ const HamburgerMenu = () => {
   return (
     <button
       type="button"
-      onClick={openMenu}
+      onClick={onOpen}
       aria-haspopup="dialog"
       aria-controls="global-menu"
+      aria-expanded={isOpen ? 'true' : 'false'}
       aria-label="Abrir menu"
+      // Não usa classes de módulo aqui, usa estilos inline para o visual
       style={btnStyle}
     >
       <span style={barStyle} />
@@ -75,6 +110,7 @@ const HamburgerMenu = () => {
 
 export default function Header() {
   const pathname = usePathname();
+  const { open, openMenu } = useGlobalMenu(); 
 
   // Define --header-offset com a altura real do header fixo
   useEffect(() => {
@@ -98,6 +134,9 @@ export default function Header() {
       clearTimeout(t2);
     };
   }, []);
+
+  // Verifica se estamos em uma rota que não é a Home
+  const isNotHome = !(pathname === '/' || pathname === '/siteFatec');
 
   return (
     <header className="app-header" role="banner">
@@ -129,7 +168,10 @@ export default function Header() {
 
       {/* Faixa CPS/Fatec */}
       <div className="CPS-header">
-        <div className="CPS-container">
+        <div 
+          className="CPS-container"
+          // Removido estilos inline de debug, confiando no CSS global
+        >
           <div className="logos">
             <Image
               src="/imagens/logo-fatec-cps.png"
@@ -137,14 +179,23 @@ export default function Header() {
               width={300}
               height={80}
               className="logo-cps-fatec-img"
+              priority 
             />
           </div>
 
-          {/* Slot dinâmico à direita: busca (home) OU botão Menu (demais páginas) */}
-          <div className={styles.dynamicSlot}>
-            {(pathname === '/' || pathname === '/siteFatec')
-              ? <SearchBar />
-              : <HamburgerMenu /> }
+          {/* Slot dinâmico à direita */}
+          <div 
+            className={styles.dynamicSlot}
+            // Removido estilos inline de debug, confiando no Header.module.css
+          >
+            {isNotHome ? (
+              <>
+                <VLibrasButton />
+                <HamburgerMenu isOpen={open} onOpen={openMenu} />
+              </>
+            ) : (
+              <SearchBar />
+            )}
           </div>
         </div>
       </div>

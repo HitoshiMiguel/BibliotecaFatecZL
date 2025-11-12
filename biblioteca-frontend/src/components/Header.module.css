@@ -1,47 +1,69 @@
 /* Arquivo: src/components/Header.module.css */
+
+/*
+ * Correção do fluxo:
+ * Garante que o slot use flexbox para alinhar os botões e os joga para a extrema direita.
+ */
 .dynamicSlot {
-  margin-left: auto; /* Joga o conteúdo dinâmico para a direita */
+    margin-left: auto; /* Joga o conteúdo dinâmico para a direita (funciona devido ao display: flex no CPS-container) */
+    display: flex; /* Adicionado: Para alinhar VLibras e Hamburger */
+    align-items: center; /* Adicionado: Alinha verticalmente */
+    gap: 12px; /* Adicionado: Espaçamento entre VLibras e Hamburger */
 }
 
 .searchBar {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
 }
 
 .campoDeBusca {
-  height: 50px;
-  width: 350px;
-  padding: 0 16px;
-  font-size: 15px;
-  border: 1px solid #dadada;
-  border-radius: 30px 0 0 30px;
-  outline: none;
+    height: 50px;
+    width: 350px;
+    padding: 0 16px;
+    font-size: 15px;
+    border: 1px solid #dadada;
+    border-radius: 30px 0 0 30px;
+    outline: none;
 }
 
 .btnSearch {
-  height: 50px;
-  width: 64px;
-  border: 1px solid #dadada;
-  border-left: none;
-  background: #fff;
-  border-radius: 0 30px 30px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    height: 50px;
+    width: 64px;
+    border: 1px solid #dadada;
+    border-left: none;
+    background: #fff;
+    border-radius: 0 30px 30px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Ajustado: Oculta o foco do botão de busca */
+    transition: background 0.2s, border-color 0.2s;
 }
 
 .btnSearch i {
-  color: #B20000;
-  font-size: 18px;
+    color: #B20000;
+    font-size: 18px;
 }
 
 .btnSearch:hover {
-  background: #B20000;
-  border-color: #B20000;
+    background: #B20000;
+    border-color: #B20000;
 }
 
 .btnSearch:hover i {
-  color: #fff;
+    color: #fff;
+}
+
+/* Garante a acessibilidade de foco para o botão de menu (Hamburger e VLibras) */
+.dynamicSlot button:focus-visible {
+    outline: 3px solid rgba(178,0,0,.5);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+/* VLibras Button style adjustment for flex layout */
+.vlibrasBtn {
+    /* O estilo inline no componente React já define o visual, mas esta classe garante o fluxo */
+    flex-shrink: 0; 
 }
 

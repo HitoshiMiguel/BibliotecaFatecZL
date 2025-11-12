@@ -1,166 +1,215 @@
-/* ...existing code... */
-
-/* Tailwind base */
+/* ------------------------------------------------------------------------
+   Configuração Base e Tailwind
+   ------------------------------------------------------------------------ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Reset (Global, mantido como está) */
+/* Reset (Global) */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 /* Body (Global) */
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #fff;
-  color: #333;
-  padding-top: var(--header-offset, 0px) !important; /* <-- variável, não número fixo */
-  will-change: transform;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #fff;
+    color: #333;
+    /* Certifique-se que o padding-top não está causando scroll desnecessário */
+    padding-top: var(--header-offset, 0px);
+    will-change: transform;
 }
 
+/* ------------------------------------------------------------------------
+   ✅ CORREÇÃO: SKIP LINK (Pular para o Conteúdo)
+   ------------------------------------------------------------------------ */
+
+/* A classe 'skip-link' deve ser aplicada ao seu <a> para fazê-lo desaparecer */
+.skip-link {
+    /* Esconde o link fora da área de visualização, mas acessível pelo Tab */
+    position: absolute !important;
+    left: -9999px !important; 
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9998; /* Abaixo do header fixo (z-index: 1000) */
+}
+
+/* Faz o link aparecer quando o usuário foca nele (tecla TAB) */
+.skip-link:focus {
+    position: fixed !important; 
+    left: 16px !important; 
+    top: 12px !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 8px 12px;
+    background: #d60000; /* Vermelho Fatec/CPS */
+    color: #fff;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 4px;
+    clip: auto; /* Restaura o clipe */
+    white-space: normal; /* Restaura o white-space */
+    z-index: 9999; /* Aparece acima de tudo, exceto talvez o VLibras */
+}
+
+/* ------------------------------------------------------------------------
+   Estilos de Layout (Header fixo e seus filhos)
+   ------------------------------------------------------------------------ */
 
 /* O contêiner principal do header */
 .app-header {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  z-index: 1000 !important;
-  background-color: #ffffff !important;
-
-  /* Propriedade de reset para anular qualquer 'transform' herdado */
-  transform: none !important; 
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    background-color: #ffffff !important;
+    transform: none !important; 
 }
 
 /* Faixa superior (governo) */
 .govsp-header {
-  /* Este elemento agora é posicionado normalmente DENTRO do seu pai fixo */
-  position: static !important; /* Força o posicionamento padrão */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 80px;
-  border-bottom: 1px solid #dadada;
+    position: static !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+    border-bottom: 1px solid #dadada;
 }
-
-/* ... (o resto do seu CSS para .logo-governo, .icones, .CPS-header, etc. continua igual) ... */
-
-
-/* ... O resto do seu CSS (.logo-governo, .CPS-header, etc.) continua igual ... */
 
 .logo-governo {
-  background-color: #000;
-  border-radius: 0 50px 50px 0;
-  height: 80px;
-  width: 305px;
-  padding: 0 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex: 0 0 auto;
+    background-color: #000;
+    border-radius: 0 50px 50px 0;
+    height: 80px;
+    width: 305px;
+    padding: 0 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0 0 auto;
 }
 
-/* ANTES: .logo-governo img { ... } */
-.logo-governo-img { /* Classe específica para a imagem do logo */
-  height: 38px;
-  width: auto;
+.logo-governo-img {
+    height: 38px;
+    width: auto;
 }
 
 .icones {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 20px;
 }
 
-/* ANTES: .icones img { ... } */
-.icone-img { /* Classe específica para os ícones */
-  width: 25px;
-  height: 25px;
+.icone-img {
+    width: 25px;
+    height: 25px;
 }
 
 .icones .govsp {
-  font-size: 14px;
-  color: #333;
-  margin-left: 5px;
+    font-size: 14px;
+    color: #333;
+    margin-left: 5px;
 }
 
 /* Faixa inferior (Fatec/CPS) */
 .CPS-header {
-  background: #fff;
-  padding: 12px 20px;
-  border-bottom: 1px solid #dadada;
+    background: #fff;
+    padding: 12px 20px;
+    border-bottom: 1px solid #dadada;
 }
 
 .CPS-container {
-  max-width: 1240px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: nowrap;
+    max-width: 1240px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: nowrap;
 }
 
 .logos {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-/* ANTES: .logos img { ... } */
-.logo-cps-fatec-img { /* Classe para as logos da Fatec e CPS */
-  height: 80px;
-  margin-right: 12px;
-  display: block;
+.logo-cps-fatec-img {
+    height: 80px;
+    margin-right: 12px;
+    display: block;
 }
 
 /* =================================
-   SEÇÃO DE TÍTULO
-   ================================= */
+    SEÇÃO DE TÍTULO
+    ================================= */
 .title-section {
-  background: #b20000; /* vermelho CPS */
-  color: #fff;
-  padding: 24px 20px;
-  text-align: center;
-  border-bottom: 1px solid #a00000;
+    background: #b20000;
+    color: #fff;
+    padding: 24px 20px;
+    text-align: center;
+    border-bottom: 1px solid #a00000;
 }
 
-/* ANTES: .title-section h1 { ... } */
-.title-section-heading { /* Classe específica para o h1 do título */
-  margin: 0;
-  font-size: 32px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #fff;
+.title-section-heading {
+    margin: 0;
+    font-size: 32px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #fff;
 }
-/* Skip link global: fica fora do fluxo e não cria espaço */
-.skip-link,
-a[href="#main-content"],
-a[href="#conteudo"],
-a[href="#content"] {
-  position: fixed;       /* tira do fluxo */
-  left: -9999px;         /* escondido até focar */
-  top: 12px;
-  z-index: 10000;
-  background: #000;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.skip-link:focus,
-a[href="#main-content"]:focus,
-a[href="#conteudo"]:focus,
-a[href="#content"]:focus {
-  left: 16px;            /* aparece no canto esquerdo ao focar via TAB */
-}
-
 
 .page-content { min-height: 100%; overflow: visible; }
+
+/* ------------------------------------------------------------------------
+   ✅ REGRAS PARA FILTROS DE DALTONISMO (GLOBAL) - MANTIDAS
+   ------------------------------------------------------------------------ */
+
+/* Aplica a transição no body para suavizar o efeito do filtro */
+body {
+    transition: filter 0.3s ease;
+}
+
+/* Deuteranopia (Visão mais fraca para o verde) */
+[data-cf="deuteranopia"] {
+    filter: url("#deuteranopia");
+}
+
+/* Protanopia (Visão mais fraca para o vermelho) */
+[data-cf="protanopia"] {
+    filter: url("#protanopia");
+}
+
+/* Tritanopia (Visão mais fraca para o azul/amarelo) */
+[data-cf="tritanopia"] {
+    filter: url("#tritanopia");
+}
+
+/* Restaura as cores originais */
+[data-cf="normal"] {
+    filter: none;
+}
+
+
+/* ------------------------------------------------------------------------
+   VLIBRAS E ACESSIBILIDADE GERAL
+   ------------------------------------------------------------------------ */
+
+[vw] {
+    z-index: 2147483000 !important;
+}
+[vw-access-button] {
+    right: 12px !important;
+    bottom: 16px !important;
+}
+
+/* Permite o scroll do conteúdo principal */
+html, body, .page-content {
+    overflow-x: hidden; /* Evita scroll horizontal indesejado */
+}

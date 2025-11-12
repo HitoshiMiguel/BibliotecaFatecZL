@@ -1,15 +1,10 @@
-// NOVO FICHEIRO: app/siteFatec/page.jsx (Server Component)
+// src/app/consulta/page.jsx
+import ConsultaClient from './consultaClient';
 
-import SiteFatecClient from './consultaClient'; // Importa o componente com 'use client'
-
-// Exporta os metadados para esta rota específica
 export const metadata = {
-  // Define o título que será usado na renderização inicial do servidor
-  title: 'Consulta ao Acervo', 
-  // O template no layout.jsx raiz (se existir) pode adicionar "| Biblioteca Fatec ZL"
+  title: 'Consulta ao Acervo',
 };
 
-// A função default da página apenas renderiza o componente cliente
-export default function SiteFatecPage() {
-  return <SiteFatecClient />;
+export default function ConsultaPage() {
+  return <ConsultaClient />;
 }

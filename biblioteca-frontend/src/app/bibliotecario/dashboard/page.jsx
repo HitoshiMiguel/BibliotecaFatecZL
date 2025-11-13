@@ -242,15 +242,9 @@ const handleViewClick = async (submissaoId) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1>Painel Bibliotecário</h1>
+            <button className="btn-publicar">Nova Publicação</button>
             <p>Abaixo estão as submissões que estão pendentes para análise.</p>
           </div>
-          <button 
-            className={styles.btnAprovarModal} // Reutilizando um estilo de botão
-            onClick={() => setIsUploadModalOpen(true)}
-            style={{ height: 'fit-content' }}
-          >
-            Publicar Novo
-          </button>
         </div>
 
         {/* Aqui renderiza a lógica (Loading, Erro, Tabela ou Vazio) */}

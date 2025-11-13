@@ -109,3 +109,38 @@
 .btnVisualizar:hover:not(:disabled) {
   opacity: 0.8;
 }
+
+/* --- ADICIONE ISSO AO SEU CSS --- */
+
+/* O container do cabeçalho da página */
+.pageHeader {
+  display: flex;
+  justify-content: space-between; /* Itens nas extremidades */
+  align-items: center;
+  margin-bottom: 8px; /* Espaço antes do subtítulo "Abaixo estão..." */
+  flex-wrap: wrap; /* Permite quebrar em telas pequenas */
+  gap: 16px; /* Espaço entre itens se quebrar */
+}
+
+/* Título */
+.pageHeader h1 {
+  margin: 0; /* Remove margem padrão */
+  font-size: 28px;
+}
+
+/* O botão de "Publicar Novo" */
+.btnPublicarNovo {
+  background-color: #A90000; /* Cor da Fatec/CPS */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btnPublicarNovo:hover {
+  background-color: #8c0000; /* Tom mais escuro */
+}

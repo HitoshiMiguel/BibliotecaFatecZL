@@ -102,3 +102,73 @@
 .resultLink { text-decoration: none; color: inherit; display: block; }
 .resultTitle { font-size: 18px; color: #0b63ce; margin: 0 0 6px; }
 .resultMeta { color: #666; margin: 0; }
+
+/* --------------------------------------------------
+  ATUALIZAÇÃO DOS ESTILOS
+  (Altere 'svg' para 'span' e ajuste)
+  --------------------------------------------------
+*/
+
+/* MODIFICADO: 
+  Transformamos o <li> em um flex container para
+  alinhar o link e o botão de favorito lado a lado.
+*/
+.resultItem {
+  /* ...seus estilos existentes (padding, border-bottom, etc) ... */
+  display: flex;
+  justify-content: space-between; /* Coloca o link na esquerda e o botão na direita */
+  align-items: center;       /* Alinha eles verticalmente */
+  gap: 1rem;                   /* Espaço entre o link e o botão */
+}
+
+/* MODIFICADO: 
+  Garantimos que o link ocupe o espaço disponível
+  e não tenha sublinhado (já que o <li> é o "botão")
+*/
+.resultLink {
+  /* ...seus estilos existentes (color, etc)... */
+  flex-grow: 1; /* Faz o link ocupar o máximo de espaço à esquerda */
+  text-decoration: none;
+  color: inherit;
+}
+
+/* NOVO: 
+  Estilos para o botão de coração
+*/
+.favoritoButton {
+  flex-shrink: 0; /* Impede o botão de encolher */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem; /* Aumenta a área de clique (bom para mobile) */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.favoritoButton:hover {
+  background-color: #f0f0f0; /* Um feedback visual leve */
+}
+
+.favoritoButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ATUALIZADO: 
+  Estilo para o ícone de coração (agora um <span>)
+*/
+.favoritoButton span {
+  color: #666; /* Cor padrão do ícone vazio */
+  line-height: 1; /* Alinha o emoji verticalmente */
+  transition: transform 0.1s ease-in-out;
+}
+
+/* ATUALIZADO: 
+  Aplica a cor vermelha (definida inline) e um leve 'pulso'
+*/
+.favoritoButton span[style*="var(--cor-primaria-red)"] {
+  transform: scale(1.1); 
+}

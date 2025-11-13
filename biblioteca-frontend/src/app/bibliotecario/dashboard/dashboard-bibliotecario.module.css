@@ -1,19 +1,75 @@
-/* src/app/bibliotecario/dashboard/dashboard-bibliotecario.module.css */
-
+/* Wrapper da página (centraliza o card no meio do conteúdo) */
 .container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 980px;
+  margin: 40px auto 80px;
+  padding: 32px 40px;
+  background-color: #ffffff;
+  border: 1px solid #555;
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
+/* Linha do título + botão "Publicar novo" já está ok com flex inline no JSX */
+
+/* Tabs "Submissões pendentes" / "Gerenciar submissões" */
+.tabsRow {
+  margin-top: 16px;
+  display: inline-flex;
+  gap: 8px;
+  background-color: #f3f4f6;
+  padding: 4px;
+  border-radius: 9px;
+}
+
+.tabButton {
+  border: none;
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-size: 14px;
+  cursor: pointer;
+  background-color: transparent;
+  color: #374151;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tabButton:hover {
+  background-color: #e5e7eb;
+}
+
+.tabButtonActive {
+  background-color: #b20000;
+  color: #ffffff;
+}
+
+/* Botão "Publicar novo" reaproveita o estilo de botão primário */
+.btnAprovarModal {
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: 1px solid #b20000;
+  background-color: #b20000;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btnAprovarModal:hover {
+  background-color: #9a0000;
+  box-shadow: 0 4px 10px rgba(178, 0, 0, 0.2);
+}
+
+/* Área da tabela dentro do card */
 .tableWrapper {
   width: 100%;
-  overflow-x: auto;
-  border: 1px solid #ddd;
+  margin-top: 24px;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  margin-top: 20px;
+  overflow-x: auto;
+  background-color: #ffffff;
 }
 
+/* Tabela */
 .tabelaSubmissoes {
   width: 100%;
   border-collapse: collapse;
@@ -21,14 +77,16 @@
 
 .tabelaSubmissoes th,
 .tabelaSubmissoes td {
-  padding: 12px 15px;
+  padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
 }
 
 .tabelaSubmissoes th {
-  background-color: #f9f9f9;
+  background-color: #f9fafb;
   font-weight: 600;
+  color: #111827;
 }
 
 .tabelaSubmissoes tr:last-child td {
@@ -39,37 +97,93 @@
   font-weight: 500;
 }
 
-/* Botão de Analisar (na tabela) */
-.btnAnalisar {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: opacity 0.2s;
-  background-color: #007bff;
-  color: white;
+/* Ações dentro da tabela */
+.acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.btnAnalisar:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+/* Botão azul de ação (Analisar / Editar) */
+.btnAnalisar {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s;
 }
 
 .btnAnalisar:hover:not(:disabled) {
-  opacity: 0.8;
+  opacity: 0.9;
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25);
 }
 
-/* Estilos para a tabela responsiva */
+.btnAnalisar:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Botão cinza "Visualizar" */
+.btnVisualizar {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background-color: #6b7280;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.btnVisualizar:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 4px 8px rgba(107, 114, 128, 0.25);
+}
+
+.btnVisualizar:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Mensagens simples */
+.loadingMessage,
+.errorMessage {
+  margin-top: 24px;
+  font-size: 14px;
+}
+
+.errorMessage {
+  color: #b91c1c;
+}
+
+/* Mobile: tabela “cardzada” */
 @media (max-width: 768px) {
+  .container {
+    margin: 24px 12px 40px;
+    padding: 20px 16px;
+  }
+
+  .tabsRow {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
   .tabelaSubmissoes thead {
     display: none;
   }
+
   .tabelaSubmissoes tr {
     display: block;
-    border-bottom: 2px solid #ddd;
+    border-bottom: 1px solid #e5e7eb;
     margin-bottom: 10px;
   }
+
   .tabelaSubmissoes td {
     display: block;
     text-align: right;
@@ -78,18 +192,22 @@
     width: 100%;
     box-sizing: border-box;
   }
+
   .tabelaSubmissoes td::before {
     content: attr(data-label);
     position: absolute;
     left: 10px;
     width: calc(50% - 20px);
     text-align: left;
-    font-weight: bold;
+    font-weight: 600;
+    color: #4b5563;
   }
+
   .acoes {
     justify-content: flex-end;
   }
 }
+<<<<<<< Updated upstream
 
 /* --- ADICIONE ESTE NOVO ESTILO --- */
 .btnVisualizar {
@@ -144,3 +262,5 @@
 .btnPublicarNovo:hover {
   background-color: #8c0000; /* Tom mais escuro */
 }
+=======
+>>>>>>> Stashed changes

@@ -216,4 +216,6 @@ body {
 /* Permite o scroll do conteúdo principal */
 html, body, .page-content {
     overflow-x: hidden; /* Evita scroll horizontal indesejado */
+    height: 100%;
+    min-height: 100vh;
 }

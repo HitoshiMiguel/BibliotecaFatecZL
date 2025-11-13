@@ -1,26 +1,98 @@
 // src/app/consulta/[id]/page.jsx
+'use client';
+
+import React, { useEffect, useState, use } from 'react';
+import Swal from 'sweetalert2';
 import styles from './publicacao.module.css';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-async function getData(id) {
-  const res = await fetch(`${API}/publicacoes/${id}`, { cache: 'no-store' });
-  if (!res.ok) return null;
-  return res.json();
-}
+export default function PublicacaoPage({ params }) {
+  // Next 15: params é uma Promise em client components
+  const { id } = use(params);
 
-export default async function PublicacaoPage({ params }) {
-  const data = await getData(params.id);
-  if (!data) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setErro('');
+      try {
+        const res = await fetch(`${API_BASE}/publicacoes/${id}`, {
+          cache: 'no-store',
+        });
+
+        if (!res.ok) {
+          if (res.status === 404) {
+            setErro('Publicação não encontrada.');
+            setData(null);
+            return;
+          }
+          throw new Error(`Falha ao buscar publicação (status ${res.status})`);
+        }
+
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error(err);
+        setErro('Erro ao carregar dados da publicação.');
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  const handleOpenFile = () => {
+    if (!data?.caminho_anexo) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Arquivo indisponível',
+        text: 'Esta publicação não possui arquivo anexado.',
+        confirmButtonColor: '#b20000',
+      });
+      return;
+    }
+
+    const raw = String(data.caminho_anexo).trim();
+
+    // Se já for uma URL completa, usa direto
+    const isFullUrl = /^https?:\/\//i.test(raw);
+    const url = isFullUrl
+      ? raw
+      : `https://drive.google.com/file/d/${raw}/view?usp=sharing`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  if (loading) {
     return (
       <main className={styles.wrap}>
-        <h1 className={styles.title}>Publicação não encontrada</h1>
+        <h1 className={styles.title}>Carregando publicação...</h1>
+      </main>
+    );
+  }
+
+  if (erro || !data) {
+    return (
+      <main className={styles.wrap}>
+        <h1 className={styles.title}>Publicação</h1>
+        <p style={{ color: '#b20000', marginTop: '16px' }}>
+          {erro || 'Publicação não encontrada.'}
+        </p>
       </main>
     );
   }
 
   const disponivel = !!data.caminho_anexo;
-  const isPDF = disponivel && /\.pdf($|\?)/i.test(data.caminho_anexo || '');
+  const isPDF =
+    disponivel && /\.pdf($|\?)/i.test(String(data.caminho_anexo || ''));
 
   return (
     <main className={styles.wrap}>
@@ -28,7 +100,7 @@ export default async function PublicacaoPage({ params }) {
 
       <section className={styles.content}>
         <aside className={styles.thumb}>
-          {/* Se tiver uma capa no futuro, renderiza aqui. Por ora, placeholder simples */}
+          {/* Futuro: render capa. Por enquanto placeholder */}
           <div className={styles.coverStub}>CAPA</div>
         </aside>
 
@@ -36,25 +108,75 @@ export default async function PublicacaoPage({ params }) {
           <h1 className={styles.h1}>{data.titulo_proposto}</h1>
 
           <ul className={styles.descList}>
-            {data.descricao && <li><strong>Descrição:</strong> {data.descricao}</li>}
-            {data.autor && <li><strong>Autor:</strong> {data.autor}</li>}
-            {data.editora && <li><strong>Editora:</strong> {data.editora}</li>}
-            {(data.ano_publicacao || data.ano_defesa) && (
-              <li><strong>Ano de publicação:</strong> {data.ano_publicacao || data.ano_defesa}</li>
+            {data.descricao && (
+              <li>
+                <strong>Descrição:</strong> {data.descricao}
+              </li>
             )}
-            {data.conferencia && <li><strong>Conferência:</strong> {data.conferencia}</li>}
-            {data.periodico && <li><strong>Periódico:</strong> {data.periodico}</li>}
-            {data.instituicao && <li><strong>Instituição:</strong> {data.instituicao}</li>}
-            {data.orientador && <li><strong>Orientador:</strong> {data.orientador}</li>}
-            {data.curso && <li><strong>Curso:</strong> {data.curso}</li>}
-            {data.tipo && <li><strong>Tipo:</strong> {data.tipo}</li>}
-            <li><strong>Disponibilidade:</strong> {disponivel ? (isPDF ? 'Disponível em PDF' : 'Disponível') : 'Indisponível'}</li>
+            {data.autor && (
+              <li>
+                <strong>Autor:</strong> {data.autor}
+              </li>
+            )}
+            {data.editora && (
+              <li>
+                <strong>Editora:</strong> {data.editora}
+              </li>
+            )}
+            {(data.ano_publicacao || data.ano_defesa) && (
+              <li>
+                <strong>Ano de publicação:</strong>{' '}
+                {data.ano_publicacao || data.ano_defesa}
+              </li>
+            )}
+            {data.conferencia && (
+              <li>
+                <strong>Conferência:</strong> {data.conferencia}
+              </li>
+            )}
+            {data.periodico && (
+              <li>
+                <strong>Periódico:</strong> {data.periodico}
+              </li>
+            )}
+            {data.instituicao && (
+              <li>
+                <strong>Instituição:</strong> {data.instituicao}
+              </li>
+            )}
+            {data.orientador && (
+              <li>
+                <strong>Orientador:</strong> {data.orientador}
+              </li>
+            )}
+            {data.curso && (
+              <li>
+                <strong>Curso:</strong> {data.curso}
+              </li>
+            )}
+            {data.tipo && (
+              <li>
+                <strong>Tipo:</strong> {data.tipo}
+              </li>
+            )}
+            <li>
+              <strong>Disponibilidade:</strong>{' '}
+              {disponivel
+                ? isPDF
+                  ? 'Disponível em PDF'
+                  : 'Disponível'
+                : 'Indisponível'}
+            </li>
           </ul>
 
           {disponivel && (
-            <a className={styles.downloadBtn} href={data.caminho_anexo} target="_blank" rel="noreferrer">
-              Download
-            </a>
+            <button
+              type="button"
+              className={styles.downloadBtn}
+              onClick={handleOpenFile}
+            >
+              Visualizar / Download
+            </button>
           )}
         </article>
       </section>

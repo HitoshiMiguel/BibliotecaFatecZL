@@ -1,63 +1,87 @@
 'use client';
 
-// Importações do React e de libs
 import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 
-// 1. IMPORTANDO O NOSSO *NOVO* ARQUIVO CSS
 import styles from './MyEditModal.module.css';
-
 import { FIELDS_BY_TYPE, TIPOS } from './formConstants.js';
 
-// URL da sua API
 const API_URL = 'http://localhost:4000';
 
-// ====================================================================
-// = Componente Modal de Edição (CORRIGIDO)
-// ====================================================================
-export function EditModal({ item, onClose, onSaveAndApprove, onReprove }) {
-
-  // --- 1. ESTADOS ---
+export function EditModal({
+  mode = 'pendente',          // 'pendente' | 'gerenciar'
+  item,
+  onClose,
+  onSaveAndApprove,
+  onReprove,
+  onUpdateOnly,
+}) {
   const [formData, setFormData] = useState({
     ...item,
-    tipo: (item.tipo && FIELDS_BY_TYPE[item.tipo]) ? item.tipo : 'tcc',
-  }); 
+    tipo:
+      item.tipo && FIELDS_BY_TYPE[item.tipo]
+        ? item.tipo
+        : 'tcc',
+  });
   const [isSaving, setIsSaving] = useState(false);
-  const [scrollTop, setScrollTop] = useState(0); // Para posicionar o modal
 
-  // --- 2. LÓGICA ---
+  const isGerenciar = mode === 'gerenciar';
+
   const fields = useMemo(() => {
-    return FIELDS_BY_TYPE[formData.tipo];
+    return FIELDS_BY_TYPE[formData.tipo] || [];
   }, [formData.tipo]);
 
-  // Atualiza o estado do formulário quando o usuário digita
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Atualiza o 'tipo'
   const handleTipoChange = (novoTipo) => {
-    setFormData(prev => ({ ...prev, tipo: novoTipo }));
+    setFormData((prev) => ({ ...prev, tipo: novoTipo }));
   };
 
-  // Função para "Salvar e Aprovar"
-  const handleSaveApproveClick = async () => {
+  // trava o scroll do body enquanto o modal está aberto
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
+  // SALVAR (pendente = salvar + aprovar / gerenciar = salvar apenas)
+  const handleSaveClick = async () => {
     setIsSaving(true);
     try {
-      const resUpdate = await fetch(`${API_URL}/api/admin/submissoes/${item.submissao_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
+      // 1) sempre atualiza a submissão
+      const resUpdate = await fetch(
+        `${API_URL}/api/admin/submissoes/${item.submissao_id}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!resUpdate.ok) {
-        const err = await resUpdate.json();
+        const err = await resUpdate.json().catch(() => ({}));
         throw new Error(err.message || 'Falha ao atualizar os dados.');
       }
-      await onSaveAndApprove(item.submissao_id);
-      onClose(); 
+
+      // 2) comportamento por modo
+      if (isGerenciar) {
+        // apenas atualiza lista no front
+        const atualizado = { ...item, ...formData };
+        if (onUpdateOnly) onUpdateOnly(atualizado);
+        Swal.fire('Salvo!', 'Publicação atualizada com sucesso.', 'success');
+        onClose();
+      } else {
+        // modo pendente: depois de salvar, aprova
+        await onSaveAndApprove(item.submissao_id);
+        onClose();
+      }
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
     } finally {
@@ -65,69 +89,31 @@ export function EditModal({ item, onClose, onSaveAndApprove, onReprove }) {
     }
   };
 
-  // Função para "Reprovar"
   const handleReproveClick = async () => {
-    await onReprove(item.submissao_id); 
+    await onReprove(item.submissao_id);
     onClose();
   };
 
-  // --- 3. EFEITOS (useEffect) ---
-  
-  // Este useEffect roda UMA VEZ quando o modal é criado
-  // para travar o scroll da página e posicionar o modal
-  useEffect(() => {
-    // Pega o scroll Y atual
-    const scrollY = window.scrollY;
-    setScrollTop(scrollY);
-
-    // Salva o estilo SÓ DO <html>
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    
-    // Trava o scroll SÓ NO <html>
-    document.documentElement.style.overflow = 'hidden';
-
-    // Roda QUANDO O MODAL DESAPARECE
-    return () => {
-      // Restaura o estilo SÓ DO <html>
-      document.documentElement.style.overflow = prevHtmlOverflow;
-    };
-  }, []); // O array vazio [] faz isso rodar só no "mount" e "unmount"
-
-
-  // --- 4. RENDERIZAÇÃO (JSX) ---
-  // (Só pode haver UM 'return' na função)
   return (
-    <div 
-      className={styles.overlay} 
+    <div
+      className={styles.overlay}
       onClick={onClose}
-      style={{
-        position: 'absolute',
-        top: `${scrollTop}px`, // Posição que pegamos do scroll
-        left: 0,
-        width: '100%',
-        height: '100vh', // Altura total da tela
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.65)', // O fundo escuro
-        zIndex: 1000, // Garante que fica na frente
-        padding: '1rem', // Espaçamento de segurança
-        boxSizing: 'border-box',
-      }}
-    > 
-      {/* e.stopPropagation() impede que o clique no modal feche o modal */}
-      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}> 
-        
-        {/* --- HEADER --- */}
+    >
+      <div
+        className={styles.modalBox}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
         <div className={styles.header}>
-          <h2>Analisar Submissão</h2>
-          
-          {/* === Toggle de Tipo (Dentro do Header) === */}
+          <h2>
+            {isGerenciar ? 'Editar Publicação Aprovada' : 'Analisar Submissão'}
+          </h2>
+
           <div className={styles.tipoToggle}>
-            {TIPOS.map(t => (
+            {TIPOS.map((t) => (
               <button
                 key={t.value}
-                type="button" 
+                type="button"
                 className={formData.tipo === t.value ? styles.active : ''}
                 onClick={() => handleTipoChange(t.value)}
                 disabled={isSaving}
@@ -138,18 +124,20 @@ export function EditModal({ item, onClose, onSaveAndApprove, onReprove }) {
           </div>
         </div>
 
-        {/* --- BODY (com scroll) --- */}
+        {/* BODY */}
         <div className={styles.body}>
-          {/* === Formulário Dinâmido === */}
           {fields.map((f) => (
             <div className={styles.formGroup} key={`${formData.tipo}-${f.name}`}>
-              <label htmlFor={f.name}>{f.label}{f.required && ' *'}</label>
-              
+              <label htmlFor={f.name}>
+                {f.label}
+                {f.required && ' *'}
+              </label>
+
               {f.type === 'textarea' ? (
                 <textarea
                   id={f.name}
                   name={f.name}
-                  value={formData[f.name] || ''} 
+                  value={formData[f.name] || ''}
                   onChange={handleChange}
                   rows={4}
                   disabled={isSaving}
@@ -159,7 +147,7 @@ export function EditModal({ item, onClose, onSaveAndApprove, onReprove }) {
                   id={f.name}
                   name={f.name}
                   type={f.type}
-                  value={formData[f.name] || ''} 
+                  value={formData[f.name] || ''}
                   onChange={handleChange}
                   required={f.required}
                   disabled={isSaving}
@@ -169,19 +157,40 @@ export function EditModal({ item, onClose, onSaveAndApprove, onReprove }) {
           ))}
         </div>
 
-        {/* --- FOOTER (com botões) --- */}
+        {/* FOOTER */}
         <div className={styles.footer}>
-          <button onClick={onClose} className={styles.btnGhost} disabled={isSaving}>
+          <button
+            onClick={onClose}
+            className={styles.btnGhost}
+            disabled={isSaving}
+          >
             Cancelar
           </button>
-          <button onClick={handleReproveClick} className={styles.btnReprovarModal} disabled={isSaving}>
-            Reprovar
-          </button>
-          <button onClick={handleSaveApproveClick} className={styles.btnAprovarModal} disabled={isSaving}>
-            {isSaving ? 'Guardando...' : 'Guardar e Aprovar'}
+
+          {!isGerenciar && (
+            <button
+              onClick={handleReproveClick}
+              className={styles.btnReprovarModal}
+              disabled={isSaving}
+            >
+              Reprovar
+            </button>
+          )}
+
+          <button
+            onClick={handleSaveClick}
+            className={styles.btnAprovarModal}
+            disabled={isSaving}
+          >
+            {isSaving
+              ? isGerenciar
+                ? 'Guardando...'
+                : 'Guardando e aprovando...'
+              : isGerenciar
+              ? 'Guardar alterações'
+              : 'Guardar e Aprovar'}
           </button>
         </div>
-
       </div>
     </div>
   );

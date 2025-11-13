@@ -1,129 +1,225 @@
-/* O fundo escuro (overlay) */
-/* MyEditModal.module.css */
+/* Fundo escuro do modal ocupando 100% da tela */
 .overlay {
-  /* * REMOVEMOS 'position: fixed', 'top', 'right', 'bottom'.
-   * MUDAMOS para 'position: absolute' e definimos 'height'.
-  */
-  position: absolute;
+  position: fixed;
+  top: 0;
   left: 0;
-  width: 100%;
-  height: 100vh; /* 100% da altura da tela */
-  
-  /* O resto (centralização, background) fica igual */
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background-color: rgba(0, 0, 0, 0.65);
   z-index: 1000;
+
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 1rem;
+  align-items: center;      /* centraliza verticalmente */
+  padding: 24px 16px;       /* respiro nas bordas */
   box-sizing: border-box;
+
+  overflow-y: auto;         /* se o modal ficar grande, a overlay rola */
 }
 
-/* O "card" branco do modal */
+/* Card branco do modal */
 .modalBox {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  background: #ffffff;
+  border-radius: 8px;          /* mesmo padrão do resto do site */
+  border: 1px solid #555;      /* igual aos cards de dashboard/upload */
   width: 100%;
-  max-width: 700px; /* Sua largura máxima original */
-  
-  /* CRUCIAL:
-     Define a altura máxima e divide o layout em 3 partes
-     para que o *corpo* role, mas o header/footer fiquem fixos.
-  */
-  max-height: 90vh; 
+  max-width: 980px;            /* mesma largura do card de upload */
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+
   display: flex;
   flex-direction: column;
+
+  /* garante que o card nunca passe da viewport:
+     24px (padding top da overlay) + 24px (bottom) = 48px */
+  max-height: calc(100vh - 48px);
 }
 
-/* --- Partes do Modal --- */
-
+/* Cabeçalho do modal */
 .header {
-  padding: 1rem 1.5rem;
+  padding: 16px 24px;
   border-bottom: 1px solid #eee;
-  
-  /* Adicionado para organizar o título e os botões: */
   display: flex;
   flex-direction: column;
-  gap: 1rem; /* Cria um espaço entre o título e os botões */
+  gap: 12px;
 }
+
 .header h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
 }
 
-.body {
-  padding: 1.5rem;
-  /* A MÁGICA: O scroll acontece SÓ AQUI */
-  overflow-y: auto; 
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem; /* Espaço entre os grupos do form */
-}
-
-.footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  background-color: #f9f9f9;
-  /* Arredonda os cantos inferiores */
-  border-radius: 0 0 8px 8px;
-}
-
-/* --- Estilos do seu Formulário (adaptados) --- */
-
+/* Toggle de tipo (TCC / Artigo / Livro) */
 .tipoToggle {
-  display: flex;
-  border-radius: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid #ccc;
 }
-.tipoToggle button {
-  flex: 1; padding: 10px; border: none;
-  background-color: #f4f4f4; cursor: pointer;
-  border-left: 1px solid #ccc;
-}
-.tipoToggle button:first-child { border-left: none; }
-.tipoToggle button.active { background-color: #A90000; color: white; }
 
+.tipoToggle button {
+  padding: 10px 12px;
+  border: none;
+  background-color: #f3f4f6;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.tipoToggle button + button {
+  border-left: 1px solid #e5e7eb;
+}
+
+.tipoToggle button:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+.tipoToggle button.active {
+  background-color: #b20000;
+  color: #ffffff;
+}
+
+/* Corpo do modal: rola por dentro do card */
+.body {
+  padding: 20px 24px;
+  overflow-y: auto;                 /* scroll interno */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Grupo de campo */
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 6px;
 }
+
 .formGroup label {
-  font-weight: bold;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
 }
+
 .formGroup input,
 .formGroup textarea {
   width: 100%;
-  padding: 10px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #111827;
   box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.formGroup textarea {
+  min-height: 120px;
+  resize: vertical;
+}
 
-/* --- Estilos dos seus Botões (adaptados) --- */
-.btnGhost, .btnReprovarModal, .btnAprovarModal {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
+.formGroup input:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #b20000;
+  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.2);
 }
-.btnGhost {
-  background: none; border: 1px solid #777; color: #777;
+
+/* Rodapé do modal */
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+  background-color: #f9fafb;
+  border-radius: 0 0 8px 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
-.btnReprovarModal {
-  background-color: #dc3545; color: white;
-}
+
+/* Botões */
+.btnGhost,
+.btnReprovarModal,
 .btnAprovarModal {
-  background-color: #28a745; color: white;
+  padding: 10px 18px;
+  border-radius: 8px; /* pílula, como upload */
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
-/* Em MyEditModal.module.css */
-.filePreviewLink {
-  margin-bottom: 0.5rem; /* Um espaço abaixo do link */
+.btnGhost {
+  background: transparent;
+  color: #b20000;
+  border-color: #b20000;
+}
+
+.btnGhost:hover:not(:disabled) {
+  background-color: #b20000;
+  color: #ffffff;
+}
+
+.btnReprovarModal {
+  background-color: #dc3545;
+  color: #ffffff;
+  border-color: #dc3545;
+}
+
+.btnReprovarModal:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.btnAprovarModal {
+  background-color: #28a745;
+  color: #ffffff;
+  border-color: #28a745;
+}
+
+.btnAprovarModal:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.btnGhost:disabled,
+.btnReprovarModal:disabled,
+.btnAprovarModal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .modalBox {
+    max-width: 100%;
+    max-height: calc(100vh - 32px);
+  }
+
+  .header {
+    padding: 12px 16px;
+  }
+
+  .body {
+    padding: 16px;
+  }
+
+  .footer {
+    padding: 12px 16px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .btnGhost,
+  .btnReprovarModal,
+  .btnAprovarModal {
+    width: 100%;
+  }
 }

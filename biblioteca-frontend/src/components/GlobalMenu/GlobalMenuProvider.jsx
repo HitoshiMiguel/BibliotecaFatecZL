@@ -30,7 +30,7 @@ export default function GlobalMenuProvider({ children }) {
   const [isAuthed, setIsAuthed] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
+  const AUTH_CHECK_URL = `${API_URL}/auth/current-user`;
   const LOGOUT_URL = `${API_URL}/api/auth/logout`;
 
   // snapshot rápido para evitar "piscar"
@@ -51,35 +51,23 @@ export default function GlobalMenuProvider({ children }) {
 
   // checagem real no backend (cookie httpOnly)
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch(AUTH_CHECK_URL, {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        if (alive) setAuthState(res.ok);
-      } catch {
-        if (alive) setAuthState(false);
-      }
-    })();
+  const token = localStorage.getItem('token');
+  if (!token) return;
 
-    const sync = async () => {
-      try {
-        const res = await fetch(AUTH_CHECK_URL, { credentials: 'include', cache: 'no-store' });
-        setAuthState(res.ok);
-      } catch {
-        setAuthState(false);
-      }
-    };
-    window.addEventListener('auth:changed', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      alive = false;
-      window.removeEventListener('auth:changed', sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, [AUTH_CHECK_URL, setAuthState]);
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get('/auth/current-user', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(response.data.user);
+    } catch (error) {
+      console.error('Erro ao buscar usuário atual:', error);
+      // opcional: limpar token se 401, etc.
+    }
+  };
+
+  fetchCurrentUser();
+}, []); // só uma vez na montagem
 
   // controls do sheet
   const openMenu  = useCallback(() => setOpen(true), []);

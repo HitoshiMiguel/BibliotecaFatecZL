@@ -461,7 +461,6 @@ const getSubmissoesPendentes = async (req, res, next) => {
 const updateSubmissao = async (req, res, next) => {
   const { id: submissaoId } = req.params;
   
-  // Pega todos os campos editáveis do body
   const {
     titulo_proposto,
     descricao,
@@ -478,15 +477,20 @@ const updateSubmissao = async (req, res, next) => {
   } = req.body;
 
   try {
-    // 1. Validar se a submissão existe e está pendente
-    const sqlFind = "SELECT submissao_id FROM dg_submissoes WHERE submissao_id = ? AND status = 'pendente'";
+    // 1. Validar se a submissão existe (independente do status)
+    const sqlFind = "SELECT submissao_id, status FROM dg_submissoes WHERE submissao_id = ?";
     const [rows] = await connection.execute(sqlFind, [submissaoId]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
+      return res.status(404).json({ message: 'Submissão não encontrada.' });
     }
 
-    // 2. Construir e executar a query de UPDATE
+    // Se você quiser, pode opcionalmente bloquear rejeitadas aqui:
+    // if (rows[0].status === 'rejeitado') {
+    //   return res.status(400).json({ message: 'Não é possível editar submissões rejeitadas.' });
+    // }
+
+    // 2. UPDATE (mesmo para pendente ou aprovada)
     const sqlUpdate = `
       UPDATE dg_submissoes SET
         titulo_proposto = ?,
@@ -517,17 +521,17 @@ const updateSubmissao = async (req, res, next) => {
       curso || null,
       ano_defesa || null,
       tipo || null,
-      submissaoId // O ID vai no final para o WHERE
+      submissaoId
     ]);
 
-    // 3. Sucesso
     res.status(200).json({ success: true, message: 'Submissão atualizada com sucesso.' });
 
   } catch (error) {
     console.error('Erro ao atualizar submissão:', error);
     next(error);
   }
-}; // <-- FIM DA FUNÇÃO updateSubmissao
+}; //<-- fim do update 
+
 
 /**
  * POST /api/admin/submissoes/:id/aprovar

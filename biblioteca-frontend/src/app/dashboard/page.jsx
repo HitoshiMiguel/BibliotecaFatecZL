@@ -27,9 +27,9 @@ export default function DashboardPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // ---- BASE + ENDPOINTS (corrigidos para /api/auth/...) ----
+  // ---- BASE + ENDPOINTS ----
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
+  const AUTH_CHECK_URL = `${API_URL}/auth/current-user`; // usa a sua rota original
   const LOGOUT_URL     = `${API_URL}/api/auth/logout`;
   const PROFILE_URL    = `${API_URL}/api/auth/profile`;
 
@@ -49,11 +49,20 @@ export default function DashboardPage() {
         });
 
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
+          // 👉 trata 401 / 403 / 404 como "não autenticado"
+          if (res.status === 401 || res.status === 403 || res.status === 404) {
+            console.warn('Usuário não autenticado ou rota não encontrada, redirecionando para login...');
             router.replace('/login');
             return;
           }
-          throw new Error(`Falha ao buscar dados: ${res.status}`);
+
+          // outros erros: só mostra mensagem, sem "throw"
+          console.error(`Falha ao buscar dados: ${res.status}`);
+          setActionStatus({
+            message: `Erro ao carregar dados do usuário (código ${res.status}).`,
+            type: 'error',
+          });
+          return;
         }
 
         const data = await res.json();
@@ -61,7 +70,10 @@ export default function DashboardPage() {
         setProfileFormData({ nome: data.nome, email: data.email });
       } catch (err) {
         console.error('Falha na autenticação/fetch:', err);
-        setActionStatus({ message: 'Erro ao carregar dados. Redirecionando para login.', type: 'error' });
+        setActionStatus({
+          message: 'Erro ao carregar dados. Redirecionando para login.',
+          type: 'error',
+        });
         setTimeout(() => router.replace('/login'), 1500);
       } finally {
         setIsLoading(false);
@@ -71,7 +83,9 @@ export default function DashboardPage() {
     checkAuthAndFetchData();
 
     // evita “back cache” reexibindo sem checar
-    const handlePageShow = (e) => { if (e.persisted) window.location.reload(); };
+    const handlePageShow = (e) => { 
+      if (e.persisted) window.location.reload(); 
+    };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, [router, AUTH_CHECK_URL]);
@@ -107,12 +121,22 @@ export default function DashboardPage() {
     setActionStatus({ message: '', type: '' });
 
     if (!formData.nome || formData.nome.trim().length < 2) {
-      Swal.fire({ icon: 'error', title: 'Erro', text: 'Nome inválido (mínimo 2 caracteres).', confirmButtonColor: '#b20000' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: 'Nome inválido (mínimo 2 caracteres).',
+        confirmButtonColor: '#b20000'
+      });
       setIsUpdating(false);
       return;
     }
     if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
-      Swal.fire({ icon: 'error', title: 'Erro', text: 'Formato de e-mail inválido.', confirmButtonColor: '#b20000' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro',
+        text: 'Formato de e-mail inválido.',
+        confirmButtonColor: '#b20000'
+      });
       setIsUpdating(false);
       return;
     }
@@ -133,13 +157,28 @@ export default function DashboardPage() {
       if (res.ok) {
         setUser(data.user || { ...user, ...formData });
         handleModalClose();
-        Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Perfil atualizado com sucesso!', confirmButtonColor: '#28a745' });
+        Swal.fire({
+          icon: 'success',
+          title: 'Sucesso!',
+          text: 'Perfil atualizado com sucesso!',
+          confirmButtonColor: '#28a745'
+        });
       } else {
-        Swal.fire({ icon: 'error', title: 'Erro!', text: data.message || 'Não foi possível atualizar o perfil.', confirmButtonColor: '#b20000' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Erro!',
+          text: data.message || 'Não foi possível atualizar o perfil.',
+          confirmButtonColor: '#b20000'
+        });
       }
     } catch (err) {
       console.error('Erro ao atualizar perfil:', err);
-      Swal.fire({ icon: 'error', title: 'Erro de Rede', text: 'Não foi possível conectar ao servidor.', confirmButtonColor: '#b20000' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Erro de Rede',
+        text: 'Não foi possível conectar ao servidor.',
+        confirmButtonColor: '#b20000'
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -152,8 +191,14 @@ export default function DashboardPage() {
   if (!user) {
     return (
       <div className={styles.container}>
-        <Alert kind={actionStatus.type || 'error'} message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'} />
-        <button onClick={() => router.replace('/login')} className={styles.button}>Ir para Login</button>
+        <Alert
+          id="dashboard-error"
+          kind={actionStatus.type || 'error'}
+          message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'}
+        />
+        <button onClick={() => router.replace('/login')} className={styles.button}>
+          Ir para Login
+        </button>
       </div>
     );
   }
@@ -167,7 +212,13 @@ export default function DashboardPage() {
       <div className={styles.contentWrapper}>
         <div className={styles.dashboardContainer}>
           {actionStatus.message && (
-            <Alert kind={actionStatus.type} message={actionStatus.message} className={styles.actionAlert} />
+            <div className={styles.actionAlert}>
+              <Alert
+                id="dashboard-status"
+                kind={actionStatus.type}
+                message={actionStatus.message}
+              />
+            </div>
           )}
 
           <div className={styles.userDetails}>
@@ -204,7 +255,10 @@ export default function DashboardPage() {
             </div>
 
             <div className={styles.editButtonWrapper}>
-              <button onClick={handleEditProfileClick} className={`${styles.button} ${styles.editButton}`}>
+              <button
+                onClick={handleEditProfileClick}
+                className={`${styles.button} ${styles.editButton}`}
+              >
                 <BsPencilSquare /> Editar Perfil
               </button>
             </div>

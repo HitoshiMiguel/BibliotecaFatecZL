@@ -375,6 +375,7 @@ export default function DashboardBibliotecarioPage() {
           <div>
             <h1>Painel Bibliotecário</h1>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             <button className="btn-publicar">Nova Publicação</button>
             <p>Abaixo estão as submissões que estão pendentes para análise.</p>
           </div>
@@ -412,6 +413,41 @@ export default function DashboardBibliotecarioPage() {
               </button>
             </div>
           </div>
+=======
+            <p>
+              {abaAtiva === 'pendentes'
+                ? 'Abaixo estão as submissões que estão pendentes para análise.'
+                : 'Gerencie as informações das publicações já aprovadas no acervo.'}
+            </p>
+
+            {/* Botões de troca de aba */}
+            <div className={styles.tabsRow}>
+              <button
+                type="button"
+                className={
+                  abaAtiva === 'pendentes'
+                    ? `${styles.tabButton} ${styles.tabButtonActive}`
+                    : styles.tabButton
+                }
+                onClick={() => setAbaAtiva('pendentes')}
+              >
+                Submissões pendentes
+              </button>
+
+              <button
+                type="button"
+                className={
+                  abaAtiva === 'gerenciar'
+                    ? `${styles.tabButton} ${styles.tabButtonActive}`
+                    : styles.tabButton
+                }
+                onClick={() => setAbaAtiva('gerenciar')}
+              >
+                Gerenciar submissões
+              </button>
+            </div>
+          </div>
+>>>>>>> Stashed changes
 
           <button 
             className={styles.btnAprovarModal}

@@ -13,6 +13,7 @@ export default function ConsultaClient() {
   const [items, setItems] = useState([]);
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   // --- Estado para Favoritos (SÓ VISUAL) ---
   const [favoritos, setFavoritos] = useState([]); // Guarda os IDs [1, 5, 22]
 
@@ -40,6 +41,8 @@ export default function ConsultaClient() {
     // 1. Limpa qualquer erro antigo (como o "Erro ao atualizar...")
     setErro(''); 
 =======
+=======
+>>>>>>> Stashed changes
   // 👇 NOVO: saber se já pesquisou alguma vez
   const [jaPesquisou, setJaPesquisou] = useState(false);
 
@@ -125,6 +128,7 @@ export default function ConsultaClient() {
   };
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   return (
     <main className={styles.pageContainer}>
       <h1 className={styles.title}>Bem-vindo à Biblioteca Online</h1>
@@ -203,6 +207,8 @@ export default function ConsultaClient() {
   );
 }
 =======
+=======
+>>>>>>> Stashed changes
       {/* ============================================================
           3️⃣ Empty state só aparece se o usuário pesquisou
           ============================================================ */}

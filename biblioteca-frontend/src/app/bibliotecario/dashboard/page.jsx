@@ -1,10 +1,10 @@
 // src/app/bibliotecario/dashboard/page.jsx
-'use client'; 
+'use client';
 
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-import styles from './dashboard-bibliotecario.module.css'; 
+import styles from './dashboard-bibliotecario.module.css';
 
 import { EditModal } from './MyEditModal.jsx';
 import { NewUploadModal } from './NewUploadModal';
@@ -67,7 +67,6 @@ export default function DashboardBibliotecarioPage() {
 
         const data = await res.json();
         setSubmissoesPendentes(data || []);
-
       } catch (err) {
         console.error(err);
         setSubmissoesPendentes([]);
@@ -115,7 +114,7 @@ export default function DashboardBibliotecarioPage() {
   // = AÇÕES: APROVAR / REPROVAR PENDENTES
   // ==========================================
   const handleAprovar = async (id) => {
-    setUpdatingId(id); 
+    setUpdatingId(id);
     try {
       const res = await fetch(`${API_URL}/api/admin/submissoes/${id}/aprovar`, {
         method: 'POST',
@@ -133,51 +132,55 @@ export default function DashboardBibliotecarioPage() {
 
       // Se a gente estava com o item aberto no modal, reaproveita esse objeto
       setPublicacoes((prev) => {
-        const justApproved = editingItem && editingItem.submissao_id === id
-          ? editingItem
-          : null;
+        const justApproved =
+          editingItem && editingItem.submissao_id === id ? editingItem : null;
         return justApproved ? [...prev, justApproved] : prev;
       });
-
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
-      setUpdatingId(null); 
+      setUpdatingId(null);
     }
   };
 
   const handleReprovar = async (id) => {
     const result = await Swal.fire({
-      title: 'Tem a certeza?',
-      text: "A submissão será rejeitada e o arquivo apagado. Esta ação não pode ser revertida!",
+      title: 'Tem certeza?',
+      text: 'A submissão será rejeitada e o arquivo apagado. Esta ação não pode ser revertida!',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
       confirmButtonText: 'Sim, reprovar!',
-      cancelButtonText: 'Cancelar'
+      cancelButtonText: 'Cancelar',
     });
 
     if (!result.isConfirmed) return;
 
-    setUpdatingId(id); 
+    setUpdatingId(id);
     try {
-      const res = await fetch(`${API_URL}/api/admin/submissoes/${id}/reprovar`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `${API_URL}/api/admin/submissoes/${id}/reprovar`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Falha ao reprovar');
 
-      Swal.fire('Reprovado!', 'A submissão foi reprovada e o arquivo apagado.', 'success');
+      Swal.fire(
+        'Reprovado!',
+        'A submissão foi reprovada e o arquivo apagado.',
+        'success'
+      );
 
       // Remove da lista de pendentes
       setSubmissoesPendentes((prev) =>
         prev.filter((sub) => sub.submissao_id !== id)
       );
-
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
-      setUpdatingId(null); 
+      setUpdatingId(null);
     }
   };
 
@@ -185,7 +188,7 @@ export default function DashboardBibliotecarioPage() {
   // = AÇÃO: VISUALIZAR ARQUIVO NO DRIVE
   // ==========================================
   const handleViewClick = async (submissaoId) => {
-    if (viewingId === submissaoId) return; 
+    if (viewingId === submissaoId) return;
     setViewingId(submissaoId);
 
     try {
@@ -197,7 +200,9 @@ export default function DashboardBibliotecarioPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Não foi possível carregar o link do arquivo.');
+        throw new Error(
+          data.message || 'Não foi possível carregar o link do arquivo.'
+        );
       }
 
       if (data.webViewLink) {
@@ -205,7 +210,6 @@ export default function DashboardBibliotecarioPage() {
       } else {
         throw new Error('Link de visualização não encontrado.');
       }
-
     } catch (err) {
       Swal.fire('Erro', err.message, 'error');
     } finally {
@@ -224,7 +228,7 @@ export default function DashboardBibliotecarioPage() {
     if (erroPendentes) {
       return <p style={{ color: 'red' }}>{erroPendentes}</p>;
     }
-    
+
     if (submissoesPendentes.length === 0) {
       return <p>Nenhuma submissão pendente no momento.</p>;
     }
@@ -245,18 +249,12 @@ export default function DashboardBibliotecarioPage() {
           <tbody>
             {submissoesPendentes.map((sub) => (
               <tr key={sub.submissao_id}>
-                <td data-label="Título:">
-                  {sub.titulo_proposto}
-                </td>
-                <td data-label="Autor:">
-                  {sub.autor || '—'}
-                </td>
+                <td data-label="Título:">{sub.titulo_proposto}</td>
+                <td data-label="Autor:">{sub.autor || '—'}</td>
                 <td data-label="Tipo:">
                   {sub.tipo ? sub.tipo.toUpperCase() : '—'}
                 </td>
-                <td data-label="Enviado por:">
-                  {sub.nome_remetente}
-                </td>
+                <td data-label="Enviado por:">{sub.nome_remetente}</td>
                 <td data-label="Data:">
                   {new Date(sub.data_submissao).toLocaleDateString('pt-BR')}
                 </td>
@@ -265,18 +263,24 @@ export default function DashboardBibliotecarioPage() {
                     <button
                       className={styles.btnVisualizar}
                       onClick={() => handleViewClick(sub.submissao_id)}
-                      disabled={viewingId === sub.submissao_id || updatingId === sub.submissao_id}
+                      disabled={
+                        viewingId === sub.submissao_id ||
+                        updatingId === sub.submissao_id
+                      }
                     >
                       {viewingId === sub.submissao_id ? '...' : 'Visualizar'}
                     </button>
 
-                    <button 
+                    <button
                       className={styles.btnAnalisar}
                       onClick={() => {
                         setEditMode('pendente');
                         setEditingItem(sub);
                       }}
-                      disabled={updatingId === sub.submissao_id || viewingId === sub.submissao_id}
+                      disabled={
+                        updatingId === sub.submissao_id ||
+                        viewingId === sub.submissao_id
+                      }
                     >
                       {updatingId === sub.submissao_id ? '...' : 'Analisar'}
                     </button>
@@ -321,12 +325,8 @@ export default function DashboardBibliotecarioPage() {
           <tbody>
             {publicacoes.map((pub) => (
               <tr key={pub.submissao_id}>
-                <td data-label="Título:">
-                  {pub.titulo_proposto}
-                </td>
-                <td data-label="Autor:">
-                  {pub.autor || '—'}
-                </td>
+                <td data-label="Título:">{pub.titulo_proposto}</td>
+                <td data-label="Autor:">{pub.autor || '—'}</td>
                 <td data-label="Tipo:">
                   {pub.tipo ? pub.tipo.toUpperCase() : '—'}
                 </td>
@@ -335,11 +335,13 @@ export default function DashboardBibliotecarioPage() {
                 </td>
                 <td data-label="Ações:">
                   <div className={styles.acoes}>
-                    {/* 👇 Novo botão de Visualizar, igual ao da aba Pendentes */}
                     <button
                       className={styles.btnVisualizar}
                       onClick={() => handleViewClick(pub.submissao_id)}
-                      disabled={viewingId === pub.submissao_id || updatingId === pub.submissao_id}
+                      disabled={
+                        viewingId === pub.submissao_id ||
+                        updatingId === pub.submissao_id
+                      }
                     >
                       {viewingId === pub.submissao_id ? '...' : 'Visualizar'}
                     </button>
@@ -350,7 +352,10 @@ export default function DashboardBibliotecarioPage() {
                         setEditMode('gerenciar');
                         setEditingItem(pub);
                       }}
-                      disabled={updatingId === pub.submissao_id || viewingId === pub.submissao_id}
+                      disabled={
+                        updatingId === pub.submissao_id ||
+                        viewingId === pub.submissao_id
+                      }
                     >
                       Editar
                     </button>
@@ -371,14 +376,9 @@ export default function DashboardBibliotecarioPage() {
     <>
       <div className={styles.container}>
         {/* Cabeçalho */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className={styles.pageHeader}>
           <div>
             <h1>Painel Bibliotecário</h1>
-<<<<<<< Updated upstream
-            <button className="btn-publicar">Nova Publicação</button>
-            <p>Abaixo estão as submissões que estão pendentes para análise.</p>
-          </div>
-=======
             <p>
               {abaAtiva === 'pendentes'
                 ? 'Abaixo estão as submissões que estão pendentes para análise.'
@@ -413,14 +413,12 @@ export default function DashboardBibliotecarioPage() {
             </div>
           </div>
 
-          <button 
-            className={styles.btnAprovarModal}
+          <button
+            className={styles.btnPublicarNovo}
             onClick={() => setIsUploadModalOpen(true)}
-            style={{ height: 'fit-content' }}
           >
             Publicar Novo
           </button>
->>>>>>> Stashed changes
         </div>
 
         {/* Conteúdo condicional conforme a aba */}
@@ -429,16 +427,19 @@ export default function DashboardBibliotecarioPage() {
 
       {/* Modal de Edição (compartilhado entre as abas) */}
       {editingItem && (
-        <EditModal 
+        <EditModal
           mode={editMode}
           item={editingItem}
           onClose={() => setEditingItem(null)}
-          onSaveAndApprove={handleAprovar}    // usado no modo 'pendente'
-          onReprove={handleReprovar}          // usado no modo 'pendente'
-          onUpdateOnly={(updated) => {        // usado no modo 'gerenciar'
-            setPublicacoes(prev =>
-              prev.map(p =>
-                p.submissao_id === updated.submissao_id ? { ...p, ...updated } : p
+          onSaveAndApprove={handleAprovar} // usado no modo 'pendente'
+          onReprove={handleReprovar} // usado no modo 'pendente'
+          onUpdateOnly={(updated) => {
+            // usado no modo 'gerenciar'
+            setPublicacoes((prev) =>
+              prev.map((p) =>
+                p.submissao_id === updated.submissao_id
+                  ? { ...p, ...updated }
+                  : p
               )
             );
           }}

@@ -18,7 +18,8 @@ import styles from './globalMenu.module.css';
 const Ctx = createContext(null);
 export const useGlobalMenu = () => {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useGlobalMenu must be used inside <GlobalMenuProvider>');
+  if (!ctx)
+    throw new Error('useGlobalMenu must be used inside <GlobalMenuProvider>');
   return ctx;
 };
 
@@ -30,49 +31,62 @@ export default function GlobalMenuProvider({ children }) {
   const [isAuthed, setIsAuthed] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const AUTH_CHECK_URL = `${API_URL}/auth/current-user`;
+  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
   const LOGOUT_URL = `${API_URL}/api/auth/logout`;
 
   // snapshot rápido para evitar "piscar"
   useEffect(() => {
     try {
-      if (localStorage.getItem('isAuthed') === '1') setIsAuthed(true);
+      if (typeof window !== 'undefined') {
+        if (localStorage.getItem('isAuthed') === '1') setIsAuthed(true);
+      }
     } catch {}
   }, []);
 
   const setAuthState = useCallback((v) => {
     setIsAuthed(v);
     try {
-      if (v) localStorage.setItem('isAuthed', '1');
-      else localStorage.removeItem('isAuthed');
-      window.dispatchEvent(new Event('auth:changed'));
+      if (typeof window !== 'undefined') {
+        if (v) localStorage.setItem('isAuthed', '1');
+        else localStorage.removeItem('isAuthed');
+      }
     } catch {}
   }, []);
 
   // checagem real no backend (cookie httpOnly)
   useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (!token) return;
+    let cancelled = false;
 
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await api.get('/auth/current-user', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser(response.data.user);
-    } catch (error) {
-      console.error('Erro ao buscar usuário atual:', error);
-      // opcional: limpar token se 401, etc.
-    }
-  };
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(AUTH_CHECK_URL, {
+          method: 'GET',
+          credentials: 'include',
+        });
 
-  fetchCurrentUser();
-}, []); // só uma vez na montagem
+        if (!res.ok) {
+          if (!cancelled) setAuthState(false);
+          return;
+        }
+
+        // Se a API respondeu OK, consideramos autenticado
+        if (!cancelled) setAuthState(true);
+      } catch (err) {
+        if (!cancelled) setAuthState(false);
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [AUTH_CHECK_URL, setAuthState]);
 
   // controls do sheet
-  const openMenu  = useCallback(() => setOpen(true), []);
+  const openMenu = useCallback(() => setOpen(true), []);
   const closeMenu = useCallback(() => setOpen(false), []);
-  const toggleMenu = useCallback(() => setOpen(v => !v), []);
+  const toggleMenu = useCallback(() => setOpen((v) => !v), []);
 
   // bloqueia scroll/ESC quando aberto
   useEffect(() => {
@@ -93,14 +107,19 @@ export default function GlobalMenuProvider({ children }) {
       await fetch(LOGOUT_URL, { method: 'POST', credentials: 'include' });
     } catch {}
     try {
-      ['authToken','token','accessToken','refreshToken','user','currentUser']
-        .forEach(k => localStorage.removeItem(k));
+      if (typeof window !== 'undefined') {
+        ['authToken', 'token', 'accessToken', 'refreshToken', 'user', 'currentUser'].forEach(
+          (k) => localStorage.removeItem(k)
+        );
+      }
     } catch {}
     setAuthState(false);
   }, [LOGOUT_URL, setAuthState]);
 
   return (
-    <Ctx.Provider value={{ open, openMenu, closeMenu, toggleMenu, isAuthed, logout }}>
+    <Ctx.Provider
+      value={{ open, openMenu, closeMenu, toggleMenu, isAuthed, logout }}
+    >
       {children}
       <GlobalMenuSheet />
     </Ctx.Provider>
@@ -121,18 +140,32 @@ function GlobalMenuSheet() {
   if (!isMounted) return null;
 
   const baseLinks = [
-    { href: '/siteFatec', label: 'Home',     icon: '🏠' },
-    { href: '/consulta',  label: 'Consulta', icon: '🔎' },
-    { href: '/acervo',    label: 'Acervo',   icon: '📚' },
-    { href: '/eventos',   label: 'Eventos',  icon: '📅' },
-    { href: '/uploadForm',label: 'Uploads',  icon: '📤' },
-    { href: '/servicos',  label: 'Serviços', icon: '🧰' },
-    { href: '/dashboard', label: 'Perfil',   icon: '💼' },
+    { href: '/siteFatec', label: 'Home', icon: '🏠' },
+    { href: '/consulta', label: 'Consulta', icon: '🔎' },
+    { href: '/acervo', label: 'Acervo', icon: '📚' },
+    { href: '/eventos', label: 'Eventos', icon: '📅' },
+    { href: '/uploadForm', label: 'Uploads', icon: '📤' },
+    { href: '/servicos', label: 'Serviços', icon: '🧰' },
+    { href: '/dashboard', label: 'Perfil', icon: '💼' },
   ];
 
   const authAction = isAuthed
-    ? { type: 'button', onClick: async () => { await logout(); closeMenu(); router.push('/login'); }, label: 'Sair', icon: '🚪' }
-    : { type: 'link',   href: '/login', label: 'Entrar', icon: '👤' };
+    ? {
+        type: 'button',
+        onClick: async () => {
+          await logout();
+          closeMenu();
+          router.push('/login');
+        },
+        label: 'Sair',
+        icon: '🚪',
+      }
+    : {
+        type: 'link',
+        href: '/login',
+        label: 'Entrar',
+        icon: '👤',
+      };
 
   return createPortal(
     <>
@@ -151,19 +184,29 @@ function GlobalMenuSheet() {
       >
         <header className={styles.sheetHeader}>
           <h2 id="global-menu-title">Menu</h2>
-          <button className={styles.iconBtn} onClick={closeMenu} aria-label="Fechar">✕</button>
+          <button
+            className={styles.iconBtn}
+            onClick={closeMenu}
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
         </header>
 
         <nav className={styles.sheetNav}>
           {baseLinks.map(({ href, label, icon }) => {
-            const active = pathname === href || (href !== '/' && pathname?.startsWith(href));
+            const active =
+              pathname === href ||
+              (href !== '/' && pathname?.startsWith(href));
             return (
               <Link
                 key={href}
                 href={href}
                 prefetch={false}
                 onClick={closeMenu}
-                className={`${styles.sheetLink} ${active ? styles.active : ''}`}
+                className={`${styles.sheetLink} ${
+                  active ? styles.active : ''
+                }`}
                 aria-current={active ? 'page' : undefined}
               >
                 <span aria-hidden>{icon}</span>
@@ -183,7 +226,11 @@ function GlobalMenuSheet() {
               <span>{authAction.label}</span>
             </Link>
           ) : (
-            <button type="button" onClick={authAction.onClick} className={styles.sheetLink}>
+            <button
+              type="button"
+              onClick={authAction.onClick}
+              className={styles.sheetLink}
+            >
               <span aria-hidden>{authAction.icon}</span>
               <span>{authAction.label}</span>
             </button>

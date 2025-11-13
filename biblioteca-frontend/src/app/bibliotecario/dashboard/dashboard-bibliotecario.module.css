@@ -9,8 +9,6 @@
   box-sizing: border-box;
 }
 
-/* Linha do título + botão "Publicar novo" já está ok com flex inline no JSX */
-
 /* Tabs "Submissões pendentes" / "Gerenciar submissões" */
 .tabsRow {
   margin-top: 16px;
@@ -41,7 +39,7 @@
   color: #ffffff;
 }
 
-/* Botão "Publicar novo" reaproveita o estilo de botão primário */
+/* Botão primário (usado para aprovar / etc) */
 .btnAprovarModal {
   padding: 10px 22px;
   border-radius: 8px;
@@ -207,49 +205,27 @@
     justify-content: flex-end;
   }
 }
-<<<<<<< Updated upstream
 
-/* --- ADICIONE ESTE NOVO ESTILO --- */
-.btnVisualizar {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: opacity 0.2s;
-  background-color: #6c757d; /* Cinza */
-  color: white;
-}
-.btnVisualizar:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.btnVisualizar:hover:not(:disabled) {
-  opacity: 0.8;
-}
-
-/* --- ADICIONE ISSO AO SEU CSS --- */
-
-/* O container do cabeçalho da página */
+/* Cabeçalho da página do painel */
 .pageHeader {
   display: flex;
   justify-content: space-between; /* Itens nas extremidades */
   align-items: center;
-  margin-bottom: 8px; /* Espaço antes do subtítulo "Abaixo estão..." */
+  margin-bottom: 8px; /* Espaço antes do subtítulo */
   flex-wrap: wrap; /* Permite quebrar em telas pequenas */
   gap: 16px; /* Espaço entre itens se quebrar */
 }
 
 /* Título */
 .pageHeader h1 {
-  margin: 0; /* Remove margem padrão */
+  margin: 0;
   font-size: 28px;
 }
 
-/* O botão de "Publicar Novo" */
+/* Botão "Publicar Novo" no cabeçalho */
 .btnPublicarNovo {
-  background-color: #A90000; /* Cor da Fatec/CPS */
-  color: white;
+  background-color: #a90000; /* Cor da Fatec/CPS */
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   padding: 10px 16px;
@@ -260,7 +236,5 @@
 }
 
 .btnPublicarNovo:hover {
-  background-color: #8c0000; /* Tom mais escuro */
+  background-color: #8c0000;
 }
-=======
->>>>>>> Stashed changes

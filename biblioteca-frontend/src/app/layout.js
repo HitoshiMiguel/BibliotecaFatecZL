@@ -38,7 +38,7 @@ export default function RootLayout({ children }) {
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-          xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJc5fS5tJ+sT2Zc0v/V1FfXvGvF4I6F3B1+2R9T3F4I8O6I2o8I3uK7g1xG5Q=="
+          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJc5fS5tJ+sT2Zc0v/V1FfXvGvF4I6F3B1+2R9T3F4I8O6I2o8I3uK7g1xG5Q=="
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
         />

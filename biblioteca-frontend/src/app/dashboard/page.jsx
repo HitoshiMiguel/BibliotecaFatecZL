@@ -28,10 +28,10 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // ---- BASE + ENDPOINTS ----
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
   const AUTH_CHECK_URL = `${API_URL}/auth/current-user`; // usa a sua rota original
-  const LOGOUT_URL     = `${API_URL}/api/auth/logout`;
-  const PROFILE_URL    = `${API_URL}/api/auth/profile`;
+  const LOGOUT_URL     = `${API_URL}/auth/logout`;
+  const PROFILE_URL    = `${API_URL}/auth/profile`;
 
   // Guard + fetch do usuário logado (via cookie httpOnly)
   useEffect(() => {

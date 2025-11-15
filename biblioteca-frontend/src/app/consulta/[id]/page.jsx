@@ -5,7 +5,7 @@ import React, { useEffect, useState, use } from 'react';
 import Swal from 'sweetalert2';
 import styles from './publicacao.module.css';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export default function PublicacaoPage({ params }) {
   // Next 15: params é uma Promise em client components

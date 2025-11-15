@@ -6,6 +6,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import styles from './dashboard-admin.module.css';
+import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
 
 export default function AdminDashboardPage() {
     // Estados para dados
@@ -16,24 +17,26 @@ export default function AdminDashboardPage() {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [isActionLoading, setIsActionLoading] = useState(false);
-
+    const { logout } = useGlobalMenu();
     // --- NOVOS ESTADOS PARA POPUP DE CRIAÇÃO ---
     const [showCreatePopup, setShowCreatePopup] = useState(false);
-    const [createFormData, setCreateFormData] = useState({ // Estado inicial do formulário de criação
-        nome: '',
-        email: '',
-        ra: '',
-        senha: '',
-        perfil: 'comum', // Padrão pode ser 'comum'
-        status_conta: 'ativa' // Padrão
-    });
+    const initialFormState = {
+    nome: '',
+    email: '',
+    ra: '',
+    senha: '',
+    confirmarSenha: '',
+    perfil: 'comum',
+    status_conta: 'ativa'
+    };
+    const [createFormData, setCreateFormData] = useState(initialFormState);
     const createPopupRef = useRef(null); // Ref para o popup de criação
     // ------------------------------------------
 
     // Estados para Popup de Edição
     const [showEditPopup, setShowEditPopup] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
-    const [editFormData, setEditFormData] = useState({});
+    const [editFormData, setEditFormData] = useState(initialFormState);
     const editPopupRef = useRef(null);
 
     // Estados de Pesquisa
@@ -150,7 +153,7 @@ export default function AdminDashboardPage() {
         console.log("handleCancelEdit chamado.");
         setShowEditPopup(false);
         setEditingUser(null);
-        setEditFormData({});
+        setEditFormData(initialFormState);
         setError(''); // Limpa erro do popup ao cancelar
     };
 
@@ -331,7 +334,7 @@ export default function AdminDashboardPage() {
 
     // Abre o popup de criação (limpa formulário)
     const handleCreateClick = () => {
-        setCreateFormData({ nome: '', email: '', ra: '', senha: '', perfil: 'comum', status_conta: 'ativa' });
+        setCreateFormData(initialFormState);
         setShowCreatePopup(true);
         setError(''); // Limpa erros gerais
         setMessage('');
@@ -343,7 +346,7 @@ export default function AdminDashboardPage() {
     // Fecha o popup de criação
     const handleCancelCreate = () => {
         setShowCreatePopup(false);
-        setCreateFormData({}); // Limpa o formulário
+        setCreateFormData(initialFormState); // Limpa o formulário
         setError(''); // Limpa erro do popup
     };
 
@@ -420,11 +423,7 @@ export default function AdminDashboardPage() {
 
     const handleLogout = async () => {
         console.log("handleLogout chamado.");
-         try {
-             await fetch(`${apiUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
-         } catch(err) {
-             console.error("Erro ao chamar API de logout:", err);
-         }
+        await logout();
          router.push('/login'); // Redireciona independentemente do erro da API
     };
 

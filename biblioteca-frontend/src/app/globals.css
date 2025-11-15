@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------------
-   Configuração Base e Tailwind
-   ------------------------------------------------------------------------ */
+    Configuração Base e Tailwind
+    ------------------------------------------------------------------------ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,19 +12,16 @@
     box-sizing: border-box;
 }
 
-/* Body (Global) */
+/* Body (Global) - Mantido como estava */
 body {
     font-family: Arial, Helvetica, sans-serif;
     background: #fff;
     color: #333;
-    /* Certifique-se que o padding-top não está causando scroll desnecessário */
-    padding-top: var(--header-offset, 0px);
-    will-change: transform;
 }
 
 /* ------------------------------------------------------------------------
-   ✅ CORREÇÃO: SKIP LINK (Pular para o Conteúdo)
-   ------------------------------------------------------------------------ */
+    ✅ CORREÇÃO: SKIP LINK (Pular para o Conteúdo)
+    ------------------------------------------------------------------------ */
 
 /* A classe 'skip-link' deve ser aplicada ao seu <a> para fazê-lo desaparecer */
 .skip-link {
@@ -57,12 +54,11 @@ body {
 }
 
 /* ------------------------------------------------------------------------
-   Estilos de Layout (Header fixo e seus filhos)
-   ------------------------------------------------------------------------ */
+    Estilos de Layout (Header fixo e seus filhos)
+    ------------------------------------------------------------------------ */
 
 /* O contêiner principal do header */
 .app-header {
-    position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     width: 100% !important;
@@ -165,45 +161,35 @@ body {
     color: #fff;
 }
 
-html {
-  view-transition-name: none !important;
+.page-content {
+    padding-top: 0px;
 }
 
-.page-content { min-height: 100%; overflow: visible; }
 
 /* ------------------------------------------------------------------------
-   ✅ REGRAS PARA FILTROS DE DALTONISMO (GLOBAL) - MANTIDAS
+    ✅ FILTROS DE DALTONISMO (GLOBAL)
    ------------------------------------------------------------------------ */
 
-/* Aplica a transição no body para suavizar o efeito do filtro */
-body {
-    transition: filter 0.3s ease;
-}
-
-/* Deuteranopia (Visão mais fraca para o verde) */
+/* Presumindo que seu Provider aplica o atributo [data-cf]
+  no wrapper que agora contém o header e o main.
+*/
 [data-cf="deuteranopia"] {
-    filter: url("#deuteranopia");
+  filter: url("#deuteranopia");
 }
-
-/* Protanopia (Visão mais fraca para o vermelho) */
 [data-cf="protanopia"] {
-    filter: url("#protanopia");
+  filter: url("#protanopia");
 }
-
-/* Tritanopia (Visão mais fraca para o azul/amarelo) */
 [data-cf="tritanopia"] {
-    filter: url("#tritanopia");
+  filter: url("#tritanopia");
 }
-
-/* Restaura as cores originais */
 [data-cf="normal"] {
-    filter: none;
+  filter: none;
 }
 
 
 /* ------------------------------------------------------------------------
-   VLIBRAS E ACESSIBILIDADE GERAL
-   ------------------------------------------------------------------------ */
+    VLIBRAS E ACESSIBILIDADE GERAL
+    ------------------------------------------------------------------------ */
 
 [vw] {
     z-index: 2147483000 !important;
@@ -213,9 +199,99 @@ body {
     bottom: 16px !important;
 }
 
-/* Permite o scroll do conteúdo principal */
-html, body, .page-content {
-    overflow-x: hidden; /* Evita scroll horizontal indesejado */
-    height: 100%;
-    min-height: 100vh;
+/* -----------------------------------------------------------------
+    ✅ BLOCOS DE CORREÇÃO REMOVIDOS
+    -----------------------------------------------------------------
+    
+    Os dois blocos <CORREÇÃO SCROLLBAR DUPLA> e <CORREÇÃO SCROLL>
+    foram completamente removidos daqui.
+    
+    O seu layout.js já aplica um 'padding-top' ao 'page-content' 
+    (através da classe 'pt-[70px]' do Tailwind), que é a forma
+    correta de fazer o layout funcionar com o header fixo.
+    
+    Não precisamos de nenhuma regra especial para 'html', 'body'
+    ou 'page-content' aqui.
+*/
+
+/*
+ * CSS para forçar a posição do Widget UserWay
+ * (Usando o seletor correto .userway_buttons_wrapper)
+ */
+/* ------------------------------------------------------------------------
+   USERWAY
+   (Posição: Canto Inferior Esquerdo)
+   ------------------------------------------------------------------------ */
+
+.userway_buttons_wrapper {
+    /* Posição dinâmica no canto inferior esquerdo */
+    bottom: 16px !important; 
+    left: 12px !important;
+    
+    /* Z-index alto, mas abaixo do VLibras (2147483000) */
+    z-index: 2147482999 !important; 
+
+    /* Limpa as posições originais fixas que estavam causando o bug */
+    top: auto !important;
+    right: auto !important;
+}
+
+/* ------------------------------------------------------------------------
+   VLIBRAS E ACESSIBILIDADE GERAL (TENTATIVA COM ALTA ESPECIFICIDADE)
+   Posicionando no Canto Inferior Direito
+   ------------------------------------------------------------------------ */
+
+/* Garante o Z-index mais alto para o VLibras */
+html body [vw] {
+    z-index: 2147483000 !important;
+}
+
+/* * Posição do VLibras (ACIMA do UserWay)
+ * Usamos 'html body' para forçar a especificidade.
+ */
+html body [vw-access-button] {
+    bottom: 80px !important; /* Posição acima do UserWay */
+    right: 16px !important;  /* Canto direito */
+    
+    /* Limpa posições conflitantes */
+    left: auto !important;
+    top: auto !important;
+}
+
+/*
+ * CSS para forçar a posição do Widget UserWay (ABAIXO do VLibras)
+ * Usamos 'html body' para forçar a especificidade.
+ */
+html body .userway_buttons_wrapper {
+    
+    bottom: 200px !important; /* Posição inferior */
+    left: 50px !important;  /* Canto direito */
+    
+    /* Z-index alto, mas abaixo do VLibras */
+    z-index: 2147482999 !important; 
+
+    /* Limpa posições conflitantes que causam bugs */
+    right: auto !important;
+    top: auto !important;
+}
+
+/* -----------------------------------------------------------------
+   Media Query (Alta Especificidade)
+   -----------------------------------------------------------------
+*/
+@media (max-width: 768px) {
+ 
+    html body .userway_buttons_wrapper {
+        bottom: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+        top: auto !important;
+    }
+    
+    html body [vw-access-button] {
+        bottom: 75px !important; /* Ajuste para celular */
+        right: 10px !important;
+        left: auto !important;
+        top: auto !important;
+    }
 }

@@ -6,29 +6,36 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import styles from './globalMenu.module.css';
 
+type User = {
+  role: string;
+  // Adicione outros campos se precisar, ex: nome: string;
+};
+
 /* ============================
-   Contexto + Hook
+  Contexto + Hook
 ============================ */
 const Ctx = createContext(null);
 export const useGlobalMenu = () => {
   const ctx = useContext(Ctx);
-  if (!ctx)
+  if (!ctx) {
     throw new Error('useGlobalMenu must be used inside <GlobalMenuProvider>');
+  }
   return ctx;
 };
 
 /* ============================
-   Provider
+  Provider
 ============================ */
-export default function GlobalMenuProvider({ children }) {
+export default function GlobalMenuProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
@@ -38,22 +45,32 @@ export default function GlobalMenuProvider({ children }) {
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        if (localStorage.getItem('isAuthed') === '1') setIsAuthed(true);
+        const storedRole = localStorage.getItem('userRole');
+        if (storedRole) {
+          // Define um usuário "parcial" só para o menu saber o link
+          setUser({ role: storedRole });
+        }
       }
     } catch {}
   }, []);
 
-  const setAuthState = useCallback((v) => {
-    setIsAuthed(v);
+  const setUserData = useCallback((newUserData: User | null) => {
+    setUser(newUserData);
     try {
       if (typeof window !== 'undefined') {
-        if (v) localStorage.setItem('isAuthed', '1');
-        else localStorage.removeItem('isAuthed');
+        if (newUserData && newUserData.role) {
+          // Armazena o 'role' para o snapshot
+          localStorage.setItem('userRole', newUserData.role);
+          localStorage.removeItem('isAuthed'); // Limpa o antigo
+        } else {
+          // Limpa o 'role' ao deslogar
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('isAuthed');
+        }
       }
     } catch {}
   }, []);
 
-  // checagem real no backend (cookie httpOnly)
   useEffect(() => {
     let cancelled = false;
 
@@ -65,14 +82,15 @@ export default function GlobalMenuProvider({ children }) {
         });
 
         if (!res.ok) {
-          if (!cancelled) setAuthState(false);
+          if (!cancelled) setUserData(null); // Deslogado
           return;
         }
+        const userDataFromApi = await res.json();
+        const userData = { userDataFromApi, role: userDataFromApi.perfil}
 
-        // Se a API respondeu OK, consideramos autenticado
-        if (!cancelled) setAuthState(true);
+        if (!cancelled) setUserData(userData); // Logado com sucesso
       } catch (err) {
-        if (!cancelled) setAuthState(false);
+        if (!cancelled) setUserData(null); // Erro, deslogado
       }
     };
 
@@ -81,7 +99,7 @@ export default function GlobalMenuProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [AUTH_CHECK_URL, setAuthState]);
+  }, [AUTH_CHECK_URL, setUserData]);
 
   // controls do sheet
   const openMenu = useCallback(() => setOpen(true), []);
@@ -91,7 +109,7 @@ export default function GlobalMenuProvider({ children }) {
   // bloqueia scroll/ESC quando aberto
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => e.key === 'Escape' && closeMenu();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeMenu();
     document.addEventListener('keydown', onKey);
     const prev = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
@@ -113,12 +131,26 @@ export default function GlobalMenuProvider({ children }) {
         );
       }
     } catch {}
-    setAuthState(false);
-  }, [LOGOUT_URL, setAuthState]);
+    setUserData(null);
+  }, [LOGOUT_URL, setUserData]);
+
+  const providerValue = useMemo(
+    () => ({
+      open,
+      openMenu,
+      closeMenu,
+      toggleMenu,
+      user,
+      isAuthed: !!user,
+      logout,
+      setUserData,
+    }),
+    [open, openMenu, closeMenu, toggleMenu, user, logout, setUserData]
+  );
 
   return (
     <Ctx.Provider
-      value={{ open, openMenu, closeMenu, toggleMenu, isAuthed, logout }}
+      value={providerValue} // <-- ✅ CORREÇÃO 1: Passando o valor correto
     >
       {children}
       <GlobalMenuSheet />
@@ -127,18 +159,42 @@ export default function GlobalMenuProvider({ children }) {
 }
 
 /* ============================
-   Menu Lateral (Sheet)
+  Menu Lateral (Sheet)
 ============================ */
 function GlobalMenuSheet() {
-  const { open, closeMenu, isAuthed, logout } = useGlobalMenu();
+  // ✅ CORREÇÃO 2: Todos os hooks são chamados no topo, incondicionalmente
+  const { open, closeMenu, isAuthed, logout, user } = useGlobalMenu();
   const pathname = usePathname();
   const router = useRouter();
-
-  // Fix de hidratação: só renderiza portal depois de montar no cliente
   const [isMounted, setIsMounted] = useState(false);
+
+  // O useMemo é um hook, então deve vir ANTES de retornos condicionais
+  const profileLink = useMemo(() => {
+    // Se não estiver logado ou o 'user' ainda não tiver carregado o 'role'
+    if (!isAuthed || !user?.role) {
+      return null;
+    }
+
+    let href = '/dashboard'; // Rota padrão para usuários normais
+
+    // Define a rota baseada no 'role'
+    if (user.role === 'admin') {
+      href = '/admin/dashboard';
+    } else if (user.role === 'bibliotecario') {
+      href = '/bibliotecario/dashboard';
+    }
+    // Adicione outros 'else if' se tiver mais roles
+
+    return { href, label: 'Perfil', icon: '💼' };
+  }, [isAuthed, user]);
+
+  // Efeitos vêm depois dos hooks de estado/memo
   useEffect(() => setIsMounted(true), []);
+
+  // Retorno condicional vem DEPOIS de todos os hooks
   if (!isMounted) return null;
 
+  // O resto da lógica de renderização
   const baseLinks = [
     { href: '/siteFatec', label: 'Home', icon: '🏠' },
     { href: '/consulta', label: 'Consulta', icon: '🔎' },
@@ -146,7 +202,6 @@ function GlobalMenuSheet() {
     { href: '/eventos', label: 'Eventos', icon: '📅' },
     { href: '/uploadForm', label: 'Uploads', icon: '📤' },
     { href: '/servicos', label: 'Serviços', icon: '🧰' },
-    { href: '/dashboard', label: 'Perfil', icon: '💼' },
   ];
 
   const authAction = isAuthed
@@ -183,7 +238,7 @@ function GlobalMenuSheet() {
         aria-labelledby="global-menu-title"
       >
         <header className={styles.sheetHeader}>
-          <h2 id="global-menu-title">Menu</h2>
+          <h2 id="global-menu-title" className="sr-only">Menu</h2> {/* Usei sr-only para acessibilidade */}
           <button
             className={styles.iconBtn}
             onClick={closeMenu}
@@ -215,6 +270,26 @@ function GlobalMenuSheet() {
             );
           })}
 
+          {/* Link de Perfil Dinâmico */}
+          {profileLink && (
+            <Link
+              key={profileLink.href}
+              href={profileLink.href}
+              prefetch={false}
+              onClick={closeMenu}
+              className={`${styles.sheetLink} ${
+                (pathname === profileLink.href || (profileLink.href !== '/' && pathname?.startsWith(profileLink.href)))
+                  ? styles.active
+                  : ''
+              }`}
+              aria-current={(pathname === profileLink.href || (profileLink.href !== '/' && pathname?.startsWith(profileLink.href))) ? 'page' : undefined}
+            >
+              <span aria-hidden>{profileLink.icon}</span>
+              <span>{profileLink.label}</span>
+            </Link>
+          )}
+
+          {/* Botão de Entrar/Sair */}
           {authAction.type === 'link' ? (
             <Link
               href={authAction.href}
@@ -228,7 +303,7 @@ function GlobalMenuSheet() {
           ) : (
             <button
               type="button"
-              onClick={authAction.onClick}
+              onClick={authAction.onClick as () => void} // Cast para evitar erros TS
               className={styles.sheetLink}
             >
               <span aria-hidden>{authAction.icon}</span>

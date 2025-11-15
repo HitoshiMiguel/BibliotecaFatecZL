@@ -2,15 +2,14 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
 import 'sweetalert2/dist/sweetalert2.min.css';
+import Script from 'next/script';
 
-// ✅ Provider global do menu e o widget de acessibilidade (VLibras)
+// IMPORTS PRINCIPAIS
 import GlobalMenuProvider from "@/components/GlobalMenu/GlobalMenuProvider";
-import VLibrasWidget from "@/components/Accessibility/VLibrasWidget";
-
-// 🆕 Importação do novo Provedor de Acessibilidade (Daltonismo)
 import { AccessibilityProvider } from '@/components/Accessibility/AccessibilityProvider';
+import AccessibilityFiltersSVG from '@/components/Accessibility/AccessibilityFiltersSVG';
+import Header from '@/components/Header';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,58 +27,67 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  // ATENÇÃO: A remoção de qualquer espaço em branco, nova linha ou comentário
-  // entre a tag `<html>` e a tag `<body>` é CRUCIAL para evitar o erro de hidratação
-  // que estava aparecendo no seu console.
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        {/* Adiciona o link para o Font Awesome para o ícone de busca no Header */}
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-          xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJc5fS5tJ+sT2Zc0v/V1FfXvGvF4I6F3B1+2R9T3F4I8O6I2o8I3uK7g1xG5Q=="
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
-        />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
         />
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
+        />
       </head>
 
       <body>
-        {/* 🔗 Skip link para leitores de tela */}
         <a href="#page-content" className="skip-link">
           Pular para o conteúdo
         </a>
-        
-        {/* ⚙️ NOVO: Provider de Acessibilidade (Daltonismo e filtros visuais) */}
-        <AccessibilityProvider>
 
-          {/* 🌐 Provider global para o menu lateral e contexto geral */}
-          <GlobalMenuProvider>
-            {/* 🔝 Cabeçalho fixo institucional */}
-            {/* O Header está fixo com z-40 e a main precisa de um padding top para compensar. */}
+        <GlobalMenuProvider>
+          <AccessibilityProvider>
+            <AccessibilityFiltersSVG />
             <Header />
 
-            {/* 📚 Conteúdo principal das páginas */}
             <main
               id="page-content"
               role="main"
               aria-label="Conteúdo principal"
-              className="page-content pt-[70px]" 
+              className="page-content"
             >
               {children}
             </main>
-          </GlobalMenuProvider>
+          </AccessibilityProvider>
+        </GlobalMenuProvider>
 
-          {/* 🧏‍♂️ Widget VLibras para acessibilidade em Libras */}
-          {/* Note: O VLibrasWidget deve ficar fora do GlobalMenuProvider para evitar
-              dependências desnecessárias e para ser injetado diretamente no <body> */}
-          <VLibrasWidget />
+        {/* UserWay */}
+        <Script
+          src="https://cdn.userway.org/widget.js"
+          data-account="2W0cmD9xlq"
+          strategy="lazyOnload"
+        />
 
-        </AccessibilityProvider>
+        {/* VLibras – HTML estático igual à documentação */}
+        <div
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
+              <div vw class="enabled">
+                <div vw-access-button class="active"></div>
+                <div vw-plugin-wrapper>
+                  <div class="vw-plugin-top-wrapper"></div>
+                </div>
+              </div>
+              <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+              <script>
+                new window.VLibras.Widget('https://vlibras.gov.br/app');
+              </script>
+            `,
+          }}
+        />
       </body>
     </html>
   );

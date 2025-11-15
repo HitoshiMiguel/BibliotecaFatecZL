@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import styles from './Header.module.css';
+import React from 'react';
 
 // hook do menu global
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
@@ -25,48 +26,14 @@ const SearchBar = () => (
   </div>
 );
 
-/* ===========================================
-    Botão de Ativação Manual VLibras
-    =========================================== */
-const VLibrasButton = () => {
-  const handleClick = () => {
-    // Tenta chamar a função global injetada pelo VLibrasWidget
-    if (typeof window.toggleVLibrasMenu === 'function') {
-      window.toggleVLibrasMenu();
-    } else {
-      console.warn('Função toggleVLibrasMenu não está disponível. O script VLibras não carregou ou foi removido.');
-    }
-  };
 
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={styles.vlibrasBtn} // Usa a classe para garantir fluxo flexível
-      aria-label="Ativar VLibras"
-      title="Acessibilidade VLibras"
-      style={{
-        background: '#008CBA', 
-        color: 'white', 
-        padding: '8px 12px', 
-        borderRadius: '4px',
-        fontWeight: 'bold',
-        border: 'none',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap', // Impede que o texto "VLibras" quebre
-      }}
-    >
-      VLibras
-    </button>
-  );
-};
 
 
 /* ===========================================
     Botão de Menu (3 barrinhas vermelhas)
     =========================================== */
 const HamburgerMenu = ({ isOpen, onOpen }) => {
-  const btnStyle = {
+/** @type {import('react').CSSProperties} */  const btnStyle = {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-around',
@@ -190,7 +157,6 @@ export default function Header() {
           >
             {isNotHome ? (
               <>
-                <VLibrasButton />
                 <HamburgerMenu isOpen={open} onOpen={openMenu} />
               </>
             ) : (

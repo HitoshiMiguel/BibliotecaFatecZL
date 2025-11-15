@@ -3,8 +3,7 @@
     "baseUrl": ".",                     // em vez de "./src"
     "paths": {
       "@/*": ["src/*"]                  // continua importando com "@/..."
-    },
-    "ignoreDeprecations": "6.0",        // silencia o aviso até TS 7
+    },      // silencia o aviso até TS 7
     "jsx": "react-jsx",
     "checkJs": true
   }

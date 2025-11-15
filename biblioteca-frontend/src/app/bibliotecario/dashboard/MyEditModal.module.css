@@ -223,3 +223,79 @@
     width: 100%;
   }
 }
+
+/* ======================================================= */
+/* NOVOS ESTILOS PARA O INPUT DE ARQUIVO CUSTOMIZADO     */
+/* ======================================================= */
+
+/* Esconde o input de arquivo padrão */
+.hiddenFileInput {
+  display: none;
+}
+
+/* 1. Botão customizado "Clique para selecionar..." (antes de selecionar) */
+.fileInputLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Espaço para o ícone de clipe */
+  padding: 10px 14px;
+  border: 1px solid #ccc; /* Borda tracejada para indicar "dropzone" */
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555; /* Cor de placeholder */
+  background-color: #f9fafb;
+  transition: all 0.2s;
+}
+
+.fileInputLabel:hover {
+  border-color: #b20000;
+  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+/* 2. Box que aparece DEPOIS que o arquivo foi selecionado */
+.fileSelectedBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #555; /* Borda verde sucesso */
+  border-radius: 8px;
+  background-color: white; /* Fundo verde claro */
+}
+
+.fileSelectedBox span {
+  font-size: 14px;
+  font-weight: 500;
+  
+  /* Evita que o nome do arquivo quebre o layout */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 10px;
+}
+
+.fileRemoveBtn {
+  background: transparent;
+  border: none;
+  color: #dc3545; /* Vermelho perigo */
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font-size: 18px; /* Tamanho do ícone 'X' */
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.fileRemoveBtn:hover:not(:disabled) {
+  color: #b20000; /* Vermelho mais escuro no hover */
+}
+
+.fileRemoveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

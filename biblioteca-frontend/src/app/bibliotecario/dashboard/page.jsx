@@ -1,7 +1,6 @@
-// src/app/bibliotecario/dashboard/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 
 import styles from './dashboard-bibliotecario.module.css';
@@ -36,6 +35,29 @@ export default function DashboardBibliotecarioPage() {
   const [editMode, setEditMode] = useState('pendente'); // 'pendente' | 'gerenciar'
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Função para carregar publicações aprovadas (reutilizável)
+  const getPublicacoesAprovadas = async () => {
+    setLoadingGerenciar(true);
+    setErroGerenciar('');
+    try {
+      // Usa a rota pública de publicações (apenas aprovadas)
+      const res = await fetch(`${API_URL}/api/publicacoes`, {
+        cache: 'no-store',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Falha ao carregar publicações.');
+      }
+      setPublicacoes(data.items || []);
+    } catch (err) {
+      console.error(err);
+      setErroGerenciar(err.message || 'Erro ao carregar publicações.');
+    } finally {
+      setLoadingGerenciar(false);
+    }
+  };
 
   const handleUploadComplete = (novoItemAprovado) => {
     console.log('Novo item publicado:', novoItemAprovado);
@@ -82,33 +104,14 @@ export default function DashboardBibliotecarioPage() {
   // = BUSCAR PUBLICAÇÕES APROVADAS (aba 2)
   // ==========================================
   useEffect(() => {
+    // Só roda se a aba 'gerenciar' estiver ativa
     if (abaAtiva !== 'gerenciar') return;
+    
+    // Se já temos dados, não busca de novo (exceto se forçarmos)
     if (publicacoes.length > 0 || loadingGerenciar) return;
 
-    async function getPublicacoesAprovadas() {
-      setLoadingGerenciar(true);
-      setErroGerenciar('');
-      try {
-        // Usa a rota pública de publicações (apenas aprovadas)
-        const res = await fetch(`${API_URL}/api/publicacoes`, {
-          cache: 'no-store',
-          credentials: 'include',
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data?.error || 'Falha ao carregar publicações.');
-        }
-        setPublicacoes(data.items || []);
-      } catch (err) {
-        console.error(err);
-        setErroGerenciar(err.message || 'Erro ao carregar publicações.');
-      } finally {
-        setLoadingGerenciar(false);
-      }
-    }
-
     getPublicacoesAprovadas();
-  }, [abaAtiva, publicacoes.length, loadingGerenciar]);
+  }, [abaAtiva, publicacoes.length, loadingGerenciar]); // Dependências corretas
 
   // ==========================================
   // = AÇÕES: APROVAR / REPROVAR PENDENTES
@@ -125,19 +128,24 @@ export default function DashboardBibliotecarioPage() {
 
       Swal.fire('Aprovado!', 'A submissão foi aprovada com sucesso.', 'success');
 
-      // Remove da lista de pendentes
+      // 1. Remove da lista de pendentes
       setSubmissoesPendentes((prev) =>
         prev.filter((sub) => sub.submissao_id !== id)
       );
 
-      // Se a gente estava com o item aberto no modal, reaproveita esse objeto
-      setPublicacoes((prev) => {
-        const justApproved =
-          editingItem && editingItem.submissao_id === id ? editingItem : null;
-        return justApproved ? [...prev, justApproved] : prev;
-      });
+      // 2. [CORREÇÃO] Invalida a lista de publicações aprovadas.
+      // Isso força o useEffect da aba 'gerenciar' a recarregar
+      // a lista completa na próxima vez que for clicada.
+      setPublicacoes([]);
+      
+      // Fechar o modal se ele estiver aberto
+      if (editingItem && editingItem.submissao_id === id) {
+        setEditingItem(null);
+      }
+
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
+    } finally {
       setUpdatingId(null);
     }
   };
@@ -180,6 +188,7 @@ export default function DashboardBibliotecarioPage() {
       );
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
+    } finally {
       setUpdatingId(null);
     }
   };
@@ -417,7 +426,7 @@ export default function DashboardBibliotecarioPage() {
             className={styles.btnPublicarNovo}
             onClick={() => setIsUploadModalOpen(true)}
           >
-            Publicar Novo
+            Nova Publicação
           </button>
         </div>
 
@@ -435,6 +444,7 @@ export default function DashboardBibliotecarioPage() {
           onReprove={handleReprovar} // usado no modo 'pendente'
           onUpdateOnly={(updated) => {
             // usado no modo 'gerenciar'
+            // [ESTA LÓGICA ESTÁ CORRETA e não era o problema]
             setPublicacoes((prev) =>
               prev.map((p) =>
                 p.submissao_id === updated.submissao_id

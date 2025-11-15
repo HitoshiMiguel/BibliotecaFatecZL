@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Container } from 'react-bootstrap';
 import styles from './siteFatec.module.css';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
-
+import { useAccessibility } from '@/components/Accessibility/AccessibilityProvider';
 /* ==========================
    Notícias – estilo Fatec
    ========================== */
@@ -58,7 +58,10 @@ export default function SiteFatecPage() {
   // calcula a altura do header
   useEffect(() => {
     const setHeaderOffset = () => {
-      const headerEl = document.querySelector('.app-header');
+      // ✅ Use 'as HTMLElement' no FINAL
+      // Adicione este comentário "mágico" logo ANTES da linha
+    /** @type {HTMLElement | null} */
+    const headerEl = document.querySelector('.app-header');
       const h = headerEl?.offsetHeight || 0;
       document.documentElement.style.setProperty('--header-offset', `${h}px`);
     };
@@ -85,16 +88,7 @@ export default function SiteFatecPage() {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
   };
 
-  // filtro de acessibilidade
-  useEffect(() => {
-    const saved = localStorage.getItem('colorFilter') || 'normal';
-    document.documentElement.setAttribute('data-cf', saved);
-  }, []);
-  function handleChangeColorFilter(e) {
-    const v = e.target.value;
-    document.documentElement.setAttribute('data-cf', v);
-    localStorage.setItem('colorFilter', v);
-  }
+  const { currentFilter, handleChangeColorFilter } = useAccessibility();
 
   return (
     <>
@@ -150,8 +144,8 @@ export default function SiteFatecPage() {
             Acesse o acervo, solicite materiais e acompanhe eventos e notícias da biblioteca.
           </p>
           <nav aria-label="Ações principais">
-            <a href="/consulta" className={styles.primaryBtn}>Consulte o acervo online</a>
-            <a href="/uploadForm" className={styles.ghostBtn}>Solicitação para a biblioteca</a>
+            <Link href="/consulta" className={styles.primaryBtn}>Consulte o acervo online</Link>
+            <Link href="/uploadForm" className={styles.ghostBtn}>Solicitação para a biblioteca</Link>
           </nav>
         </div>
       </header>
@@ -210,16 +204,22 @@ export default function SiteFatecPage() {
 
       {/* Rodapé institucional */}
       <footer className={styles.govFooter}>
-        <div className={styles.govFooterInner}>
-          <div className={styles.govLeft}>
-            <div className={styles.govAccessibility}>
-              <span className={styles.govFilterLabel}>FILTRO DE DALTONISMO</span>
-              <select className={styles.govSelect} onChange={handleChangeColorFilter}>
-                <option value="normal">Cores Padrão</option>
-                <option value="deuteranopia">Deuteranopia</option>
-                <option value="protanopia">Protanopia</option>
-                <option value="tritanopia">Tritanopia</option>
-              </select>
+    <div className={styles.govFooterInner}>
+      <div className={styles.govLeft}>
+        <div className={styles.govAccessibility}>
+          <span className={styles.govFilterLabel}>FILTRO DE DALTONISMO</span>
+          
+          {/* 2. ADICIONE A PROP 'value' AO SELECT */}
+          <select 
+            className={styles.govSelect} 
+            onChange={handleChangeColorFilter}
+            value={currentFilter} /* <-- ESTA É A CORREÇÃO */
+          >
+            <option value="normal">Cores Padrão</option>
+            <option value="deuteranopia">Deuteranopia</option>
+            <option value="protanopia">Protanopia</option>
+            <option value="tritanopia">Tritanopia</option>
+          </select>
             </div>
           </div>
           <div className={styles.govCenter}>

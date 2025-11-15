@@ -184,11 +184,11 @@ export function EditModal({
           >
             {isSaving
               ? isGerenciar
-                ? 'Guardando...'
-                : 'Guardando e aprovando...'
+                ? 'Salvando...'
+                : 'Aprovando e salvando...'
               : isGerenciar
-              ? 'Guardar alterações'
-              : 'Guardar e Aprovar'}
+              ? 'Salvar alterações'
+              : 'Aprovar'}
           </button>
         </div>
       </div>

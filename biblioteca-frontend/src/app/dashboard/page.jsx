@@ -8,12 +8,13 @@ import { useRouter } from 'next/navigation';
 import styles from './dashboard.module.css';
 import {
   BsPerson, BsPersonVcard, BsEnvelope, BsBook, BsHourglassSplit,
-  BsBoxArrowRight, BsPencilSquare, BsPersonBadge
+  BsBoxArrowRight, BsPencilSquare, BsPersonBadge, BsHeart
 } from 'react-icons/bs';
 import Alert from '@/components/Alert';
 import Swal from 'sweetalert2';
 import EditProfileModal from '@/components/EditProfileModal';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
+import FavoritosModal from '@/components/FavoritosModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -21,6 +22,11 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState({ message: '', type: '' });
+
+  // Favoritos
+  const [favoritosDetalhados, setfavoritosDetalhados] = useState([]);
+  const [isLoadingFavoritos, setIsLoadingFavoritos] = useState(true);
+  const [modalFavoritosAberto, setModalFavoritosAberto] = useState(false);
 
   // edição de perfil (via modal)
   const [isEditing, setIsEditing] = useState(false);
@@ -33,6 +39,7 @@ export default function DashboardPage() {
   const AUTH_CHECK_URL = `${API_URL}/auth/current-user`; // usa a sua rota original
   const LOGOUT_URL     = `${API_URL}/auth/logout`;
   const PROFILE_URL    = `${API_URL}/auth/profile`;
+  const FAVORITOS_URL  = `${API_URL}/favoritos/detalhes`;
 
   // ---- LOGOUT DO MENU LATERAL
   const { logout } = useGlobalMenu();
@@ -43,6 +50,7 @@ export default function DashboardPage() {
 
     const checkAuthAndFetchData = async () => {
       setIsLoading(true);
+      setIsLoadingFavoritos(true);
       setActionStatus({ message: '', type: '' });
 
       try {
@@ -72,6 +80,27 @@ export default function DashboardPage() {
         const data = await res.json();
         setUser(data);
         setProfileFormData({ nome: data.nome, email: data.email });
+
+        try {
+          const resFav = await fetch(FAVORITOS_URL, {
+            method: 'GET',
+            credentials: 'include', // Essencial para enviar o cookie de auth
+            cache: 'no-store',
+          });
+          
+          if (resFav.ok) {
+            const dataFav = await resFav.json(); // Ex: [1, 5, 22]
+            setfavoritosDetalhados(dataFav);
+          } else {
+            // Não quebra a página se favoritos falhar, apenas avisa no console
+            console.warn(`Falha ao carregar favoritos: ${resFav.status}`);
+          }
+        } catch (favErr) {
+          console.error('Erro ao buscar favoritos:', favErr);
+        } finally {
+          setIsLoadingFavoritos(false); // [NOVO] Termina o loading (só dos favoritos)
+        }
+
       } catch (err) {
         console.error('Falha na autenticação/fetch:', err);
         setActionStatus({
@@ -80,7 +109,7 @@ export default function DashboardPage() {
         });
         setTimeout(() => router.replace('/login'), 1500);
       } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Termina o loading principal (usuário)
       }
     };
 
@@ -92,7 +121,7 @@ export default function DashboardPage() {
     };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [router, AUTH_CHECK_URL]);
+  }, [router, AUTH_CHECK_URL, FAVORITOS_URL]);
 
   // Logout
   const handleLogout = async () => {
@@ -214,6 +243,7 @@ export default function DashboardPage() {
       <div className={styles.contentWrapper}>
         <div className={styles.dashboardContainer}>
           {actionStatus.message && (
+            // ... (seu Alert de actionStatus) ...
             <div className={styles.actionAlert}>
               <Alert
                 id="dashboard-status"
@@ -240,6 +270,27 @@ export default function DashboardPage() {
               <span className={styles.detailLabel}><BsEnvelope /> Email</span>
               <span className={styles.detailValue}>{user.email}</span>
             </div>
+
+            {/* --- [NOVO] Bloco de Favoritos --- */}
+            <div 
+              className={`${styles.detailItem} ${styles.clickableItem}`} // Adicione uma classe se quiser estilizar o hover
+              onClick={() => setModalFavoritosAberto(true)}
+              style={{ cursor: 'pointer' }} // Estilo rápido para mostrar que é clicável
+              role="button"
+              tabIndex={0}
+              aria-label="Abrir lista de favoritos"
+              onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && setModalFavoritosAberto(true)} // Acessibilidade
+            >
+              <span className={styles.detailLabel}><BsHeart /> Meus Favoritos</span>
+              <span className={styles.detailValue}>
+                {isLoadingFavoritos
+                  ? 'A carregar...'
+                  // [MODIFICADO] Usa o .length da nova lista
+                  : `${favoritosDetalhados.length} item(ns) salvos` 
+                }
+              </span>
+            </div>
+            {/* --- Fim do Bloco de Favoritos --- */}
 
             <div className={styles.detailItem}>
               <span className={styles.detailLabel}><BsBook /> Livro Atual</span>
@@ -283,6 +334,12 @@ export default function DashboardPage() {
         setProfileFormData={setProfileFormData}
         handleProfileUpdateSubmit={handleProfileUpdateSubmit}
         isUpdating={isUpdating}
+      />
+
+      <FavoritosModal
+        isOpen={modalFavoritosAberto}
+        onClose={() => setModalFavoritosAberto(false)}
+        favoritos={favoritosDetalhados}
       />
     </>
   );

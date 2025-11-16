@@ -1,29 +1,24 @@
 // Em: src/app/services/FavoritoService.js
 
-// 1. Importamos a conexão 'pool' do mesmo lugar que o UserModel
+// 1. Importamos a conexão 'pool'
 const pool = require('../config/db.js');
 
 class FavoritoService {
 
     /**
      * Adiciona um item aos favoritos de um usuário
-     * @param {number} usuarioId - O ID do usuário (vem de dg_usuarios.usuario_id)
-     * @param {number} itemId - O ID do item (vem de dg_itens_digitais.item_id)
      */
     async addFavorito(usuarioId, itemId) {
         const sql = "INSERT INTO dg_favoritos (usuario_id, item_id) VALUES (?, ?)";
         
         try {
-            // 2. Usamos 'await pool.query'
             const [results] = await pool.query(sql, [usuarioId, itemId]);
             return { success: true, insertId: results.insertId };
 
         } catch (error) {
-            // Trata o erro de "chave duplicada" (ER_DUP_ENTRY)
             if (error.code === 'ER_DUP_ENTRY') {
                 return { success: false, message: 'Item já está nos favoritos.' };
             }
-            
             console.error('Erro ao adicionar favorito no service:', error);
             throw error;
         }
@@ -31,14 +26,11 @@ class FavoritoService {
 
     /**
      * Remove um item dos favoritos de um usuário
-     * @param {number} usuarioId - O ID do usuário
-     * @param {number} itemId - O ID do item
      */
     async removeFavorito(usuarioId, itemId) {
         const sql = "DELETE FROM dg_favoritos WHERE usuario_id = ? AND item_id = ?";
         
         try {
-            // 3. Usamos 'await pool.query'
             const [results] = await pool.query(sql, [usuarioId, itemId]);
             
             if (results.affectedRows === 0) {
@@ -55,16 +47,13 @@ class FavoritoService {
 
     /**
      * [NOVO] Lista todos os IDs de itens favoritados por um usuário
-     * @param {number} usuarioId - O ID do usuário
      */
     async listarPorUsuario(usuarioId) {
-        // Retorna apenas os IDs dos itens, que é tudo que o frontend precisa
+        // Retorna apenas os IDs dos itens
         const sql = "SELECT item_id FROM dg_favoritos WHERE usuario_id = ?";
         
         try {
             const [rows] = await pool.query(sql, [usuarioId]);
-            // Transforma o array de objetos [ {item_id: 1}, {item_id: 5} ]
-            // em um array simples de números [ 1, 5 ]
             const idList = rows.map(row => row.item_id);
             return idList;
 
@@ -72,9 +61,43 @@ class FavoritoService {
             console.error('Erro ao listar favoritos no service:', error);
             throw error;
         }
+    } // <-- FIM DO MÉTODO (sem vírgula, sem chave extra)
+
+    /**
+     * [NOVO] Lista os detalhes dos favoritos de um usuário
+     * (item_id, submissao_id e titulo)
+     */
+    async listarDetalhesPorUsuario(usuarioId) {
+      try {
+        const sql = `
+          SELECT 
+            i.item_id,       -- ID real do item
+            s.submissao_id,  -- ID da submissão (PARA O LINK)
+            s.titulo_proposto AS titulo -- Título (para exibir)
+          FROM dg_favoritos AS f
+          
+          -- Join para pegar o item_id e o submissao_id
+          JOIN dg_itens_digitais AS i ON f.item_id = i.item_id
+          
+          -- Join para pegar o título e verificar o status
+          LEFT JOIN dg_submissoes AS s ON i.submissao_id = s.submissao_id
+          
+          WHERE f.usuario_id = ?
+            AND s.status = 'aprovado' -- Garante que o item ainda é visível
+        `;
+        
+        const [rows] = await pool.query(sql, [usuarioId]);
+        
+        // Filtra caso algum item tenha sido deletado mas continue favorito
+        return rows.filter(row => row.submissao_id && row.titulo);
+        
+      } catch (error) {
+        console.error('Erro ao listar detalhes dos favoritos no service:', error);
+        throw error;
+      }
     }
-}
 
+} // <-- FIM DA CLASSE 'FavoritoService'
 
-// Exportamos uma instância da classe
+// Exportamos uma instância da classe (como estava no seu original)
 module.exports = new FavoritoService();

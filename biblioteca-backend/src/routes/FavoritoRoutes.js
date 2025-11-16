@@ -34,4 +34,10 @@ router.delete(
     FavoritoController.remover // 2. Executa o controller
 );
 
+router.get(
+    '/detalhes',
+    isAuthenticated,
+    FavoritoController.listarDetalhes
+);
+
 module.exports = router;

@@ -89,6 +89,27 @@ class FavoritoController {
             next(error);
         }
     }
+
+    async listarDetalhes(req, res, next) {
+      try {
+        const usuarioId = req.user.id;
+
+        if (!usuarioId) {
+          return next(err(401, 'UNAUTHORIZED', 'Usuário não autenticado.'));
+        }
+
+        // Chama o novo service que criamos
+        const favoritos = await FavoritoService.listarDetalhesPorUsuario(usuarioId);
+        
+        // Retorna a lista de objetos
+        // Ex: [{ item_id: 152, submissao_id: 23, titulo: 'Teste' }]
+        res.status(200).json(favoritos); 
+
+      } catch (error) {
+        console.error('Erro no FavoritoController.listarDetalhes:', error);
+        next(error);
+      }
+    }
 }
 
 module.exports = new FavoritoController();

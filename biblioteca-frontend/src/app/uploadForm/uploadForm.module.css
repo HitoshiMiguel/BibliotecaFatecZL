@@ -242,10 +242,31 @@ background-color: #e0e0e0;
 /* Responsivo */
 @media (max-width: 640px) {
   .card { 
-    padding: 16px;
-    margin: 0 12px;
+    padding: 20px 16px; /* Padding vertical e horizontal */
+    width: auto; /* <-- NOVO: Deixa o navegador calcular a largura */
+    margin: 30px 12px; /* <-- MUDANÇA: 30px em cima/baixo, 12px nas laterais */
+ }
+
+  .toggleGroup > .label {
+    font-size: 22px; /* Reduz o título "Tipo do Upload" */
   }
-  .actions { grid-template-columns: 1fr; }
-  .headerTitle { font-size: 20px; }
-  .fileInputButton { display: none; } /* Esconde o botão "Procurar" em telas pequenas */
+  
+  .tipoToggle {
+    gap: 8px; /* Menos espaço entre os botões (TCC, Artigo...) */
+  }
+
+  .tipoToggle button {
+    padding: 8px 12px; /* Botões menores */
+    font-size: 13px;
+  }
+
+  .actions { 
+    grid-template-columns: 1fr; /* Empilha os botões */
+    gap: 15px; /* Espaço menor entre botões */
+  }
+
+  /* Oculta o botão "Procurar" se não houver espaço */
+  .fileInputButton { 
+    display: none; 
+  }
 }

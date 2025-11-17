@@ -41,16 +41,16 @@ export default function AtivarContaPage() {
 
         // Validações básicas no frontend
         if (!token) {
-             setError('Token inválido ou expirado.'); // Erro se tentarem submeter sem token
-             return;
+            setError('Token inválido ou expirado.'); // Erro se tentarem submeter sem token
+            return;
         }
         if (senha !== confirmar) {
-             setError('As senhas não coincidem.');
-             return;
+            setError('As senhas não coincidem.');
+            return;
         }
         if (senha.length < 8) {
-             setError('A senha deve ter pelo menos 8 caracteres.');
-             return;
+            setError('A senha deve ter pelo menos 8 caracteres.');
+            return;
         }
 
         setIsLoading(true);
@@ -65,34 +65,32 @@ export default function AtivarContaPage() {
             const data = await response.json();
 
             if (response.ok) { // Status 200 OK
-                 // Usa Swal para sucesso
-                 await Swal.fire({
+                // Usa Swal para sucesso
+                await Swal.fire({
                     icon: 'success',
                     title: 'Conta Ativada!',
                     text: 'Sua senha foi definida com sucesso. Você já pode fazer login.',
                     timer: 2500, // Tempo maior
                     showConfirmButton: false,
-                 });
-                 router.push('/login'); // Redireciona para login
+                });
+                router.push('/login'); // Redireciona para login
             } else {
                 // Erro do backend (token inválido, expirado, erro ao salvar senha)
-                 setError(data.message || 'Não foi possível ativar a conta.'); // Mostra erro específico
-                 // Opcional: Usar Swal para erro também
-                 // Swal.fire('Erro', data.message || 'Não foi possível ativar a conta.', 'error');
+                setError(data.message || 'Não foi possível ativar a conta.'); // Mostra erro específico
             }
 
         } catch (error) {
             console.error("Erro ao ativar conta:", error);
             setError('Falha de conexão ao tentar ativar a conta.'); // Mostra erro de rede
-            // Swal.fire('Erro', 'Falha de conexão ao tentar ativar a conta.', 'error');
         } finally {
             setIsLoading(false);
         }
     };
 
+    /** @type {{ [key: string]: React.CSSProperties }} */ // <-- CORRIGIDO AQUI
     // Estilos inline básicos (adapte ou use CSS Modules)
     const styles = {
-        container: { fontFamily: 'Arial, sans-serif', maxWidth: '500px', margin: '50px auto', padding: '30px', border: '1px solid #eee', borderRadius: '8px', textAlign: 'center' },
+        container: { fontFamily: 'Arial, sans-serif', maxWidth: '562px', margin: '50px auto', padding: '30px', border: '1px solid #555', borderRadius: '8px', textAlign: 'center', boxSizing: 'border-box', width: '90%' },
         formGroup: { marginBottom: '15px', textAlign: 'left'},
         label: { display: 'block', marginBottom: '5px', fontWeight: 'bold'},
         input: { width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box'},
@@ -133,7 +131,7 @@ export default function AtivarContaPage() {
                     <div style={styles.formGroup}>
                         <label style={styles.label} htmlFor="confirmar">Confirmar Senha:</label>
                         <input
-                             style={styles.input}
+                            style={styles.input}
                             id="confirmar" type="password" value={confirmar}
                             onChange={(e) => setConfirmar(e.target.value)} required
                             placeholder='Repita a nova senha'

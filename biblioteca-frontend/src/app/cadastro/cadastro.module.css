@@ -1,12 +1,15 @@
 /* Estilos existentes */
+/* O .formContainer corrigido */
 .formContainer {
-  max-width: 600px;
+  width: 90%;                   /* <-- NOVO: Dá 5% de respiro em cada lado no mobile */
+  max-width: 600px;             /* Mantém o limite no desktop */
   margin: 40px auto;
   padding: 30px;
-  border: 1px solid #555; /* Suavizei a borda */
+  border: 1px solid #555; 
   border-radius: 8px;
   background-color: #fff;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Adicionei uma sombra suave */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+  box-sizing: border-box;       /* <-- NOVO: A mágica! Faz o padding ficar para dentro */
 }
 
 .field {

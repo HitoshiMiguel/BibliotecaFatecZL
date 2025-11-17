@@ -117,3 +117,33 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* src/app/components/EditProfileModal.module.css */
+
+/* ... (todo o seu CSS anterior) ... */
+
+/* =========================================================================
+    ✅ INÍCIO: BLOCO DE RESPONSIVIDADE (Modal)
+    Este bloco será aplicado quando a tela for 500px ou menor.
+=========================================================================
+*/
+
+@media (max-width: 500px) {
+    
+    .modalContent {
+        padding: 20px; /* Reduz o padding do modal em telas pequenas */
+    }
+
+    .buttonGroup {
+        flex-direction: column; /* 1. Empilha os botões verticalmente */
+        justify-content: center; /* 2. Centraliza */
+        gap: 15px; /* 3. Reduz o espaço entre eles */
+        margin-top: 25px;
+    }
+
+    .saveButton,
+    .cancelButton {
+        width: 100%; /* 4. Faz ambos ocuparem 100% da largura */
+        justify-content: center; /* Centraliza o texto/ícone dentro do botão */
+    }
+}

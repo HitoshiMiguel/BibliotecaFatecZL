@@ -295,8 +295,84 @@ html body .userway_buttons_wrapper {
         top: auto !important;
     }
 }
-
 /* Garantir que o SweetAlert fique SEMPRE acima de qualquer modal */
 .swal2-container {
   z-index: 99999 !important;
 }
+/* =========================================================================
+    ✅ INÍCIO: BLOCO DE RESPONSIVIDADE MÓVEL
+    Este bloco será aplicado em telas de 768px ou menores.
+=========================================================================
+*/
+
+@media (max-width: 768px) {
+
+    /* --- Correção da Barra Preta (Governo) --- */
+    
+    .govsp-header {
+        height: auto; /* Permite que a altura se ajuste ao conteúdo */
+        flex-direction: column; /* Empilha os itens verticalmente */
+        align-items: flex-start; /* Alinha à esquerda */
+        padding: 0; /* Remove padding para o logo ocupar 100% */
+    }
+
+    .logo-governo {
+        width: 100%; /* Ocupa 100% da largura */
+        max-width: 100%; /* Garante que não ultrapasse */
+        border-radius: 0; /* Remove a borda arredondada */
+        height: 60px; /* Altura menor para mobile */
+        padding: 0 15px; /* Padding interno */
+        justify-content: center; /* Alinha logo à esquerda */
+    }
+
+    .logo-governo-img {
+        height: 30px; /* Tamanho menor para a imagem */
+    }
+
+    .icones {
+        width: 100%; /* Ocupa 100% */
+        justify-content: center; /* Centraliza os ícones */
+        padding: 10px 15px; /* Espaçamento */
+        gap: 16px; /* Espaço entre ícones */
+        border-top: 1px solid #333; /* Linha separadora */
+        flex-wrap: wrap;
+    }
+
+    /* <-- NOVO: Aumenta o tamanho dos ícones para ficarem mais visíveis */
+    .icone-img {
+        width: 28px;
+        height: 28px;
+    }
+
+    /* --- Correção da Barra Branca (Fatec/CPS) --- */
+
+    .CPS-header {
+        padding: 12px 15px; /* Reduz padding lateral */
+    }
+
+    .CPS-container {
+        flex-wrap: wrap; /* Permite que os logos quebrem a linha */
+        justify-content: center; /* Centraliza os itens */
+        gap: 15px; /* Espaço entre os logos */
+    }
+
+    .logo-cps-fatec-img {
+        height: 60px; /* Reduz a altura dos logos */
+        margin-right: 0; /* Remove margem */
+    }
+
+    /* --- Correção da Barra Vermelha (Título) --- */
+
+    .title-section {
+        padding: 20px 15px; /* Reduz padding */
+    }
+
+    .title-section-heading {
+        font-size: 26px; /* Reduz o tamanho da fonte */
+    }
+}
+
+/* =========================================================================
+    ✅ FIM: BLOCO DE RESPONSIVIDADE MÓVEL
+=========================================================================
+*/

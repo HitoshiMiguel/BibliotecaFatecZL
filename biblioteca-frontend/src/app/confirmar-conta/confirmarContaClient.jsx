@@ -80,9 +80,14 @@ export default function ConfirmarContaPage() {
     // A dependência agora é só o router, pois lemos searchParams diretamente
     }, [router, searchParams]); 
 
+    /* Se 'React' não estiver importado, adicione:
+import React from 'react'; 
+*/
+
     // Estilos inline muito básicos
+    /** @type {{ [key: string]: React.CSSProperties }} */ // <-- 1. TIPO ADICIONADO (JSDoc)
     const styles = {
-        container: { fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: '50px auto', padding: '30px', border: '1px solid #eee', borderRadius: '8px', textAlign: 'center' },
+        container: { fontFamily: 'Arial, sans-serif', maxWidth: '662px', margin: '50px auto', padding: '30px', border: '1px solid #555', borderRadius: '8px', textAlign: 'center', width: '90%', boxSizing: 'border-box'},
         feedback: { marginTop: '20px', padding: '15px', borderRadius: '5px', fontWeight: 'bold' },
         loading: { color: '#555', fontStyle: 'italic'},
         error: { color: '#721c24', backgroundColor: '#f8d7da' },
@@ -90,6 +95,7 @@ export default function ConfirmarContaPage() {
     };
 
     // Determina o estilo da mensagem de feedback
+    /** @type {React.CSSProperties} */ // <-- 2. TIPO ADICIONADO (JSDoc)
     let feedbackStyle = styles.loading;
     if (feedback.startsWith('ERRO:')) feedbackStyle = styles.error;
     else if (feedback.includes('sucesso')) feedbackStyle = styles.success;
@@ -102,7 +108,10 @@ export default function ConfirmarContaPage() {
                 {feedback}
             </div>
             {/* Adiciona um botão manual caso o redirect automático falhe */}
-            <button onClick={() => router.push('/login')} style={{padding: '10px 20px', marginTop: '20px', cursor: 'pointer'}}>
+            <button 
+                onClick={() => router.push('/login')} 
+                // 3. O 'as React.CSSProperties' foi REMOVIDO por ser sintaxe TypeScript
+                style={{padding: '10px 20px', marginTop: '20px', cursor: 'pointer'}}>
                 Ir para Login Manualmente
             </button>
         </div>

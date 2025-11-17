@@ -199,3 +199,70 @@
     font-size: 1.2em;
     color: #555;
 }
+
+/* =========================================================================
+    ✅ INÍCIO: BLOCO DE RESPONSIVIDADE MÓVEL (Dashboard)
+    Este bloco será aplicado em telas de 768px ou menores.
+=========================================================================
+*/
+
+@media (max-width: 768px) {
+
+    /* 1. Ajusta o wrapper externo (se estiver neste arquivo)
+       Se .contentWrapper estiver em outro arquivo, pule para o item 2 */
+    .contentWrapper {
+        padding: 0 15px; /* Menos padding lateral */
+    }
+
+    /* 2. Reduz o padding e margens do container principal */
+    .dashboardContainer {
+        padding: 25px 20px; /* Padding interno bem menor */
+        margin-top: 30px;
+        margin-bottom: 40px;
+    }
+
+    /* 3. Quebra o grid para UMA COLUNA */
+    .detailItem {
+        grid-template-columns: 1fr; /* Apenas uma coluna */
+        gap: 8px; /* Espaço menor entre rótulo e valor */
+    }
+
+    /* 4. Ajusta os rótulos */
+    .detailLabel {
+        text-align: left; /* Alinha à esquerda */
+        justify-content: flex-start; /* Alinha ícone+texto à esquerda */
+        font-size: 16px;
+        font-weight: 600; /* Um pouco mais de destaque */
+    }
+
+    /* 5. Ajusta os valores (para modo de leitura ou edição) */
+    .detailValue,
+    .detailValueReadOnly,
+    .editInput {
+        font-size: 15px;
+        padding: 10px 12px
+    }
+
+    /* 6. Ajusta os botões de Ação do Formulário (Salvar/Cancelar) */
+    .formActions {
+        flex-direction: column; /* Empilha os botões */
+        gap: 15px;
+    }
+
+    /* Faz os botões ocuparem 100% da largura no mobile */
+    .formActions .button,
+    .logoutButton {
+        width: 100%;
+        justify-content: center; /* Centraliza o texto do botão */
+    }
+
+    /* 7. Ajusta o espaçamento do botão de logout */
+    .logoutButtonWrapper {
+        margin-top: 30px;
+    }
+}
+
+/* =========================================================================
+    ✅ FIM: BLOCO DE RESPONSIVIDADE MÓVEL
+=========================================================================
+*/

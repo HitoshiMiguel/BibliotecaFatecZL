@@ -1,196 +1,280 @@
+// src/app/bibliotecario/dashboard/MyEditModal.jsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import Swal from 'sweetalert2';
-
-import styles from './MyEditModal.module.css';
-import { FIELDS_BY_TYPE, TIPOS } from './formConstants.js';
-
-const API_URL = 'http://localhost:4000';
+import React, { useState, useEffect, useMemo } from 'react';
+//import styles from './MyEditModal.module.css'; // ou o CSS que você já usa
+import styles from './edit-modal.module.css';
 
 export function EditModal({
   mode = 'pendente',          // 'pendente' | 'gerenciar'
   item,
   onClose,
-  onSaveAndApprove,
-  onReprove,
-  onUpdateOnly,
+  onSaveAndApprove,           // (id) => Promise
+  onReprove,                  // (id) => Promise
+  onUpdateOnly,               // (updatedItem) => void
+  onDeleteApproved,           // (id) => void  👈 NOVO
 }) {
+  const isPendentes = mode === 'pendente';
+
+  // Estado local do form (título, autor, etc.)
   const [formData, setFormData] = useState({
-    ...item,
-    tipo:
-      item.tipo && FIELDS_BY_TYPE[item.tipo]
-        ? item.tipo
-        : 'tcc',
+    titulo_proposto: '',
+    descricao: '',
+    autor: '',
+    editora: '',
+    ano_publicacao: '',
+    conferencia: '',
+    periodico: '',
+    instituicao: '',
+    orientador: '',
+    curso: '',
+    ano_defesa: '',
+    tipo: '',
   });
-  const [isSaving, setIsSaving] = useState(false);
 
-  const isGerenciar = mode === 'gerenciar';
+  // Preenche o formulário com os dados do item assim que abrir
+  useEffect(() => {
+    if (!item) return;
+    setFormData({
+      titulo_proposto: item.titulo_proposto || '',
+      descricao: item.descricao || '',
+      autor: item.autor || '',
+      editora: item.editora || '',
+      ano_publicacao: item.ano_publicacao || '',
+      conferencia: item.conferencia || '',
+      periodico: item.periodico || '',
+      instituicao: item.instituicao || '',
+      orientador: item.orientador || '',
+      curso: item.curso || '',
+      ano_defesa: item.ano_defesa || '',
+      tipo: item.tipo || '',
+    });
+  }, [item]);
 
-  const fields = useMemo(() => {
-    return FIELDS_BY_TYPE[formData.tipo] || [];
-  }, [formData.tipo]);
+  if (!item) return null;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleTipoChange = (novoTipo) => {
-    setFormData((prev) => ({ ...prev, tipo: novoTipo }));
-  };
+  const handleSubmitUpdateOnly = (e) => {
+    e.preventDefault();
+    if (!onUpdateOnly) return;
 
-  // trava o scroll do body enquanto o modal está aberto
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
+    // Monta objeto atualizado mantendo campos originais que não estão no form
+    const updated = {
+      ...item,
+      ...formData,
     };
-  }, []);
 
-  // SALVAR (pendente = salvar + aprovar / gerenciar = salvar apenas)
-  const handleSaveClick = async () => {
-    setIsSaving(true);
-    try {
-      // 1) sempre atualiza a submissão
-      const resUpdate = await fetch(
-        `${API_URL}/api/admin/submissoes/${item.submissao_id}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(formData),
-        }
-      );
-
-      if (!resUpdate.ok) {
-        const err = await resUpdate.json().catch(() => ({}));
-        throw new Error(err.message || 'Falha ao atualizar os dados.');
-      }
-
-      // 2) comportamento por modo
-      if (isGerenciar) {
-        // apenas atualiza lista no front
-        const atualizado = { ...item, ...formData };
-        if (onUpdateOnly) onUpdateOnly(atualizado);
-        Swal.fire('Salvo!', 'Publicação atualizada com sucesso.', 'success');
-        onClose();
-      } else {
-        // modo pendente: depois de salvar, aprova
-        await onSaveAndApprove(item.submissao_id);
-        onClose();
-      }
-    } catch (err) {
-      Swal.fire('Erro!', err.message, 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleReproveClick = async () => {
-    await onReprove(item.submissao_id);
+    onUpdateOnly(updated);
     onClose();
   };
 
+  const handleApproveClick = (e) => {
+    e.preventDefault();
+    if (!onSaveAndApprove) return;
+    onSaveAndApprove(item.submissao_id);
+  };
+
+  const handleReproveClick = (e) => {
+    e.preventDefault();
+    if (!onReprove) return;
+    onReprove(item.submissao_id);
+  };
+
+  const handleDeleteClick = (e) => {
+    e.preventDefault();
+    if (!onDeleteApproved) return;
+    onDeleteApproved(item.submissao_id);
+  };
+
   return (
-    <div
-      className={styles.overlay}
-      onClick={onClose}
-    >
-      <div
-        className={styles.modalBox}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* HEADER */}
-        <div className={styles.header}>
+    <div className={styles.backdrop}>
+      <div className={styles.modal}>
+        <header className={styles.header}>
           <h2>
-            {isGerenciar ? 'Editar Publicação Aprovada' : 'Analisar Submissão'}
+            {isPendentes ? 'Analisar Submissão' : 'Editar Publicação Aprovada'}
           </h2>
+          <button type="button" className={styles.closeButton} onClick={onClose}>
+            &times;
+          </button>
+        </header>
 
-          <div className={styles.tipoToggle}>
-            {TIPOS.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                className={formData.tipo === t.value ? styles.active : ''}
-                onClick={() => handleTipoChange(t.value)}
-                disabled={isSaving}
-              >
-                {t.label}
-              </button>
-            ))}
+        <form className={styles.form} onSubmit={isPendentes ? handleApproveClick : handleSubmitUpdateOnly}>
+          <div className={styles.group}>
+            <label className={styles.label}>Título</label>
+            <input
+              className={styles.input}
+              name="titulo_proposto"
+              value={formData.titulo_proposto}
+              onChange={handleChange}
+              required
+            />
           </div>
-        </div>
 
-        {/* BODY */}
-        <div className={styles.body}>
-          {fields.map((f) => (
-            <div className={styles.formGroup} key={`${formData.tipo}-${f.name}`}>
-              <label htmlFor={f.name}>
-                {f.label}
-                {f.required && ' *'}
-              </label>
+          <div className={styles.group}>
+            <label className={styles.label}>Descrição</label>
+            <textarea
+              className={`${styles.input} ${styles.textarea}`}
+              name="descricao"
+              value={formData.descricao}
+              onChange={handleChange}
+            />
+          </div>
 
-              {f.type === 'textarea' ? (
-                <textarea
-                  id={f.name}
-                  name={f.name}
-                  value={formData[f.name] || ''}
-                  onChange={handleChange}
-                  rows={4}
-                  disabled={isSaving}
-                />
-              ) : (
-                <input
-                  id={f.name}
-                  name={f.name}
-                  type={f.type}
-                  value={formData[f.name] || ''}
-                  onChange={handleChange}
-                  required={f.required}
-                  disabled={isSaving}
-                />
-              )}
+          <div className={styles.group}>
+            <label className={styles.label}>Autor</label>
+            <input
+              className={styles.input}
+              name="autor"
+              value={formData.autor}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.group}>
+            <label className={styles.label}>Editora</label>
+            <input
+              className={styles.input}
+              name="editora"
+              value={formData.editora}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.row}>
+            <div className={styles.group}>
+              <label className={styles.label}>Ano publicação</label>
+              <input
+                className={styles.input}
+                name="ano_publicacao"
+                value={formData.ano_publicacao}
+                onChange={handleChange}
+              />
             </div>
-          ))}
-        </div>
+            <div className={styles.group}>
+              <label className={styles.label}>Ano defesa</label>
+              <input
+                className={styles.input}
+                name="ano_defesa"
+                value={formData.ano_defesa}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
 
-        {/* FOOTER */}
-        <div className={styles.footer}>
-          <button
-            onClick={onClose}
-            className={styles.btnGhost}
-            disabled={isSaving}
-          >
-            Cancelar
-          </button>
+          <div className={styles.group}>
+            <label className={styles.label}>Conferência</label>
+            <input
+              className={styles.input}
+              name="conferencia"
+              value={formData.conferencia}
+              onChange={handleChange}
+            />
+          </div>
 
-          {!isGerenciar && (
+          <div className={styles.group}>
+            <label className={styles.label}>Periódico</label>
+            <input
+              className={styles.input}
+              name="periodico"
+              value={formData.periodico}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.group}>
+            <label className={styles.label}>Instituição</label>
+            <input
+              className={styles.input}
+              name="instituicao"
+              value={formData.instituicao}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.group}>
+            <label className={styles.label}>Orientador</label>
+            <input
+              className={styles.input}
+              name="orientador"
+              value={formData.orientador}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.group}>
+            <label className={styles.label}>Curso</label>
+            <input
+              className={styles.input}
+              name="curso"
+              value={formData.curso}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className={styles.group}>
+            <label className={styles.label}>Tipo</label>
+            <input
+              className={styles.input}
+              name="tipo"
+              value={formData.tipo}
+              onChange={handleChange}
+            />
+          </div>
+
+          <footer className={styles.footer}>
             <button
-              onClick={handleReproveClick}
-              className={styles.btnReprovarModal}
-              disabled={isSaving}
+              type="button"
+              className={styles.btnCancelar}
+              onClick={onClose}
             >
-              Reprovar
+              Cancelar
             </button>
-          )}
 
-          <button
-            onClick={handleSaveClick}
-            className={styles.btnAprovarModal}
-            disabled={isSaving}
-          >
-            {isSaving
-              ? isGerenciar
-                ? 'Salvando...'
-                : 'Aprovando e salvando...'
-              : isGerenciar
-              ? 'Salvar alterações'
-              : 'Aprovar'}
-          </button>
-        </div>
+            {isPendentes ? (
+              <>
+                <button
+                  type="button"
+                  className={styles.btnReprovar}
+                  onClick={handleReproveClick}
+                >
+                  Reprovar
+                </button>
+                <button
+                  type="submit"
+                  className={styles.btnAprovar}
+                >
+                  Aprovar
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="submit"
+                  className={styles.btnAprovar}
+                >
+                  Salvar alterações
+                </button>
+
+                {onDeleteApproved && (
+                  <button
+                    type="button"
+                    className={styles.btnReprovar} // reutiliza estilo vermelho
+                    onClick={handleDeleteClick}
+                  >
+                    Excluir publicação
+                  </button>
+                )}
+              </>
+            )}
+          </footer>
+        </form>
       </div>
     </div>
   );

@@ -32,7 +32,7 @@ const getAllSolicitacoes = async (req, res) => {
 
 /**
  * Rejeita uma solicitação de cadastro.
- */
+*/
 const rejeitarSolicitacao = async (req, res) => {
     const { id } = req.params;
     try {
@@ -656,6 +656,59 @@ const reprovarSubmissao = async (req, res, next) => {
   }
 }; // <-- FIM DA FUNÇÃO reprovarSubmissao
 
+const deletarPublicacaoAprovada = async (req, res, next) => {
+  const { id: submissaoId } = req.params;
+  const { id: revisorId } = req.user || {};
+
+  try {
+    // 1. Pega a submissão APROVADA
+    const sqlFind = `
+      SELECT caminho_anexo 
+      FROM dg_submissoes 
+      WHERE submissao_id = ? AND status = 'aprovado'
+    `;
+    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Publicação aprovada não encontrada.' });
+    }
+
+    const googleFileId = rows[0].caminho_anexo;
+
+    // 2. Apaga o arquivo no Google Drive (mesma lógica do reprovar)
+    if (googleFileId) {
+      const drive = getDriveWithOAuth();
+      await drive.files.delete({
+        fileId: googleFileId,
+      });
+    }
+
+    // 3. Remove o item final da tabela de itens digitais (se existir)
+    const sqlDeleteItem = `
+      DELETE FROM dg_itens_digitais
+      WHERE submissao_id = ?
+    `;
+    await connection.execute(sqlDeleteItem, [submissaoId]);
+
+    // 4. Remove a submissão aprovada
+    const sqlDeleteSub = `
+      DELETE FROM dg_submissoes
+      WHERE submissao_id = ?
+    `;
+    await connection.execute(sqlDeleteSub, [submissaoId]);
+
+    // 5. Retorno
+    return res.status(200).json({
+      success: true,
+      message: 'Publicação aprovada e arquivo associados foram excluídos com sucesso.',
+    });
+
+  } catch (error) {
+    console.error('Erro ao deletar publicação aprovada:', error);
+    next(error);
+  }
+};
+
 const publicarDireto = async (req, res, next) => {
   try {
     // 1. VERIFICAÇÕES (Arquivo e Usuário)
@@ -814,18 +867,19 @@ const getSubmissionFileLink = async (req, res, next) => {
 
 // --- EXPORTAÇÕES ---
 module.exports = {
-    getAllSolicitacoes,
-    aprovarSolicitacao,
-    rejeitarSolicitacao,
-    createUsuarioDireto,
-    listAllUsers,
-    getUserById,
-    updateUser,
-    deleteUser,
-    getSubmissoesPendentes,
-    aprovarSubmissao,
-    reprovarSubmissao,
-    updateSubmissao,
-    publicarDireto,
-    getSubmissionFileLink
+  getAllSolicitacoes,
+  aprovarSolicitacao,
+  rejeitarSolicitacao,
+  createUsuarioDireto,
+  listAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+  getSubmissoesPendentes,
+  aprovarSubmissao,
+  reprovarSubmissao,
+  updateSubmissao,
+  publicarDireto,
+  getSubmissionFileLink,
+  deletarPublicacaoAprovada, // 👈 NOVO
 };

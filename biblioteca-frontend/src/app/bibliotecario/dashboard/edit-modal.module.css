@@ -1,0 +1,189 @@
+/* src/app/bibliotecario/dashboard/edit-modal.module.css */
+
+/* Tela escurecida atrás do modal */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 16px;
+  z-index: 1300; /* acima do header */
+}
+
+/* Card principal do modal */
+.modal {
+  width: 100%;
+  max-width: 980px;
+  background: #ffffff;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 24px 32px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+/* Cabeçalho do modal */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.closeButton {
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.closeButton:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Formulário interno */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Agrupamento vertical padrão */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Linha com dois campos lado a lado */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Label dos campos */
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Inputs / textareas */
+.input {
+  width: 100%;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  border-color: #b20000;
+  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.18);
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Rodapé com botões */
+.footer {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Botões genéricos */
+.footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+/* Cancelar (cinza claro) */
+.btnCancelar {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.btnCancelar:hover {
+  background: #e5e7eb;
+}
+
+/* Aprovar / Salvar (vermelho padrão do site) */
+.btnAprovar {
+  background: #b20000;
+  color: #ffffff;
+  border-color: #b20000;
+}
+.btnAprovar:hover {
+  background: #9a0000;
+  box-shadow: 0 4px 10px rgba(178, 0, 0, 0.2);
+}
+
+/* Reprovar / Excluir (vermelho de alerta) */
+.btnReprovar {
+  background: #ffffff;
+  color: #b20000;
+  border-color: #b20000;
+}
+.btnReprovar:hover {
+  background: #b20000;
+  color: #ffffff;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .backdrop {
+    align-items: flex-start;
+    padding: 20px 10px;
+  }
+
+  .modal {
+    padding: 18px 16px;
+    max-height: calc(100vh - 40px);
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .header h2 {
+    font-size: 18px;
+  }
+}

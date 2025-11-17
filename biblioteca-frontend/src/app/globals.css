@@ -295,3 +295,8 @@ html body .userway_buttons_wrapper {
         top: auto !important;
     }
 }
+
+/* Garantir que o SweetAlert fique SEMPRE acima de qualquer modal */
+.swal2-container {
+  z-index: 99999 !important;
+}

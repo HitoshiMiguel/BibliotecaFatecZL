@@ -4,7 +4,6 @@ const express = require('express');
 const router = express.Router();
 const AdminController = require('../controller/adminController');
 
-
 // --- NOVAS IMPORTAÇÕES (para o upload) ---
 const multer = require('multer');
 // Usamos memoryStorage() para enviar ao Google Drive, assim como seu 'upload/index.js' faz
@@ -16,7 +15,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const {
   isAuthenticated,
   isAdminOrBibliotecario,
-  isAdmin // Se 'isAdmin' não existir, remova-o
+  isAdmin, // se não existir, pode remover
 } = require('../middlewares/authMiddleware');
 
 // --- ROTAS DE GESTÃO DE SOLICITAÇÕES ---
@@ -56,6 +55,14 @@ router.post(
   isAuthenticated,
   isAdminOrBibliotecario,
   AdminController.reprovarSubmissao
+);
+
+// Deletar publicação já aprovada (remove do Drive + DB)
+router.post(
+  '/submissoes/:id/deletar-aprovada',
+  isAuthenticated,
+  isAdminOrBibliotecario,
+  AdminController.deletarPublicacaoAprovada
 );
 
 router.put(

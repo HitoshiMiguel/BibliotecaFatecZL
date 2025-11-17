@@ -1,6 +1,7 @@
+// src/app/bibliotecario/dashboard/page.jsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
 import styles from './dashboard-bibliotecario.module.css';
@@ -106,12 +107,12 @@ export default function DashboardBibliotecarioPage() {
   useEffect(() => {
     // Só roda se a aba 'gerenciar' estiver ativa
     if (abaAtiva !== 'gerenciar') return;
-    
+
     // Se já temos dados, não busca de novo (exceto se forçarmos)
     if (publicacoes.length > 0 || loadingGerenciar) return;
 
     getPublicacoesAprovadas();
-  }, [abaAtiva, publicacoes.length, loadingGerenciar]); // Dependências corretas
+  }, [abaAtiva, publicacoes.length, loadingGerenciar]);
 
   // ==========================================
   // = AÇÕES: APROVAR / REPROVAR PENDENTES
@@ -133,16 +134,13 @@ export default function DashboardBibliotecarioPage() {
         prev.filter((sub) => sub.submissao_id !== id)
       );
 
-      // 2. [CORREÇÃO] Invalida a lista de publicações aprovadas.
-      // Isso força o useEffect da aba 'gerenciar' a recarregar
-      // a lista completa na próxima vez que for clicada.
+      // 2. Invalida a lista de aprovadas pra forçar recarregar depois
       setPublicacoes([]);
-      
-      // Fechar o modal se ele estiver aberto
+
+      // Fecha o modal se for o item atual
       if (editingItem && editingItem.submissao_id === id) {
         setEditingItem(null);
       }
-
     } catch (err) {
       Swal.fire('Erro!', err.message, 'error');
     } finally {
@@ -187,6 +185,65 @@ export default function DashboardBibliotecarioPage() {
         prev.filter((sub) => sub.submissao_id !== id)
       );
     } catch (err) {
+      Swal.fire('Erro!', err.message, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // ==========================================
+  // = AÇÃO: EXCLUIR PUBLICAÇÃO APROVADA
+  // ==========================================
+  const handleExcluirPublicacao = async (submissaoId) => {
+    const pub = publicacoes.find((p) => p.submissao_id === submissaoId);
+    const titulo = pub?.titulo_proposto || 'esta publicação';
+
+    const result = await Swal.fire({
+      title: 'Excluir publicação?',
+      text: `Esta ação irá remover "${titulo}" do acervo e apagar o arquivo do Google Drive. Isso não pode ser desfeito.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sim, excluir',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setUpdatingId(submissaoId);
+
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/submissoes/${submissaoId}/deletar-aprovada`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Falha ao excluir publicação.');
+      }
+
+      Swal.fire(
+        'Excluída!',
+        'A publicação foi removida com sucesso.',
+        'success'
+      );
+
+      // Remove da lista de aprovadas
+      setPublicacoes((prev) =>
+        prev.filter((p) => p.submissao_id !== submissaoId)
+      );
+
+      // Fecha o modal se for o item que estava aberto
+      if (editingItem && editingItem.submissao_id === submissaoId) {
+        setEditingItem(null);
+      }
+    } catch (err) {
+      console.error(err);
       Swal.fire('Erro!', err.message, 'error');
     } finally {
       setUpdatingId(null);
@@ -440,11 +497,10 @@ export default function DashboardBibliotecarioPage() {
           mode={editMode}
           item={editingItem}
           onClose={() => setEditingItem(null)}
-          onSaveAndApprove={handleAprovar} // usado no modo 'pendente'
-          onReprove={handleReprovar} // usado no modo 'pendente'
+          onSaveAndApprove={handleAprovar}   // pendente
+          onReprove={handleReprovar}         // pendente
           onUpdateOnly={(updated) => {
             // usado no modo 'gerenciar'
-            // [ESTA LÓGICA ESTÁ CORRETA e não era o problema]
             setPublicacoes((prev) =>
               prev.map((p) =>
                 p.submissao_id === updated.submissao_id
@@ -453,6 +509,7 @@ export default function DashboardBibliotecarioPage() {
               )
             );
           }}
+          onDeleteApproved={handleExcluirPublicacao}  // 👈 AQUI LIGA TUDO
         />
       )}
 

@@ -14,6 +14,7 @@
 .searchBar {
     display: flex;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .campoDeBusca {
@@ -24,6 +25,7 @@
     border: 1px solid #dadada;
     border-radius: 30px 0 0 30px;
     outline: none;
+    box-sizing: border-box;
 }
 
 .btnSearch {
@@ -39,6 +41,7 @@
     justify-content: center;
     /* Ajustado: Oculta o foco do botão de busca */
     transition: background 0.2s, border-color 0.2s;
+    box-sizing: border-box;
 }
 
 .btnSearch i {
@@ -67,3 +70,12 @@
     flex-shrink: 0; 
 }
 
+@media (max-width: 576px) {
+    .campoDeBusca {
+        /* Remove a largura fixa e deixa o flexbox 
+           controlar o tamanho (crescer e encolher) */
+        width: auto;
+        flex: 1;
+        min-width: 0; /* Permite que o input encolha */
+    }
+}

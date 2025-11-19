@@ -1,4 +1,11 @@
-.wrap { padding-bottom: 48px; }
+/* src/app/consulta/[id]/publicacao.module.css */
+
+.wrap {
+  padding-bottom: 48px;
+  font-family: sans-serif; /* Garante uma fonte limpa */
+}
+
+/* Banner Vermelho */
 .banner {
   background: #b20000;
   color: #fff;
@@ -6,34 +13,109 @@
   padding: 16px 24px;
   font-size: 28px;
   text-align: center;
+  border-radius: 0 0 4px 4px; /* Leve arredondamento embaixo se desejar */
 }
+
+/* Título de Carregamento/Erro (usado fora do layout principal) */
+.title {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 1.5rem;
+  color: #555;
+}
+
+/* Layout Grid Principal */
 .content {
   margin: 24px auto 0;
   padding: 0 16px;
   max-width: 1000px;
   display: grid;
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 140px 1fr; /* Coluna fixa pra capa + resto pro texto */
   gap: 24px;
 }
-.thumb { }
-.coverStub {
-  width: 120px; height: 180px;
-  border: 1px solid #ddd; display: grid; place-items: center;
-  color: #777; font-size: 12px; background: #fafafa;
+
+/* Coluna da Capa */
+.thumb {
+  /* Se precisar alinhar o item dentro da coluna */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.info { }
-.h1 { margin: 0 0 8px; font-size: 24px; }
-.descList { list-style: none; padding: 0; margin: 0 0 16px; }
-.descList li { margin: 6px 0; color: #333; }
+
+/* Placeholder da Capa */
+.coverStub {
+  width: 120px;
+  height: 180px;
+  border: 1px solid #ddd;
+  display: grid;
+  place-items: center;
+  color: #777;
+  font-size: 12px;
+  background: #fafafa;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Um leve sombreado para destacar */
+}
+
+/* Coluna de Informações */
+.info {
+  /* Ocupa o espaço restante */
+}
+
+/* Título do Livro */
+.h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #333;
+  line-height: 1.2;
+}
+
+/* Lista de Detalhes */
+.descList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.descList li {
+  margin: 6px 0;
+  color: #333;
+  line-height: 1.5;
+}
+
+.descList li strong {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* Botão (Azul para Download, Verde para Reserva via inline style) */
 .downloadBtn {
   display: inline-block;
   background: #0b63ce;
   color: #fff;
   padding: 10px 18px;
-  border-radius: 999px;
+  border-radius: 999px; /* Pílula */
   text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+  margin-right: 10px; /* Espaço caso tenha mais de um botão */
 }
+
+.downloadBtn:hover {
+  opacity: 0.9;
+}
+
+/* Responsividade Mobile */
 @media (max-width: 700px) {
-  .content { grid-template-columns: 1fr; }
-  .thumb { order: 1; }
+  .content {
+    grid-template-columns: 1fr; /* Vira uma coluna só */
+  }
+  
+  .thumb {
+    order: 1; /* Joga a capa para baixo do texto (conforme seu css base) */
+    /* Se quiser a capa em cima, mude para order: -1 ou remova essa linha */
+    margin-top: 20px; 
+    justify-content: center;
+  }
 }

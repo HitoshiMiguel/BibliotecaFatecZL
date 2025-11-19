@@ -1,8 +1,7 @@
-// src/app/consulta/[id]/page.jsx
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
-import Swal from 'sweetalert2';
+// Removido sweetalert2 para evitar erro de build
 import styles from './publicacao.module.css';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -51,12 +50,8 @@ export default function PublicacaoPage({ params }) {
 
   const handleOpenFile = () => {
     if (!data?.caminho_anexo) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Arquivo indisponível',
-        text: 'Esta publicação não possui arquivo anexado.',
-        confirmButtonColor: '#b20000',
-      });
+      // Alerta nativo para não precisar instalar libs extras
+      window.alert('Arquivo indisponível: Esta publicação não possui arquivo anexado.');
       return;
     }
 
@@ -90,9 +85,27 @@ export default function PublicacaoPage({ params }) {
     );
   }
 
-  const disponivel = !!data.caminho_anexo;
-  const isPDF =
-    disponivel && /\.pdf($|\?)/i.test(String(data.caminho_anexo || ''));
+  // --- NOVA LÓGICA DE DISPONIBILIDADE ---
+  const temArquivo = !!data.caminho_anexo;
+  
+  // Prioriza o status que vem do banco (para livros físicos), depois tenta inferir pelo arquivo
+  let textoDisponibilidade = 'Indisponível';
+
+  if (data.disponibilidade) {
+      // Caso 1: Backend mandou explicitamente (ex: "Disponível", "Emprestado")
+      textoDisponibilidade = data.disponibilidade;
+  } else if (data.status_fisico) {
+      // Caso 2: Veio com o nome antigo de variável
+      textoDisponibilidade = data.status_fisico;
+  } else if (temArquivo) {
+      // Caso 3: É digital e tem arquivo
+      const isPDF = /\.pdf($|\?)/i.test(String(data.caminho_anexo));
+      textoDisponibilidade = isPDF ? 'Disponível em PDF' : 'Disponível para Download';
+  }
+
+  // Define a cor do badge baseado no texto
+  const isPositivo = textoDisponibilidade.toLowerCase().includes('disponível');
+  const corStatus = isPositivo ? 'green' : '#b20000'; // Verde ou Vermelho Fatec
 
   return (
     <main className={styles.wrap}>
@@ -100,8 +113,10 @@ export default function PublicacaoPage({ params }) {
 
       <section className={styles.content}>
         <aside className={styles.thumb}>
-          {/* Futuro: render capa. Por enquanto placeholder */}
-          <div className={styles.coverStub}>CAPA</div>
+          {/* Se for físico, mostra texto LIVRO, senão CAPA */}
+          <div className={styles.coverStub}>
+             {data.tipo === 'fisico' ? 'LIVRO' : 'CAPA'}
+          </div>
         </aside>
 
         <article className={styles.info}>
@@ -109,8 +124,31 @@ export default function PublicacaoPage({ params }) {
 
           <ul className={styles.descList}>
             {data.descricao && (
+              <li style={{ marginBottom: '20px', fontStyle: 'italic' }}>
+                {data.descricao}
+              </li>
+            )}
+            {data.localizacao && (
               <li>
-                <strong>Descrição:</strong> {data.descricao}
+                <strong>Localização na Estante:</strong> {data.localizacao}
+              </li>
+            )}
+            
+            {data.isbn && (
+              <li>
+                <strong>ISBN:</strong> {data.isbn}
+              </li>
+            )}
+
+            {data.detalhes_fisicos && (
+              <li>
+                <strong>Detalhes:</strong> {data.detalhes_fisicos}
+              </li>
+            )}
+
+            {data.codigo_barras && (
+              <li>
+                <strong>Código de Barras:</strong> {data.codigo_barras}
               </li>
             )}
             {data.autor && (
@@ -129,6 +167,7 @@ export default function PublicacaoPage({ params }) {
                 {data.ano_publicacao || data.ano_defesa}
               </li>
             )}
+            
             {data.conferencia && (
               <li>
                 <strong>Conferência:</strong> {data.conferencia}
@@ -156,20 +195,19 @@ export default function PublicacaoPage({ params }) {
             )}
             {data.tipo && (
               <li>
-                <strong>Tipo:</strong> {data.tipo}
+                <strong>Tipo:</strong> {data.tipo === 'fisico' ? 'Livro Físico' : data.tipo}
               </li>
             )}
             <li>
               <strong>Disponibilidade:</strong>{' '}
-              {disponivel
-                ? isPDF
-                  ? 'Disponível em PDF'
-                  : 'Disponível'
-                : 'Indisponível'}
+              <span style={{ color: corStatus, fontWeight: 'bold' }}>
+                {textoDisponibilidade}
+              </span>
             </li>
           </ul>
 
-          {disponivel && (
+          {/* Botão de Download (Só aparece se tiver arquivo) */}
+          {temArquivo && (
             <button
               type="button"
               className={styles.downloadBtn}
@@ -178,6 +216,19 @@ export default function PublicacaoPage({ params }) {
               Visualizar / Download
             </button>
           )}
+          
+          {/* Botão de Reserva (Só aparece se for físico e disponível) */}
+          {!temArquivo && data.tipo === 'fisico' && isPositivo && (
+             <button
+                type="button"
+                className={styles.downloadBtn} 
+                style={{ backgroundColor: '#28a745', marginTop: '10px' }} 
+                onClick={() => window.alert('Funcionalidade de reserva em breve!')}
+             >
+                Reservar Livro
+             </button>
+          )}
+
         </article>
       </section>
     </main>

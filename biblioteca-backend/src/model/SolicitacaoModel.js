@@ -1,7 +1,6 @@
 // src/model/SolicitacaoModel.js
 
-const pool = require('../config/db.js');
-
+const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
 //Função para criar uma solicitação (AGORA INCLUI SENHA HASH)
 async function createSolicitacao({ nome, email, perfil, senhaHash }) { // Adicionado senhaHash
     const sql =

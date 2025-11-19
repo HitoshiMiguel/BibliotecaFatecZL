@@ -1,6 +1,6 @@
 // src/routes/dbTestRoute.js
 const router = require('express').Router();
-const pool = require('../config/db'); // reaproveitando seu pool
+const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
 
 router.get('/', async (req, res, next) => {
   const startedAt = Date.now();

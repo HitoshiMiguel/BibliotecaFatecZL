@@ -1,8 +1,7 @@
 // Em: src/app/services/FavoritoService.js
 
 // 1. Importamos a conexão 'pool'
-const pool = require('../config/db.js');
-
+const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
 class FavoritoService {
 
     /**

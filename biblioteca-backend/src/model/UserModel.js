@@ -1,7 +1,6 @@
 // src/model/UserModel.js
 
-const pool = require('../config/db.js');
-
+const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
 // --- FUNÇÕES PARA ATIVAÇÃO DE CONTA (Professor define senha) ---
 
 /**

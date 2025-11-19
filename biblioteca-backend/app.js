@@ -16,6 +16,7 @@ const googleRouter = require('./src/app/api/google');
 const moderationRouter = require('./src/app/api/moderation');
 const publicacoes = require('./src/app/api/publicacoes'); // nova rota de consulta de publicações
 const pool = require('./src/config/db');
+const acervoRoutes = require('./src/routes/acervoRoutes');
 
 // --- NOVO (No caminho certo) ---
 const favoritoRoutes = require('./src/routes/FavoritoRoutes'); 
@@ -52,21 +53,23 @@ app.use('/db-test', dbTestRoute);
 // --- NOVO (Registrando a rota) ---
 app.use('/api/favoritos', favoritoRoutes);
 
+app.use('/api/acervo', acervoRoutes);
+
 
 /** ================================
  *  Healthcheck e diagnóstico
  *  ================================ */
 app.get('/', (_req, res) => {
-  res.json({ message: 'API da Biblioteca Rodando!' });
+    res.json({ message: 'API da Biblioteca Rodando!' });
 });
 
 app.get('/__dbcheck', async (_req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT 1 AS ok');
-    res.json({ ok: rows?.[0]?.ok === 1 });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
+    try {
+    const [rows] = await pool.query('SELECT 1 AS ok');
+    res.json({ ok: rows?.[0]?.ok === 1 });
+    } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+    }
 });
 
 /** ================================

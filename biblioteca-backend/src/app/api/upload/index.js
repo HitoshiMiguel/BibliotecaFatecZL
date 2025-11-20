@@ -4,8 +4,7 @@ const express = require('express');
 const multer = require('multer');
 const { Readable } = require('stream');
 const { getDriveWithOAuth } = require('../../../lib/googleOAuth');
-const connection = require('../../../config/db'); // Importa a conexão
-
+const { poolSistemaNovo: pool } = require('../../../infra/db/mysql/connection');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -106,8 +105,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       tipo || null
     ];
 
-    await connection.execute(sql, values);
-
+    await pool.execute(sql, values);
     // 4. SUCESSO
     // -------------------------------------------------------------------
     res.json({

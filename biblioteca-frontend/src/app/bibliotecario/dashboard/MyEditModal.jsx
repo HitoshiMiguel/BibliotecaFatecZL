@@ -1,280 +1,238 @@
-// src/app/bibliotecario/dashboard/MyEditModal.jsx
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-//import styles from './MyEditModal.module.css'; // ou o CSS que você já usa
-import styles from './edit-modal.module.css';
+import styles from './MyEditModal.module.css'; 
+import { FIELDS_BY_TYPE, TIPOS } from './formConstants.js';
 
-export function EditModal({
-  mode = 'pendente',          // 'pendente' | 'gerenciar'
-  item,
-  onClose,
-  onSaveAndApprove,           // (id) => Promise
-  onReprove,                  // (id) => Promise
-  onUpdateOnly,               // (updatedItem) => void
-  onDeleteApproved,           // (id) => void  👈 NOVO
+const API_URL = 'http://localhost:4000';
+
+// 🔴 CORREÇÃO: Adicionamos '= null' para tornar as props opcionais e sumir com o erro TS(2741)
+export function MyEditModal({ 
+  item, 
+  onClose, 
+  onSaved = null,           // Tornado opcional
+  onUpdateOnly = null,      // Tornado opcional
+  mode = 'gerenciar', 
+  onSaveAndApprove = null,  // Tornado opcional
+  onReprove = null,         // Tornado opcional
+  onDeleteApproved = null   // Tornado opcional
 }) {
   const isPendentes = mode === 'pendente';
 
-  // Estado local do form (título, autor, etc.)
+  const tipoOriginal = item.tipo ? item.tipo.toLowerCase() : 'tcc';
+  const tipoInicial = FIELDS_BY_TYPE[tipoOriginal] ? tipoOriginal : 'tcc';
+
   const [formData, setFormData] = useState({
-    titulo_proposto: '',
-    descricao: '',
-    autor: '',
-    editora: '',
-    ano_publicacao: '',
-    conferencia: '',
-    periodico: '',
-    instituicao: '',
-    orientador: '',
-    curso: '',
-    ano_defesa: '',
-    tipo: '',
+    ...item,
+    tipo: tipoInicial,
+    titulo_proposto: item.titulo_proposto || item.titulo || '',
+    autor: item.autor || '',
+    editora: item.editora || '',
+    ano_publicacao: item.ano_publicacao || item.ano || '',
+    descricao: item.descricao || '',
+    conferencia: item.conferencia || '',
+    periodico: item.periodico || '',
+    instituicao: item.instituicao || '',
+    orientador: item.orientador || '',
+    curso: item.curso || '',
+    ano_defesa: item.ano_defesa || '',
   });
 
-  // Preenche o formulário com os dados do item assim que abrir
-  useEffect(() => {
-    if (!item) return;
-    setFormData({
-      titulo_proposto: item.titulo_proposto || '',
-      descricao: item.descricao || '',
-      autor: item.autor || '',
-      editora: item.editora || '',
-      ano_publicacao: item.ano_publicacao || '',
-      conferencia: item.conferencia || '',
-      periodico: item.periodico || '',
-      instituicao: item.instituicao || '',
-      orientador: item.orientador || '',
-      curso: item.curso || '',
-      ano_defesa: item.ano_defesa || '',
-      tipo: item.tipo || '',
-    });
-  }, [item]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  if (!item) return null;
+  const fields = useMemo(
+    () => FIELDS_BY_TYPE[formData.tipo] || [],
+    [formData.tipo]
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmitUpdateOnly = (e) => {
-    e.preventDefault();
-    if (!onUpdateOnly) return;
+  const handleTipoChange = (novoTipo) => {
+    setFormData(prev => ({ ...prev, tipo: novoTipo }));
+  };
 
-    // Monta objeto atualizado mantendo campos originais que não estão no form
-    const updated = {
-      ...item,
-      ...formData,
-    };
+  // --- FUNÇÃO DE SALVAR (UPDATE REAL) ---
+  const handleSaveClick = async (e) => {
+    if (e) e.preventDefault();
+    setIsSaving(true);
 
-    onUpdateOnly(updated);
-    onClose();
+    try {
+      const endpoint = `${API_URL}/api/admin/submissoes/${item.submissao_id}`;
+      console.log("🚀 Enviando PUT para:", endpoint);
+
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', 
+        body: JSON.stringify(formData),
+      });
+
+      const textResponse = await res.text();
+      let jsonResponse;
+      try {
+        jsonResponse = JSON.parse(textResponse);
+      } catch (err) {
+        throw new Error(`Resposta inválida do servidor.`);
+      }
+
+      if (!res.ok) {
+        throw new Error(jsonResponse.message || 'Falha ao atualizar.');
+      }
+
+      window.alert('Publicação atualizada com sucesso!');
+      
+      const updatedItem = { ...item, ...formData };
+
+      // Chama a função que estiver disponível (suporta tanto a versão nova quanto a antiga)
+      if (onUpdateOnly) onUpdateOnly(updatedItem);
+      if (onSaved) onSaved(updatedItem);
+      
+      onClose();
+
+    } catch (err) {
+      console.error("❌ Erro:", err);
+      window.alert(`ERRO: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleApproveClick = (e) => {
     e.preventDefault();
-    if (!onSaveAndApprove) return;
-    onSaveAndApprove(item.submissao_id);
+    if (onSaveAndApprove) onSaveAndApprove(item.submissao_id);
   };
 
   const handleReproveClick = (e) => {
     e.preventDefault();
-    if (!onReprove) return;
-    onReprove(item.submissao_id);
+    if (onReprove) onReprove(item.submissao_id);
+  };
+  
+  const handleDeleteClick = (e) => {
+      e.preventDefault();
+      if(onDeleteApproved) onDeleteApproved(item.submissao_id);
   };
 
-  const handleDeleteClick = (e) => {
-    e.preventDefault();
-    if (!onDeleteApproved) return;
-    onDeleteApproved(item.submissao_id);
-  };
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, []);
 
   return (
-    <div className={styles.backdrop}>
-      <div className={styles.modal}>
+    <div className={styles.backdrop || styles.overlay} onClick={onClose}>
+      <div className={styles.modal || styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <header className={styles.header}>
           <h2>
-            {isPendentes ? 'Analisar Submissão' : 'Editar Publicação Aprovada'}
+            {isPendentes ? 'Analisar Submissão' : `Editar Publicação (ID: ${item.submissao_id})`}
           </h2>
+          
+          {!isPendentes && (
+            <div className={styles.tipoToggle}>
+                {TIPOS.map(t => (
+                <button
+                    key={t.value}
+                    type="button"
+                    className={formData.tipo === t.value ? styles.active : ''}
+                    onClick={() => handleTipoChange(t.value)}
+                    disabled={isSaving}
+                >
+                    {t.label}
+                </button>
+                ))}
+            </div>
+          )}
+
           <button type="button" className={styles.closeButton} onClick={onClose}>
             &times;
           </button>
         </header>
 
-        <form className={styles.form} onSubmit={isPendentes ? handleApproveClick : handleSubmitUpdateOnly}>
-          <div className={styles.group}>
-            <label className={styles.label}>Título</label>
-            <input
-              className={styles.input}
-              name="titulo_proposto"
-              value={formData.titulo_proposto}
-              onChange={handleChange}
-              required
-            />
-          </div>
+        <form className={styles.body}>
+          {fields.map((f) => (
+            <div className={styles.group || styles.formGroup} key={`${formData.tipo}-${f.name}`}>
+              <label className={styles.label}>
+                {f.label} {f.required && ' *'}
+              </label>
 
-          <div className={styles.group}>
-            <label className={styles.label}>Descrição</label>
-            <textarea
-              className={`${styles.input} ${styles.textarea}`}
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Autor</label>
-            <input
-              className={styles.input}
-              name="autor"
-              value={formData.autor}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Editora</label>
-            <input
-              className={styles.input}
-              name="editora"
-              value={formData.editora}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.row}>
-            <div className={styles.group}>
-              <label className={styles.label}>Ano publicação</label>
-              <input
-                className={styles.input}
-                name="ano_publicacao"
-                value={formData.ano_publicacao}
-                onChange={handleChange}
-              />
+              {f.type === 'textarea' ? (
+                <textarea
+                  className={styles.input}
+                  id={f.name}
+                  name={f.name}
+                  value={formData[f.name] || ''}
+                  onChange={handleChange}
+                  rows={4}
+                  disabled={isSaving}
+                />
+              ) : (
+                <input
+                  className={styles.input}
+                  id={f.name}
+                  name={f.name}
+                  type={f.type}
+                  value={formData[f.name] || ''}
+                  onChange={handleChange}
+                  required={f.required}
+                  disabled={isSaving}
+                />
+              )}
             </div>
-            <div className={styles.group}>
-              <label className={styles.label}>Ano defesa</label>
-              <input
-                className={styles.input}
-                name="ano_defesa"
-                value={formData.ano_defesa}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Conferência</label>
-            <input
-              className={styles.input}
-              name="conferencia"
-              value={formData.conferencia}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Periódico</label>
-            <input
-              className={styles.input}
-              name="periodico"
-              value={formData.periodico}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Instituição</label>
-            <input
-              className={styles.input}
-              name="instituicao"
-              value={formData.instituicao}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Orientador</label>
-            <input
-              className={styles.input}
-              name="orientador"
-              value={formData.orientador}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Curso</label>
-            <input
-              className={styles.input}
-              name="curso"
-              value={formData.curso}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className={styles.group}>
-            <label className={styles.label}>Tipo</label>
-            <input
-              className={styles.input}
-              name="tipo"
-              value={formData.tipo}
-              onChange={handleChange}
-            />
-          </div>
-
-          <footer className={styles.footer}>
-            <button
-              type="button"
-              className={styles.btnCancelar}
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
-
-            {isPendentes ? (
-              <>
-                <button
-                  type="button"
-                  className={styles.btnReprovar}
-                  onClick={handleReproveClick}
-                >
-                  Reprovar
-                </button>
-                <button
-                  type="submit"
-                  className={styles.btnAprovar}
-                >
-                  Aprovar
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="submit"
-                  className={styles.btnAprovar}
-                >
-                  Salvar alterações
-                </button>
-
-                {onDeleteApproved && (
-                  <button
-                    type="button"
-                    className={styles.btnReprovar} // reutiliza estilo vermelho
-                    onClick={handleDeleteClick}
-                  >
-                    Excluir publicação
-                  </button>
-                )}
-              </>
-            )}
-          </footer>
+          ))}
         </form>
+
+        <footer className={styles.footer}>
+          <button
+            type="button"
+            className={styles.btnCancelar || styles.btnGhost}
+            onClick={onClose}
+            disabled={isSaving}
+          >
+            Cancelar
+          </button>
+
+          {isPendentes ? (
+            <>
+              <button
+                type="button"
+                className={styles.btnReprovar}
+                onClick={handleReproveClick}
+              >
+                Reprovar
+              </button>
+              <button
+                type="button"
+                className={styles.btnAprovar}
+                onClick={handleApproveClick}
+              >
+                Aprovar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={styles.btnAprovar || styles.btnAprovarModal}
+                onClick={handleSaveClick}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+
+              {onDeleteApproved && (
+                 <button
+                    type="button"
+                    className={styles.btnReprovar}
+                    style={{ marginLeft: '10px', backgroundColor: '#d9534f' }}
+                    onClick={handleDeleteClick}
+                 >
+                    Excluir
+                 </button>
+              )}
+            </>
+          )}
+        </footer>
       </div>
     </div>
   );

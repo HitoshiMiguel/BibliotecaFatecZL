@@ -1,11 +1,13 @@
 // src/controller/adminController.js
+console.log("🔄 RECARREGANDO ADMIN CONTROLLER... (Se você ver isso, o arquivo atualizou!)");
 
 const bcrypt = require('bcryptjs');
 const UserModel = require('../model/UserModel');
 const SolicitacaoModel = require('../model/SolicitacaoModel');
 const UsuarioBuilder = require('../services/UserBuilder');
 const { generateUniqueToken } = require('../services/UserService');
-const connection = require('../config/db');
+const { poolSistemaNovo, poolOpenBiblio } = require('../infra/db/mysql/connection');
+const pool = poolSistemaNovo;
 const { getDriveWithOAuth } = require('../lib/googleOAuth');
 const { Readable } = require('stream');
 
@@ -293,15 +295,15 @@ const deleteUser = async (req, res) => {
         }
         // ---------------------------------------------------
 
-        res.status(200).json({ message: 'Utilizador e solicitações associadas (se existirem) excluídos com sucesso.' });
+        res.status(200).json({ message: 'usuário e solicitações associadas (se existirem) excluídos com sucesso.' });
 
     } catch (error) {
-        console.error(`Erro ao excluir utilizador ${id} ou solicitação associada:`, error);
+        console.error(`Erro ao excluir usuário ${id} ou solicitação associada:`, error);
         // Tratar erros de chave estrangeira (se aplicável, embora a exclusão da solicitação deva ocorrer após)
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-             return res.status(409).json({ message: 'Não é possível excluir este utilizador pois ele possui registos associados (ex: submissões).' });
+             return res.status(409).json({ message: 'Não é possível excluir este usuário pois ele possui registos associados (ex: submissões).' });
         }
-        res.status(500).json({ message: 'Erro interno ao excluir utilizador.' });
+        res.status(500).json({ message: 'Erro interno ao excluir usuárior.' });
     }
 };
 
@@ -442,8 +444,7 @@ const getSubmissoesPendentes = async (req, res, next) => {
     `;
 
     // 2. Executar a query
-    const [rows] = await connection.execute(sql);
-
+    const [rows] = await pool.execute(sql);
     // 3. Retornar os dados como JSON
     res.status(200).json(rows);
 
@@ -459,78 +460,79 @@ const getSubmissoesPendentes = async (req, res, next) => {
  * Atualiza os detalhes de uma submissão ANTES de ser aprovada.
  */
 const updateSubmissao = async (req, res, next) => {
-  const { id: submissaoId } = req.params;
+  const idParam = String(req.params.id).trim();
   
-  const {
-    titulo_proposto,
-    descricao,
-    autor,
-    editora,
-    ano_publicacao,
-    conferencia,
-    periodico,
-    instituicao,
-    orientador,
-    curso,
-    ano_defesa,
-    tipo
-  } = req.body;
+  console.log(`\n📢 [DEBUG] Tentando atualizar ID: "${idParam}"`);
+  console.log("📦 [DEBUG] Dados recebidos:", req.body);
 
+  // Mapeamento de campos (Frontend -> Backend)
+  const titulo = req.body.titulo_proposto || req.body.titulo;
+  const ano = req.body.ano_publicacao || req.body.ano;
+  const { autor, editora, descricao } = req.body;
+
+  // CASO 1: É LIVRO FÍSICO (LEGADO)?
+  if (idParam.startsWith('LEGACY_')) {
+      console.log("📚 [DEBUG] Detectado item LEGADO. Atualizando OpenBiblio...");
+      const legacyId = idParam.split('_')[1]; // Remove o prefixo LEGACY_
+
+      try {
+          // Atualiza Tabela Principal (biblio)
+          const sqlBiblio = `UPDATE biblio SET title = ?, author = ? WHERE bibid = ?`;
+          await poolOpenBiblio.execute(sqlBiblio, [titulo, autor, legacyId]);
+
+          // Atualiza/Insere Campos MARC (Editora e Ano) - Simplificado
+          // (Para fazer direito precisaria verificar se existe, mas vamos tentar update direto)
+          // Nota: Isso é complexo no legado, mas vamos focar no título/autor primeiro
+          
+          console.log("✅ [DEBUG] Legado atualizado (Título/Autor).");
+          return res.status(200).json({ success: true, message: 'Item físico atualizado.' });
+      } catch (err) {
+          console.error("❌ [DEBUG] Erro no Legado:", err);
+          return next(err);
+      }
+  }
+
+  // CASO 2: É ITEM DIGITAL (SISTEMA NOVO)
   try {
-    // 1. Validar se a submissão existe (independente do status)
-    const sqlFind = "SELECT submissao_id, status FROM dg_submissoes WHERE submissao_id = ?";
-    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+    const sqlFind = "SELECT submissao_id FROM dg_submissoes WHERE submissao_id = ?";
+    const [rows] = await poolSistemaNovo.execute(sqlFind, [idParam]);
 
     if (rows.length === 0) {
+      console.log("❌ [DEBUG] ID não encontrado no banco novo.");
       return res.status(404).json({ message: 'Submissão não encontrada.' });
     }
 
-    // Se você quiser, pode opcionalmente bloquear rejeitadas aqui:
-    // if (rows[0].status === 'rejeitado') {
-    //   return res.status(400).json({ message: 'Não é possível editar submissões rejeitadas.' });
-    // }
-
-    // 2. UPDATE (mesmo para pendente ou aprovada)
     const sqlUpdate = `
       UPDATE dg_submissoes SET
-        titulo_proposto = ?,
-        descricao = ?,
-        autor = ?,
-        editora = ?,
-        ano_publicacao = ?,
-        conferencia = ?,
-        periodico = ?,
-        instituicao = ?,
-        orientador = ?,
-        curso = ?,
-        ano_defesa = ?,
-        tipo = ?
+        titulo_proposto = ?, descricao = ?, autor = ?, editora = ?,
+        ano_publicacao = ?, conferencia = ?, periodico = ?, instituicao = ?,
+        orientador = ?, curso = ?, ano_defesa = ?, tipo = ?
       WHERE submissao_id = ?
     `;
     
-    await connection.execute(sqlUpdate, [
-      titulo_proposto,
-      descricao || null,
-      autor || null,
-      editora || null,
-      ano_publicacao || null,
-      conferencia || null,
-      periodico || null,
-      instituicao || null,
-      orientador || null,
-      curso || null,
-      ano_defesa || null,
-      tipo || null,
-      submissaoId
-    ]);
+    const values = [
+      titulo || null, descricao || null, autor || null, editora || null,
+      ano || null, req.body.conferencia || null, req.body.periodico || null, 
+      req.body.instituicao || null, req.body.orientador || null, 
+      req.body.curso || null, req.body.ano_defesa || null, req.body.tipo || null,
+      idParam
+    ];
+
+    const [result] = await poolSistemaNovo.execute(sqlUpdate, values);
+    console.log("✅ [DEBUG] Update Digital OK. Linhas afetadas:", result.affectedRows);
+
+    if (result.affectedRows === 0) {
+        // Se 0, pode ser que os dados eram iguais. Não é erro, mas avisamos.
+        return res.status(200).json({ success: true, message: 'Dados salvos (sem alterações detectadas).' });
+    }
 
     res.status(200).json({ success: true, message: 'Submissão atualizada com sucesso.' });
 
   } catch (error) {
-    console.error('Erro ao atualizar submissão:', error);
+    console.error('❌ [DEBUG] Erro Fatal ao atualizar:', error);
     next(error);
   }
-}; //<-- fim do update 
+};
 
 
 /**
@@ -558,8 +560,7 @@ const aprovarSubmissao = async (req, res, next) => {
       SELECT * FROM dg_submissoes 
       WHERE submissao_id = ? AND status = 'pendente'
     `;
-    const [rows] = await connection.execute(sqlFind, [submissaoId]);
-
+    const [rows] = await pool.execute(sqlFind, [submissaoId]);
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
     }
@@ -582,8 +583,7 @@ const aprovarSubmissao = async (req, res, next) => {
       SET status = 'aprovado', revisado_por_id = ? 
       WHERE submissao_id = ?
     `;
-    await connection.execute(sqlUpdate, [revisorId, submissaoId]);
-
+    await pool.execute(sqlUpdate, [revisorId, submissaoId]);
     // 4. Criar o item final na tabela 'dg_itens_digitais'
     // (Agora usa todos os dados editados pelo bibliotecário)
     const sqlInsertItem = `
@@ -591,7 +591,7 @@ const aprovarSubmissao = async (req, res, next) => {
         (titulo, autor, ano, descricao, caminho_arquivo, data_publicacao, submissao_id) 
       VALUES (?, ?, ?, ?, ?, NOW(), ?)
     `;
-    await connection.execute(sqlInsertItem, [
+    await pool.execute(sqlInsertItem, [      
       submissao.titulo_proposto,
       submissao.autor,
       submissao.ano_publicacao || submissao.ano_defesa, // Pega o ano que estiver preenchido
@@ -625,8 +625,7 @@ const reprovarSubmissao = async (req, res, next) => {
       FROM dg_submissoes 
       WHERE submissao_id = ? AND status = 'pendente'
     `;
-    const [rows] = await connection.execute(sqlFind, [submissaoId]);
-
+    const [rows] = await pool.execute(sqlFind, [submissaoId]);
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Submissão pendente não encontrada.' });
     }
@@ -645,8 +644,7 @@ const reprovarSubmissao = async (req, res, next) => {
       SET status = 'rejeitado', revisado_por_id = ? 
       WHERE submissao_id = ?
     `;
-    await connection.execute(sqlUpdate, [revisorId, submissaoId]);
-
+    await pool.execute(sqlUpdate, [revisorId, submissaoId]);
     // 4. Sucesso
     res.status(200).json({ success: true, message: 'Submissão reprovada e arquivo deletado.' });
 
@@ -656,51 +654,45 @@ const reprovarSubmissao = async (req, res, next) => {
   }
 }; // <-- FIM DA FUNÇÃO reprovarSubmissao
 
+// src/controller/adminController.js
+
 const deletarPublicacaoAprovada = async (req, res, next) => {
   const { id: submissaoId } = req.params;
-  const { id: revisorId } = req.user || {};
 
   try {
-    // 1. Pega a submissão APROVADA
-    const sqlFind = `
-      SELECT caminho_anexo 
-      FROM dg_submissoes 
-      WHERE submissao_id = ? AND status = 'aprovado'
-    `;
-    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+    // 1. Pega o anexo para deletar do Drive
+    const sqlFind = `SELECT caminho_anexo FROM dg_submissoes WHERE submissao_id = ? AND status = 'aprovado'`;
+    const [rows] = await pool.execute(sqlFind, [submissaoId]);
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Publicação aprovada não encontrada.' });
-    }
+    if (rows.length === 0) return res.status(404).json({ message: 'Publicação aprovada não encontrada.' });
 
     const googleFileId = rows[0].caminho_anexo;
 
-    // 2. Apaga o arquivo no Google Drive (mesma lógica do reprovar)
     if (googleFileId) {
       const drive = getDriveWithOAuth();
-      await drive.files.delete({
-        fileId: googleFileId,
-      });
+      await drive.files.delete({ fileId: googleFileId }).catch(err => console.log("Arquivo já inexistente no Drive, ignorando..."));
     }
 
-    // 3. Remove o item final da tabela de itens digitais (se existir)
-    const sqlDeleteItem = `
-      DELETE FROM dg_itens_digitais
-      WHERE submissao_id = ?
-    `;
-    await connection.execute(sqlDeleteItem, [submissaoId]);
+    // --- 🔴 FIX: LIMPEZA DE FAVORITOS (NOVO) ---
+    // Primeiro, descobrimos qual é o ID do item na tabela dg_itens_digitais
+    const [itens] = await pool.execute("SELECT item_id FROM dg_itens_digitais WHERE submissao_id = ?", [submissaoId]);
+    
+    if (itens.length > 0) {
+        const itemId = itens[0].item_id;
+        // Agora apagamos todos os favoritos ligados a esse item
+        await pool.execute("DELETE FROM dg_favoritos WHERE item_id = ?", [itemId]);
+    }
+    // -------------------------------------------
 
-    // 4. Remove a submissão aprovada
-    const sqlDeleteSub = `
-      DELETE FROM dg_submissoes
-      WHERE submissao_id = ?
-    `;
-    await connection.execute(sqlDeleteSub, [submissaoId]);
+    // 2. Remove o item final da tabela de itens digitais
+    await pool.execute("DELETE FROM dg_itens_digitais WHERE submissao_id = ?", [submissaoId]);
 
-    // 5. Retorno
+    // 3. Remove a submissão aprovada
+    await pool.execute("DELETE FROM dg_submissoes WHERE submissao_id = ?", [submissaoId]);
+
     return res.status(200).json({
       success: true,
-      message: 'Publicação aprovada e arquivo associados foram excluídos com sucesso.',
+      message: 'Publicação aprovada, arquivo e favoritos associados foram excluídos com sucesso.',
     });
 
   } catch (error) {
@@ -800,7 +792,7 @@ const publicarDireto = async (req, res, next) => {
       tipo || null
     ];
 
-    const [result] = await connection.execute(sqlSubmissao, valuesSubmissao);
+    const [result] = await pool.execute(sqlSubmissao, valuesSubmissao);
     const novaSubmissaoId = result.insertId; // Pegamos o ID da submissão
 
     // 4. SUCESSO
@@ -838,7 +830,7 @@ const getSubmissionFileLink = async (req, res, next) => {
 
     // 1. Encontrar a submissão no seu banco de dados
     const sqlFind = "SELECT caminho_anexo FROM dg_submissoes WHERE submissao_id = ?";
-    const [rows] = await connection.execute(sqlFind, [submissaoId]);
+    const [rows] = await pool.execute(sqlFind, [submissaoId]);
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Submissão não encontrada.' });

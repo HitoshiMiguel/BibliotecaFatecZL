@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 
 import styles from './dashboard-bibliotecario.module.css';
 
-import { EditModal } from './MyEditModal.jsx';
+import { MyEditModal } from './MyEditModal.jsx';
 import { NewUploadModal } from './NewUploadModal';
 
 const API_URL = 'http://localhost:4000';
@@ -491,25 +491,25 @@ export default function DashboardBibliotecarioPage() {
         {abaAtiva === 'pendentes' ? renderPendentes() : renderGerenciar()}
       </div>
 
-      {/* Modal de Edição (compartilhado entre as abas) */}
       {editingItem && (
-        <EditModal
+        <MyEditModal
           mode={editMode}
           item={editingItem}
           onClose={() => setEditingItem(null)}
-          onSaveAndApprove={handleAprovar}   // pendente
-          onReprove={handleReprovar}         // pendente
-          onUpdateOnly={(updated) => {
-            // usado no modo 'gerenciar'
-            setPublicacoes((prev) =>
-              prev.map((p) =>
-                p.submissao_id === updated.submissao_id
-                  ? { ...p, ...updated }
-                  : p
-              )
-            );
+          onSaveAndApprove={handleAprovar}
+          onReprove={handleReprovar}
+          onDeleteApproved={handleExcluirPublicacao}
+          
+          // AQUI ESTÁ A MÁGICA: Usamos 'onSaved' para atualizar a lista visualmente
+          onSaved={(updated) => {
+            if (editMode === 'gerenciar') {
+              setPublicacoes((prev) =>
+                prev.map((p) =>
+                  p.submissao_id === updated.submissao_id ? { ...p, ...updated } : p
+                )
+              );
+            }
           }}
-          onDeleteApproved={handleExcluirPublicacao}  // 👈 AQUI LIGA TUDO
         />
       )}
 

@@ -1,21 +1,32 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import Swal from 'sweetalert2';
 import styles from './MyEditModal.module.css';
 import { FIELDS_BY_TYPE, TIPOS } from './formConstants.js';
 
+// URL hardcoded para garantir que não há erro de variável de ambiente
 const API_URL = 'http://localhost:4000';
 
 export function EditApprovedModal({ item, onClose, onSaved }) {
+  
+  // Normalização inicial dos dados
+  const tipoOriginal = item.tipo ? item.tipo.toLowerCase() : 'tcc';
+  const tipoInicial = FIELDS_BY_TYPE[tipoOriginal] ? tipoOriginal : 'tcc';
+
   const [formData, setFormData] = useState({
     ...item,
-    tipo: (item.tipo && FIELDS_BY_TYPE[item.tipo]) ? item.tipo : 'tcc',
+    tipo: tipoInicial,
+    titulo_proposto: item.titulo_proposto || item.titulo || '',
+    autor: item.autor || '',
+    editora: item.editora || '',
+    ano_publicacao: item.ano_publicacao || item.ano || '',
+    descricao: item.descricao || '',
   });
+
   const [isSaving, setIsSaving] = useState(false);
 
   const fields = useMemo(
-    () => FIELDS_BY_TYPE[formData.tipo],
+    () => FIELDS_BY_TYPE[formData.tipo] || [],
     [formData.tipo]
   );
 
@@ -28,50 +39,65 @@ export function EditApprovedModal({ item, onClose, onSaved }) {
     setFormData(prev => ({ ...prev, tipo: novoTipo }));
   };
 
+  // --- FUNÇÃO DE SALVAR SIMPLIFICADA ---
   const handleSaveClick = async () => {
+    // Removi o 'e.preventDefault()' para evitar erros se o evento não vier
+    console.log("Botão Salvar Clicado!"); 
+    
     setIsSaving(true);
+
     try {
-      const res = await fetch(`${API_URL}/api/admin/submissoes/${item.submissao_id}`, {
+      // Monta a URL
+      const endpoint = `${API_URL}/api/admin/submissoes/${item.submissao_id}`;
+      
+      console.log("🚀 Tentando enviar para:", endpoint);
+      console.log("📦 Dados:", formData);
+
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData), // O body vai aqui
       });
 
-      const json = await res.json().catch(() => ({}));
+      const textResponse = await res.text(); 
+      console.log("📩 Resposta bruta do servidor:", textResponse);
 
-      if (!res.ok) {
-        throw new Error(json.message || 'Falha ao atualizar publicação.');
+      let jsonResponse;
+      try {
+        jsonResponse = JSON.parse(textResponse);
+      } catch (e) {
+        throw new Error(`Erro ao ler JSON. Resposta foi: ${textResponse.substring(0, 50)}...`);
       }
 
-      Swal.fire('Atualizado!', 'Publicação atualizada com sucesso.', 'success');
-      // atualiza a lista no pai com os dados editados
+      if (!res.ok) {
+        throw new Error(jsonResponse.message || 'Falha ao atualizar.');
+      }
+
+      // SUCESSO
+      window.alert('Publicação atualizada com sucesso!');
       onSaved({ ...item, ...formData });
       onClose();
+
     } catch (err) {
-      Swal.fire('Erro!', err.message, 'error');
+      console.error("❌ Erro no Frontend:", err);
+      window.alert(`ERRO: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // trava scroll
+  // Trava o scroll enquanto o modal está aberto
   useEffect(() => {
     const prev = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = prev;
-    };
+    return () => { document.documentElement.style.overflow = prev; };
   }, []);
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div
-        className={styles.modalBox}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2>Editar Publicação</h2>
+          <h2>Editar Publicação (ID: {item.submissao_id})</h2>
 
           <div className={styles.tipoToggle}>
             {TIPOS.map(t => (
@@ -92,8 +118,7 @@ export function EditApprovedModal({ item, onClose, onSaved }) {
           {fields.map((f) => (
             <div className={styles.formGroup} key={`${formData.tipo}-${f.name}`}>
               <label htmlFor={f.name}>
-                {f.label}
-                {f.required && ' *'}
+                {f.label} {f.required && ' *'}
               </label>
 
               {f.type === 'textarea' ? (
@@ -121,16 +146,19 @@ export function EditApprovedModal({ item, onClose, onSaved }) {
         </div>
 
         <div className={styles.footer}>
-          <button
-            onClick={onClose}
-            className={styles.btnGhost}
+          <button 
+            type="button" // Importante: garante que não submeta form
+            onClick={onClose} 
+            className={styles.btnGhost} 
             disabled={isSaving}
           >
             Cancelar
           </button>
-          <button
-            onClick={handleSaveClick}
-            className={styles.btnAprovarModal}
+          
+          <button 
+            type="button" // Importante: garante que não submeta form
+            onClick={handleSaveClick} 
+            className={styles.btnAprovarModal} 
             disabled={isSaving}
           >
             {isSaving ? 'Guardando...' : 'Salvar alterações'}

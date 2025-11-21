@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, use } from 'react';
-// Removido sweetalert2 para evitar erro de build
+import Swal from 'sweetalert2'
 import styles from './publicacao.module.css';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -504,27 +504,36 @@ export default function PublicacaoPage({ params }) {
                           return;
                         }
 
-                        // Mensagem de sucesso no front
-                        window.alert(
-                          `Reserva realizada com sucesso!\n\n` +
-                            `Livro: ${data.titulo_proposto}\n` +
-                            `Data de retirada: ${dataRetirada}\n` +
-                            (dataDevolucaoFormatada
-                              ? `Data prevista para devolução: ${dataDevolucaoFormatada}\n\n`
-                              : '\n') +
-                            `Apresente-se à biblioteca nesta data para concluir o empréstimo.`
-                        );
-
                         setReservaModalAberto(false);
                         setCriandoReserva(false);
-
-                        // Recarrega a página pra refletir "Reservado"
-                        window.location.reload();
-                      } catch (err) {
-                        console.error(err);
-                        setErroReserva(
-                          'Erro ao criar reserva. Tente novamente em instantes.'
-                        );
+                    Swal.fire({
+                        title: 'Reserva Confirmada!',
+                        html: `
+                          <div style="text-align: left; font-size: 0.95rem;">
+                            <p>Sua reserva foi realizada com sucesso.</p>
+                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                            <p><strong>📘 Livro:</strong> ${data.titulo_proposto}</p>
+                            <p><strong>📅 Data de retirada:</strong> ${formatarDataBR(dataRetirada)}</p>
+                            ${dataDevolucaoFormatada 
+                              ? `<p><strong>🔄 Devolução prevista:</strong> ${dataDevolucaoFormatada}</p>` 
+                              : ''
+                            }
+                            <br/>
+                            <p style="color: #555; font-size: 0.85rem;">
+                              Apresente-se à biblioteca nesta data para concluir o empréstimo.
+                            </p>
+                          </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonText: 'Entendi, obrigado!',
+                        confirmButtonColor: '#28a745', // Verde igual ao seu botão
+                        allowOutsideClick: false,
+                      }).then((result) => {
+                        // Só recarrega a página depois que o usuário clicar em "Entendi"
+                        if (result.isConfirmed) {
+                          window.location.reload();
+                        }
+                      });
                       } finally {
                         setCriandoReserva(false);
                       }

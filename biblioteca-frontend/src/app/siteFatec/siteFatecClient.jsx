@@ -186,9 +186,9 @@ export default function SiteFatecPage() {
           <section className={styles.quickLinks}>
             <h3 className={styles.sectionHeading}>Acesso rápido</h3>
             <ul className={styles.quickGrid}>
-              <li><a className={styles.quickItem} href="/acervo"><span className={styles.qText}>Consultar Acervo</span><span className={styles.qGo} aria-hidden>›</span></a></li>
-              <li><a className={styles.quickItem} href="/solicitacao-material"><span className={styles.qText}>Solicitar Material</span><span className={styles.qGo} aria-hidden>›</span></a></li>
-              <li><a className={styles.quickItem} href="/eventos"><span className={styles.qText}>Eventos e Palestras</span><span className={styles.qGo} aria-hidden>›</span></a></li>
+              <li><a className={styles.quickItem} href="/consulta"><span className={styles.qText}>Consultar Acervo</span><span className={styles.qGo} aria-hidden>›</span></a></li>
+              <li><a className={styles.quickItem} href="/uploadForm"><span className={styles.qText}>Solicitar Material</span><span className={styles.qGo} aria-hidden>›</span></a></li>
+              <li><a className={styles.quickItem} href="/login"><span className={styles.qText}>Login</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/noticias"><span className={styles.qText}>Notícias da Biblioteca</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/tutorial"><span className={styles.qText}>Guias e Tutoriais</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/duvidas-frequentes"><span className={styles.qText}>Dúvidas Frequentes</span><span className={styles.qGo} aria-hidden>›</span></a></li>

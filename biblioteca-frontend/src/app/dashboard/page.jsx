@@ -34,12 +34,18 @@ export default function DashboardPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [reservaModalAberto, setReservaModalAberto] = useState(false);
+  const [dataRetirada, setDataRetirada] = useState('');
+  const [criandoReserva, setCriandoReserva] = useState(false);
+  const [erroReserva, setErroReserva] = useState('');
+  const [etapaReserva, setEtapaReserva] = useState('data'); // 'data' | 'confirmacao'
+
   // ---- BASE + ENDPOINTS ----
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-  const AUTH_CHECK_URL = `${API_URL}/auth/current-user`; // usa a sua rota original
-  const LOGOUT_URL     = `${API_URL}/auth/logout`;
-  const PROFILE_URL    = `${API_URL}/auth/profile`;
-  const FAVORITOS_URL  = `${API_URL}/favoritos/detalhes`;
+  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`; // usa a sua rota original
+  const LOGOUT_URL     = `${API_URL}/api/auth/logout`;
+  const PROFILE_URL    = `${API_URL}/api/auth/profile`;
+  const FAVORITOS_URL  = `${API_URL}/api/favoritos/detalhes`;
 
   // ---- LOGOUT DO MENU LATERAL
   const { logout } = useGlobalMenu();

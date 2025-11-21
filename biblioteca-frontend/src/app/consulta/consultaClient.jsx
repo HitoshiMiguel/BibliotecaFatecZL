@@ -30,7 +30,7 @@ export default function ConsultaClient() {
   useEffect(() => {
     async function carregarPublicacoes() {
       try {
-        const res = await fetch(`${API}/publicacoes`, {
+        const res = await fetch(`${API}/api/publicacoes`, {
           cache: 'no-store',
         });
         const data = await res.json();
@@ -50,7 +50,7 @@ export default function ConsultaClient() {
     async function carregarFavoritos() {
 
       try {
-        const res = await fetch(`${API}/favoritos`, {
+        const res = await fetch(`${API}/api/favoritos`, {
           credentials: 'include', // Envia cookies para autenticação
           cache: 'no-store',
         });
@@ -83,7 +83,7 @@ export default function ConsultaClient() {
     setJaPesquisou(true);
 
     try {
-      const url = `${API}/publicacoes?q=${encodeURIComponent(
+      const url = `${API}/api/publicacoes?q=${encodeURIComponent(
         campoBusca.trim()
       )}`;
       const res = await fetch(url, { cache: 'no-store' });
@@ -113,8 +113,8 @@ export default function ConsultaClient() {
     
     // 3. Define a URL e o Método (DELETE ou POST)
     const url = isFavorito
-      ? `${API}/favoritos/${itemId}` // Rota DELETE
-      : `${API}/favoritos`; // Rota POST
+      ? `${API}/api/favoritos/${itemId}` // Rota DELETE
+      : `${API}/api/favoritos`; // Rota POST
 
     const method = isFavorito ? 'DELETE' : 'POST';
 

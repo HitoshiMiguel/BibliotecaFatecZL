@@ -55,7 +55,11 @@ export default function AdminDashboardPage() {
         setIsLoadingUsers(true);
         setError('');
         try {
-            const response = await fetch(`${apiUrl}/admin/usuarios`, { method: 'GET', credentials: 'include', cache: 'no-store' });
+            const response = await fetch(`${apiUrl}/api/admin/usuarios`, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-store'
+            });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             setUsers(data);
@@ -75,7 +79,7 @@ export default function AdminDashboardPage() {
         setIsLoadingSolicitacoes(true);
         setError('');
         try {
-            const response = await fetch(`${apiUrl}/admin/solicitacoes`, { method: 'GET', credentials: 'include', cache: 'no-store' });
+            const response = await fetch(`${apiUrl}/api/admin/solicitacoes`, { method: 'GET', credentials: 'include', cache: 'no-store' });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             setSolicitacoes(data);
@@ -98,7 +102,7 @@ export default function AdminDashboardPage() {
 
         const checkAuth = async () => {
              try {
-                const res = await fetch(`${apiUrl}/auth/current-user`, {credentials: 'include', cache: 'no-store'});
+                const res = await fetch(`${apiUrl}/api/auth/current-user`, {credentials: 'include', cache: 'no-store'});
                 if (!res.ok) {
                     console.log("CheckAuth falhou, redirecionando para login...");
                     router.push('/login');
@@ -184,7 +188,7 @@ export default function AdminDashboardPage() {
         console.log(`handleUpdateSubmit: Enviando para ID ${userId}:`, dataToUpdate);
 
         try {
-            const response = await fetch(`${apiUrl}/admin/usuarios/${userId}`, {
+            const response = await fetch(`${apiUrl}/api/admin/usuarios/${userId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -242,7 +246,7 @@ export default function AdminDashboardPage() {
             console.log(`Confirmada exclusão para ID ${userId}`);
             setIsActionLoading(true);
             try {
-                const response = await fetch(`${apiUrl}/admin/usuarios/${userId}`, {
+                const response = await fetch(`${apiUrl}/api/admin/usuarios/${userId}`, {
                     method: 'DELETE',
                     credentials: 'include'
                 });
@@ -277,7 +281,7 @@ export default function AdminDashboardPage() {
         console.log(`handleAprovar chamado para ID ${solicitacaoId}`);
 
         try {
-            const response = await fetch(`${apiUrl}/admin/solicitacoes/${solicitacaoId}/aprovar`, {
+            const response = await fetch(`${apiUrl}/api/admin/solicitacoes/${solicitacaoId}/aprovar`, {
                 method: 'POST',
                 credentials: 'include'
             });
@@ -308,7 +312,7 @@ export default function AdminDashboardPage() {
          console.log(`handleRejeitar chamado para ID ${solicitacaoId}`);
 
         try {
-            const response = await fetch(`${apiUrl}/admin/solicitacoes/${solicitacaoId}/rejeitar`, {
+            const response = await fetch(`${apiUrl}/api/admin/solicitacoes/${solicitacaoId}/rejeitar`, {
                 method: 'POST',
                 credentials: 'include'
             });
@@ -393,7 +397,7 @@ export default function AdminDashboardPage() {
 
         try {
             // Chama a API POST /api/admin/usuarios
-            const response = await fetch(`${apiUrl}/admin/usuarios`, {
+            const response = await fetch(`${apiUrl}/api/admin/usuarios`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

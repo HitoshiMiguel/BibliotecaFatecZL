@@ -57,7 +57,7 @@ export default function UploadFormPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch(`${apiUrl}/auth/current-user`, {
+        const response = await fetch(`${apiUrl}/api/auth/current-user`, {
           credentials: 'include',
           cache: 'no-store',
         });

@@ -17,6 +17,8 @@ const moderationRouter = require('./src/app/api/moderation');
 const publicacoes = require('./src/app/api/publicacoes'); // nova rota de consulta de publicações
 const pool = require('./src/config/db');
 const acervoRoutes = require('./src/routes/acervoRoutes');
+const reservasRoutes = require('./src/routes/reservasRoutes');
+const reservasAdminRoutes = require('./src/routes/reservasAdminRoutes');
 
 // --- NOVO (No caminho certo) ---
 const favoritoRoutes = require('./src/routes/FavoritoRoutes'); 
@@ -54,12 +56,14 @@ app.use('/api/google', googleRouter);
 app.use('/api/moderation', moderationRouter);
 app.use('/api', publicacoes); // <— monta /api/publicacoes e /api/publicacoes/:id
 app.use('/db-test', dbTestRoute);
+app.use('/api/reservas', reservasRoutes);
 
 // --- NOVO (Registrando a rota) ---
 app.use('/api/favoritos', favoritoRoutes);
 
 app.use('/api/acervo', acervoRoutes);
 
+app.use('/api/admin/reservas', reservasAdminRoutes);
 
 /** ================================
  *  Healthcheck e diagnóstico

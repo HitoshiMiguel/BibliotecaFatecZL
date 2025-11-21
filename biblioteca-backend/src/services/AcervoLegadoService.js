@@ -112,7 +112,7 @@ class AcervoLegadoService {
     
     if (code === 'in') return 'Disponível'; 
     if (code === 'out') return 'Emprestado'; 
-    if (code === 'hld') return 'Reservado'; 
+    if (code === 'hld') return 'Indisponível (Reservado)';
     if (code === 'mnd') return 'Em Manutenção'; 
     if (code === 'dis') return 'Exposição'; 
     if (code === 'new') return 'Processamento Técnico';

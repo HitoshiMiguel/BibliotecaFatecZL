@@ -1,4 +1,3 @@
-// src/app/bibliotecario/dashboard/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,11 +10,28 @@ import { NewUploadModal } from './NewUploadModal';
 
 const API_URL = 'http://localhost:4000';
 
+// Helper para datas (DATETIME -> dd/mm/aaaa)
+function formatDateTimeBR(value) {
+  if (!value) return '—';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleDateString('pt-BR');
+}
+
+// Helper para DATE em formato ISO (AAAA-MM-DD) -> dd/mm/aaaa
+function formatDateISOToBR(value) {
+  if (!value) return '—';
+  const onlyDate = String(value).split('T')[0]; // garante remover hora caso venha
+  const [ano, mes, dia] = onlyDate.split('-');
+  if (!ano || !mes || !dia) return value;
+  return `${dia}/${mes}/${ano}`;
+}
+
 // ====================================================================
 // = DASHBOARD DO BIBLIOTECÁRIO
 // ====================================================================
 export default function DashboardBibliotecarioPage() {
-  // Aba ativa: 'pendentes' | 'gerenciar'
+  // Aba ativa: 'pendentes' | 'gerenciar' | 'reservas'
   const [abaAtiva, setAbaAtiva] = useState('pendentes');
 
   // Submissões pendentes
@@ -28,6 +44,11 @@ export default function DashboardBibliotecarioPage() {
   const [loadingGerenciar, setLoadingGerenciar] = useState(false);
   const [erroGerenciar, setErroGerenciar] = useState('');
 
+  // Reservas de livros físicos
+  const [reservas, setReservas] = useState([]);
+  const [loadingReservas, setLoadingReservas] = useState(false);
+  const [erroReservas, setErroReservas] = useState('');
+
   // Estados compartilhados
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingId, setViewingId] = useState(null);
@@ -37,7 +58,9 @@ export default function DashboardBibliotecarioPage() {
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
+  // -----------------------------------------------------------
   // Função para carregar publicações aprovadas (reutilizável)
+  // -----------------------------------------------------------
   const getPublicacoesAprovadas = async () => {
     setLoadingGerenciar(true);
     setErroGerenciar('');
@@ -113,6 +136,39 @@ export default function DashboardBibliotecarioPage() {
 
     getPublicacoesAprovadas();
   }, [abaAtiva, publicacoes.length, loadingGerenciar]);
+
+  // ==========================================
+  // = BUSCAR RESERVAS (aba 3 - "reservas")
+  // ==========================================
+  const getReservas = async () => {
+    setLoadingReservas(true);
+    setErroReservas('');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/reservas`, {
+        cache: 'no-store',
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || 'Falha ao carregar reservas.');
+      }
+
+      setReservas(data || []);
+    } catch (err) {
+      console.error(err);
+      setErroReservas(err.message || 'Erro ao carregar reservas.');
+      setReservas([]);
+    } finally {
+      setLoadingReservas(false);
+    }
+  };
+
+  useEffect(() => {
+    if (abaAtiva !== 'reservas') return;
+    if (reservas.length > 0 || loadingReservas) return;
+    getReservas();
+  }, [abaAtiva, reservas.length, loadingReservas]);
 
   // ==========================================
   // = AÇÕES: APROVAR / REPROVAR PENDENTES
@@ -284,6 +340,178 @@ export default function DashboardBibliotecarioPage() {
   };
 
   // ==========================================
+  // = AÇÕES: GERENCIAR RESERVAS
+  // ==========================================
+
+  const handleAtenderReserva = async (reservaId) => {
+    const reserva = reservas.find((r) => r.reserva_id === reservaId);
+    const titulo = reserva?.titulo || 'este item';
+
+    const result = await Swal.fire({
+      title: 'Marcar como retirada?',
+      text: `Confirmar atendimento da reserva para "${titulo}"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, atender',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setUpdatingId(reservaId);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/reservas/${reservaId}/atender`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message || 'Falha ao marcar a reserva como atendida.'
+        );
+      }
+
+      Swal.fire('Sucesso', 'Reserva marcada como atendida.', 'success');
+
+      setReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === reservaId
+            ? {
+                ...r,
+                status: 'atendida',
+                data_atendimento:
+                  data?.reserva?.data_atendimento || r.data_atendimento,
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Erro', err.message, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleCancelarReserva = async (reservaId) => {
+    const reserva = reservas.find((r) => r.reserva_id === reservaId);
+    const titulo = reserva?.titulo || 'esta reserva';
+
+    const result = await Swal.fire({
+      title: 'Cancelar reserva?',
+      text: `Tem certeza que deseja cancelar a reserva de "${titulo}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sim, cancelar',
+      cancelButtonText: 'Voltar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setUpdatingId(reservaId);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/reservas/${reservaId}/cancelar`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message || 'Falha ao cancelar a reserva.'
+        );
+      }
+
+      Swal.fire('Cancelada', 'Reserva cancelada com sucesso.', 'success');
+
+      setReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === reservaId
+            ? {
+                ...r,
+                status: 'cancelada',
+                data_atendimento:
+                  data?.reserva?.data_atendimento || r.data_atendimento,
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Erro', err.message, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // concluir reserva
+  const handleConcluirReserva = async (reservaId) => {
+    const reserva = reservas.find((r) => r.reserva_id === reservaId);
+    const titulo = reserva?.titulo || 'este item';
+
+    const result = await Swal.fire({
+      title: 'Concluir reserva?',
+      text: `Confirmar devolução do livro "${titulo}" e encerrar a reserva?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, concluir',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setUpdatingId(reservaId);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/reservas/${reservaId}/concluir`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message || 'Falha ao concluir a reserva.'
+        );
+      }
+
+      Swal.fire('Concluída', 'Reserva concluída com sucesso.', 'success');
+
+      setReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === reservaId
+            ? {
+                ...r,
+                status: 'concluida',
+                data_atendimento:
+                  data?.reserva?.data_atendimento || r.data_atendimento,
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Erro', err.message, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // ==========================================
   // = RENDERIZAÇÃO DA ABA "PENDENTES"
   // ==========================================
   const renderPendentes = () => {
@@ -436,6 +664,125 @@ export default function DashboardBibliotecarioPage() {
   };
 
   // ==========================================
+  // = RENDERIZAÇÃO DA ABA "RESERVAS"
+  // ==========================================
+  const renderReservas = () => {
+    if (loadingReservas) {
+      return <p>Carregando reservas...</p>;
+    }
+
+    if (erroReservas) {
+      return <p style={{ color: 'red' }}>{erroReservas}</p>;
+    }
+
+    if (reservas.length === 0) {
+      return <p>Nenhuma reserva encontrada.</p>;
+    }
+
+    return (
+      <div className={styles.tableWrapper}>
+        <table className={styles.tabelaSubmissoes}>
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Livro</th>
+              <th>Data da reserva</th>
+              <th>Data prevista retirada</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reservas.map((r) => (
+              <tr key={r.reserva_id}>
+                <td data-label="Usuário:">
+                  <div>
+                    <strong>{r.usuario_nome}</strong>
+                    <br />
+                    <span style={{ fontSize: '0.85rem', color: '#555' }}>
+                      {r.usuario_email}
+                      {r.usuario_ra ? ` · RA: ${r.usuario_ra}` : ''}
+                    </span>
+                  </div>
+                </td>
+                <td data-label="Livro:">
+                  <div>
+                    {r.titulo || '(sem título)'}
+                    {r.codigo_barras && (
+                      <div
+                        style={{
+                          fontSize: '0.8rem',
+                          color: '#555',
+                          marginTop: '2px',
+                        }}
+                      >
+                        Código: {r.codigo_barras}
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td data-label="Data da reserva:">
+                  {formatDateTimeBR(r.data_reserva)}
+                </td>
+                <td data-label="Data prevista retirada:">
+                  {formatDateISOToBR(r.data_prevista_retirada)}
+                </td>
+                <td data-label="Status:">
+                  {r.status === 'ativa'
+                    ? 'Ativa'
+                    : r.status === 'atendida'
+                    ? 'Atendida'
+                    : r.status === 'concluida'
+                    ? 'Concluída'
+                    : 'Cancelada'}
+                </td>
+                <td data-label="Ações:">
+                  <div className={styles.acoes}>
+                    {/* Botão principal muda conforme o status */}
+                    {r.status === 'ativa' && (
+                      <button
+                        className={styles.btnAnalisar}
+                        onClick={() => handleAtenderReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        {updatingId === r.reserva_id ? '...' : 'Atender'}
+                      </button>
+                    )}
+
+                    {r.status === 'atendida' && (
+                      <button
+                        className={styles.btnAnalisar}
+                        onClick={() => handleConcluirReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        {updatingId === r.reserva_id ? '...' : 'Concluir'}
+                      </button>
+                    )}
+
+                    {/* Cancelar: permitido para ativa e atendida */}
+                    {(r.status === 'ativa' || r.status === 'atendida') && (
+                      <button
+                        className={styles.btnVisualizar}
+                        onClick={() => handleCancelarReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+
+                    {/* Se estiver cancelada ou concluída, não mostramos botões (apenas histórico) */}
+                  </div>
+                </td>
+
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // ==========================================
   // = RENDER PRINCIPAL
   // ==========================================
   return (
@@ -448,7 +795,9 @@ export default function DashboardBibliotecarioPage() {
             <p>
               {abaAtiva === 'pendentes'
                 ? 'Abaixo estão as submissões que estão pendentes para análise.'
-                : 'Gerencie as informações das publicações já aprovadas no acervo.'}
+                : abaAtiva === 'gerenciar'
+                ? 'Gerencie as informações das publicações já aprovadas no acervo.'
+                : 'Visualize e gerencie as reservas de livros físicos.'}
             </p>
 
             {/* Botões de troca de aba */}
@@ -476,6 +825,18 @@ export default function DashboardBibliotecarioPage() {
               >
                 Gerenciar submissões
               </button>
+
+              <button
+                type="button"
+                className={
+                  abaAtiva === 'reservas'
+                    ? `${styles.tabButton} ${styles.tabButtonActive}`
+                    : styles.tabButton
+                }
+                onClick={() => setAbaAtiva('reservas')}
+              >
+                Reservas
+              </button>
             </div>
           </div>
 
@@ -488,7 +849,11 @@ export default function DashboardBibliotecarioPage() {
         </div>
 
         {/* Conteúdo condicional conforme a aba */}
-        {abaAtiva === 'pendentes' ? renderPendentes() : renderGerenciar()}
+        {abaAtiva === 'pendentes'
+          ? renderPendentes()
+          : abaAtiva === 'gerenciar'
+          ? renderGerenciar()
+          : renderReservas()}
       </div>
 
       {editingItem && (
@@ -499,13 +864,13 @@ export default function DashboardBibliotecarioPage() {
           onSaveAndApprove={handleAprovar}
           onReprove={handleReprovar}
           onDeleteApproved={handleExcluirPublicacao}
-          
-          // AQUI ESTÁ A MÁGICA: Usamos 'onSaved' para atualizar a lista visualmente
           onSaved={(updated) => {
             if (editMode === 'gerenciar') {
               setPublicacoes((prev) =>
                 prev.map((p) =>
-                  p.submissao_id === updated.submissao_id ? { ...p, ...updated } : p
+                  p.submissao_id === updated.submissao_id
+                    ? { ...p, ...updated }
+                    : p
                 )
               );
             }

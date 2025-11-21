@@ -2,18 +2,26 @@
 
 // 1. Importamos a conexão do novo e o serviço do legado
 const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
-const acervoLegadoService = require('./AcervoLegadoService'); 
+const acervoLegadoService = require('./AcervoLegadoService');
 
 function escapeLike(str = '') {
-  return String(str).replace(/[\\%_]/g, s => '\\' + s);
+  return String(str).replace(/[\\%_]/g, (s) => '\\' + s);
 }
 
 const COLS = [
-  'titulo_proposto', 'autor', 'editora',
-  'conferencia', 'periodico', 'instituicao',
-  'curso', 'descricao'
+  'titulo_proposto',
+  'autor',
+  'editora',
+  'conferencia',
+  'periodico',
+  'instituicao',
+  'curso',
+  'descricao',
 ];
 
+/**
+ * Lista publicações aprovadas (digital + físico legado)
+ */
 async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) {
   // --- PARTE 1: BUSCA NO ACERVO DIGITAL (CÓDIGO ORIGINAL) ---
   const like = `%${escapeLike(q)}%`;
@@ -33,9 +41,10 @@ async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) 
   `;
 
   if (q) {
-    sql += ` AND ( ${COLS.map(c => `s.${c} LIKE ?`).join(' OR ')} )`;
+    sql += ` AND ( ${COLS.map((c) => `s.${c} LIKE ?`).join(' OR ')} )`;
     params.push(...Array(COLS.length).fill(like));
   }
+
   if (tipo) {
     sql += ` AND s.tipo = ?`;
     params.push(tipo);
@@ -47,7 +56,6 @@ async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) 
   // Executa a busca digital
   const [rowsDigital] = await pool.query(sql, params);
 
-
   // --- PARTE 2: BUSCA NO ACERVO FÍSICO (NOVIDADE) ---
   let rowsFisico = [];
 
@@ -56,24 +64,25 @@ async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) 
   if (q && q.length >= 3 && Number(offset) === 0) {
     try {
       const resultadosLegado = await acervoLegadoService.buscarPorTitulo(q);
-      
-      // Aqui fazemos a mágica: Transformamos o JSON do OpenBiblio 
-      // para ficar igual ao do Acervo Digital
-      rowsFisico = resultadosLegado.map(livro => ({
+
+      // Transformamos o JSON do OpenBiblio para ficar parecido com o do Acervo Digital
+      rowsFisico = resultadosLegado.map((livro) => ({
         submissao_id: `LEGACY_${livro.id_legado}`, // ID falso para não quebrar a key do React
         item_id: null,
         titulo_proposto: livro.titulo, // Mapeia Titulo -> Titulo Proposto
         autor: livro.autor,
         descricao: `Acervo Físico - Código: ${livro.codigo_barras}`,
-        editora: 'Acervo Biblioteca', // OpenBiblio simples não costuma ter editora na busca rápida
+        editora: 'Acervo Biblioteca',
         ano_publicacao: 'Físico',
         tipo: 'fisico', // Tipo especial para o front saber que é físico
         origem: 'FISICO',
-        status_fisico: livro.status // Disponível/Indisponível
+        status_fisico: livro.status, // Disponível/Emprestado/etc.
       }));
-
     } catch (error) {
-      console.error("Erro ao buscar legado (ignorado para não travar o digital):", error.message);
+      console.error(
+        'Erro ao buscar legado (ignorado para não travar o digital):',
+        error.message
+      );
       // Se der erro no legado, segue a vida só com os digitais
     }
   }
@@ -83,54 +92,76 @@ async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) 
   return [...rowsFisico, ...rowsDigital];
 }
 
+/**
+ * Detalha uma publicação aprovada (digital OU física legacy)
+ */
 async function buscarAprovadaPorId(id) {
   // 1. VERIFICAÇÃO: É um ID do sistema antigo? (Começa com LEGACY_)
   if (String(id).startsWith('LEGACY_')) {
     const idReal = id.split('_')[1]; // Pega o número depois do underline (ex: 105)
-    
-    // ... dentro do if legacy ...
+
     const livroFisico = await acervoLegadoService.buscarPorId(idReal);
 
     if (!livroFisico) return null;
 
+    // 🔎 NOVO: verifica se existe reserva ativa para este bibid
+    let statusReservas = null;
+    try {
+      const [rowsReserva] = await pool.query(
+        'SELECT status FROM dg_reservas WHERE legacy_bibid = ? AND status = "ativa" LIMIT 1',
+        [idReal]
+      );
+      if (rowsReserva.length > 0) {
+        statusReservas = rowsReserva[0].status; // 'ativa'
+      }
+    } catch (err) {
+      console.error('Erro ao consultar reservas para livro físico:', err.message);
+    }
+
     // Limpeza do ISBN (Backend faz o trabalho sujo)
-    const isbnLimpo = livroFisico.isbn ? String(livroFisico.isbn).split(' ')[0] : null;
+    const isbnLimpo = livroFisico.isbn
+      ? String(livroFisico.isbn).split(' ')[0]
+      : null;
 
     // Detalhes técnicos agrupados (Páginas + Edição)
     const detalhesArr = [];
     if (livroFisico.paginas) detalhesArr.push(livroFisico.paginas);
     if (livroFisico.edicao) detalhesArr.push(livroFisico.edicao);
-    const detalhesTexto = detalhesArr.length > 0 ? detalhesArr.join(' | ') : null;
+    const detalhesTexto =
+      detalhesArr.length > 0 ? detalhesArr.join(' | ') : null;
+
+    // Se tiver reserva ativa, forçamos status para "Reservado"
+    const statusFinal =
+      statusReservas === 'ativa' ? 'Reservado' : livroFisico.status;
 
     return {
       submissao_id: id,
       titulo_proposto: livroFisico.titulo,
-      
-      // AGORA 'descricao' SERÁ APENAS A SINOPSE (SE TIVER)
-      // Se não tiver sinopse, mandamos null para não exibir nada
-      descricao: livroFisico.sinopse || null, 
-      
-      // Enviamos os dados técnicos SEPARADOS para o front estilizar
+
+      // descricao será apenas a sinopse (se tiver)
+      descricao: livroFisico.sinopse || null,
+
+      // Dados técnicos agrupados / separados
       localizacao: livroFisico.localizacao,
       isbn: isbnLimpo,
       detalhes_fisicos: detalhesTexto,
       codigo_barras: livroFisico.codigo_barras,
       assunto: livroFisico.assunto,
-      
-      // Resto igual...
+
       autor: livroFisico.autor,
       editora: livroFisico.editora,
       ano_publicacao: livroFisico.ano,
       tipo: 'fisico',
       caminho_anexo: null,
-      status: livroFisico.status,           
-      disponibilidade: livroFisico.status,  
-      status_fisico: livroFisico.status,    
-      origem: 'FISICO'
+
+      status: statusFinal,
+      disponibilidade: statusFinal,
+      status_fisico: statusFinal,
+      origem: 'FISICO',
     };
   }
 
-  // 2. SE NÃO FOR LEGACY, SEGUE A VIDA (BUSCA NO BANCO NOVO)
+  // 2. SE NÃO FOR LEGACY, SEGUE A VIDA (BUSCA NO BANCO NOVO DIGITAL)
   const [rows] = await pool.query(
     `
     SELECT 

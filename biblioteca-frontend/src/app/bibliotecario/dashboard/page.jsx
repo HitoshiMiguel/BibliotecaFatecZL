@@ -511,6 +511,75 @@ export default function DashboardBibliotecarioPage() {
     }
   };
 
+    const formatISODate = (value) => {
+      if (!value) return '—';
+      // Garante que vamos pegar só a parte AAAA-MM-DD
+      const raw = String(value).split('T')[0];
+      const [year, month, day] = raw.split('-');
+      if (!year || !month || !day) return value;
+      return `${day}/${month}/${year}`;
+    };
+
+    const handleRenovarReserva = async (reservaId) => {
+    const reserva = reservas.find((r) => r.reserva_id === reservaId);
+    const titulo = reserva?.titulo || 'este item';
+
+    const result = await Swal.fire({
+      title: 'Renovar empréstimo?',
+      text: `Deseja renovar o empréstimo do livro "${titulo}" por mais 7 dias?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, renovar',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setUpdatingId(reservaId);
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/reservas/${reservaId}/renovar`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message || 'Falha ao renovar a reserva.'
+        );
+      }
+
+      Swal.fire(
+        'Renovada!',
+        'Reserva renovada com sucesso. Nova data de devolução aplicada.',
+        'success'
+      );
+
+      setReservas((prev) =>
+        prev.map((r) =>
+          r.reserva_id === reservaId
+            ? {
+                ...r,
+                data_prevista_devolucao:
+                  data?.reserva?.data_prevista_devolucao ||
+                  r.data_prevista_devolucao,
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Erro', err.message, 'error');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+
   // ==========================================
   // = RENDERIZAÇÃO DA ABA "PENDENTES"
   // ==========================================
@@ -684,62 +753,47 @@ export default function DashboardBibliotecarioPage() {
         <table className={styles.tabelaSubmissoes}>
           <thead>
             <tr>
-              <th>Usuário</th>
               <th>Livro</th>
-              <th>Data da reserva</th>
-              <th>Data prevista retirada</th>
+              <th>Usuário</th>
               <th>Status</th>
+              <th>Data da reserva</th>
+              <th>Retirada prevista</th>
+              <th>Devolução prevista</th> {/* NOVO */}
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {reservas.map((r) => (
-              <tr key={r.reserva_id}>
-                <td data-label="Usuário:">
-                  <div>
-                    <strong>{r.usuario_nome}</strong>
-                    <br />
-                    <span style={{ fontSize: '0.85rem', color: '#555' }}>
-                      {r.usuario_email}
-                      {r.usuario_ra ? ` · RA: ${r.usuario_ra}` : ''}
-                    </span>
-                  </div>
-                </td>
-                <td data-label="Livro:">
-                  <div>
-                    {r.titulo || '(sem título)'}
-                    {r.codigo_barras && (
-                      <div
-                        style={{
-                          fontSize: '0.8rem',
-                          color: '#555',
-                          marginTop: '2px',
-                        }}
-                      >
-                        Código: {r.codigo_barras}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td data-label="Data da reserva:">
-                  {formatDateTimeBR(r.data_reserva)}
-                </td>
-                <td data-label="Data prevista retirada:">
-                  {formatDateISOToBR(r.data_prevista_retirada)}
-                </td>
-                <td data-label="Status:">
-                  {r.status === 'ativa'
-                    ? 'Ativa'
-                    : r.status === 'atendida'
-                    ? 'Atendida'
-                    : r.status === 'concluida'
-                    ? 'Concluída'
-                    : 'Cancelada'}
-                </td>
-                <td data-label="Ações:">
-                  <div className={styles.acoes}>
-                    {/* Botão principal muda conforme o status */}
-                    {r.status === 'ativa' && (
+          {reservas.map((r) => (
+            <tr key={r.reserva_id}>
+              <td data-label="Livro:">{r.titulo}</td>
+              <td data-label="Usuário:">
+                {r.usuario_nome}
+                {r.usuario_ra ? ` (${r.usuario_ra})` : ''}
+              </td>
+              <td data-label="Status:">
+                {r.status === 'ativa'
+                  ? 'Ativa'
+                  : r.status === 'atendida'
+                  ? 'Atendida'
+                  : r.status === 'concluida'
+                  ? 'Concluída'
+                  : 'Cancelada'}
+              </td>
+              <td data-label="Data da reserva:">
+                {formatISODate(r.data_reserva)}
+              </td>
+              <td data-label="Retirada prevista:">
+                {formatISODate(r.data_prevista_retirada)}
+              </td>
+              <td data-label="Devolução prevista:">
+                {formatISODate(r.data_prevista_devolucao)}
+              </td>
+
+              <td data-label="Ações:">
+                <div className={styles.acoes}>
+                  {/* Status ATIVA → pode Atender + Cancelar */}
+                  {r.status === 'ativa' && (
+                    <>
                       <button
                         className={styles.btnAnalisar}
                         onClick={() => handleAtenderReserva(r.reserva_id)}
@@ -747,20 +801,6 @@ export default function DashboardBibliotecarioPage() {
                       >
                         {updatingId === r.reserva_id ? '...' : 'Atender'}
                       </button>
-                    )}
-
-                    {r.status === 'atendida' && (
-                      <button
-                        className={styles.btnAnalisar}
-                        onClick={() => handleConcluirReserva(r.reserva_id)}
-                        disabled={updatingId === r.reserva_id}
-                      >
-                        {updatingId === r.reserva_id ? '...' : 'Concluir'}
-                      </button>
-                    )}
-
-                    {/* Cancelar: permitido para ativa e atendida */}
-                    {(r.status === 'ativa' || r.status === 'atendida') && (
                       <button
                         className={styles.btnVisualizar}
                         onClick={() => handleCancelarReserva(r.reserva_id)}
@@ -768,15 +808,43 @@ export default function DashboardBibliotecarioPage() {
                       >
                         Cancelar
                       </button>
-                    )}
+                    </>
+                  )}
 
-                    {/* Se estiver cancelada ou concluída, não mostramos botões (apenas histórico) */}
-                  </div>
-                </td>
+                  {/* Status ATENDIDA → pode Concluir, Cancelar e Renovar */}
+                  {r.status === 'atendida' && (
+                    <>
+                      <button
+                        className={styles.btnAnalisar}
+                        onClick={() => handleConcluirReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        {updatingId === r.reserva_id ? '...' : 'Concluir'}
+                      </button>
+                      <button
+                        className={styles.btnVisualizar}
+                        onClick={() => handleCancelarReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        className={styles.btnVisualizar}
+                        onClick={() => handleRenovarReserva(r.reserva_id)}
+                        disabled={updatingId === r.reserva_id}
+                      >
+                        Renovar
+                      </button>
+                    </>
+                  )}
 
-              </tr>
-            ))}
-          </tbody>
+                  {/* Status CONCLUÍDA / CANCELADA → apenas histórico, sem ações */}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+
         </table>
       </div>
     );

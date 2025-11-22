@@ -1,4 +1,4 @@
-// src/controller/ReservasAdminController.js
+// src/controller/reservasAdminController.js
 const {
   poolSistemaNovo,
   poolOpenBiblio,
@@ -22,6 +22,7 @@ const listarReservas = async (req, res) => {
         r.data_reserva,
         r.data_atendimento,
         r.data_prevista_retirada,
+        r.data_prevista_devolucao,
         r.origem,
         u.nome       AS usuario_nome,
         u.email      AS usuario_email,
@@ -166,9 +167,79 @@ const concluirReserva = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/admin/reservas/:id/renovar
+ * Renova o empréstimo (extende a data de devolução em +7 dias).
+ * Não altera o status (permanece "atendida").
+ */
+const renovarReserva = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Busca a reserva atual
+    const [rows] = await poolSistemaNovo.query(
+      'SELECT * FROM dg_reservas WHERE reserva_id = ?',
+      [id]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: 'Reserva não encontrada.' });
+    }
+
+    const reserva = rows[0];
+
+    if (reserva.status !== 'atendida') {
+      return res.status(400).json({
+        message: 'Somente reservas em estado "atendida" podem ser renovadas.',
+      });
+    }
+
+    // Se ainda não tiver data_prevista_devolucao, calcula a partir da retirada
+    if (!reserva.data_prevista_devolucao && reserva.data_prevista_retirada) {
+      await poolSistemaNovo.query(
+        `
+        UPDATE dg_reservas
+        SET data_prevista_devolucao = DATE_ADD(data_prevista_retirada, INTERVAL 7 DAY)
+        WHERE reserva_id = ?
+        `,
+        [id]
+      );
+    }
+
+    // Agora empurra a data_prevista_devolucao em +7 dias
+    await poolSistemaNovo.query(
+      `
+      UPDATE dg_reservas
+      SET data_prevista_devolucao = DATE_ADD(data_prevista_devolucao, INTERVAL 7 DAY)
+      WHERE reserva_id = ?
+      `,
+      [id]
+    );
+
+    // Busca novamente para devolver a versão atualizada
+    const [rowsAtualizadas] = await poolSistemaNovo.query(
+      'SELECT * FROM dg_reservas WHERE reserva_id = ?',
+      [id]
+    );
+
+    const reservaAtualizada = rowsAtualizadas[0];
+
+    return res.json({
+      message: 'Reserva renovada com sucesso. Nova data de devolução aplicada.',
+      reserva: reservaAtualizada,
+    });
+  } catch (err) {
+    console.error('[ReservasAdminController] ERRO renovarReserva:', err);
+    return res
+      .status(500)
+      .json({ message: 'Falha ao renovar reserva.' });
+  }
+};
+
 module.exports = {
   listarReservas,
   atenderReserva,
   cancelarReserva,
   concluirReserva,
+  renovarReserva,
 };

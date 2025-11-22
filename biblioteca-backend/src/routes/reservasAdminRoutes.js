@@ -6,21 +6,24 @@ const {
   isAuthenticated,
   isAdminOrBibliotecario,
 } = require('../middlewares/authMiddleware');
-const ReservasAdminController = require('../controller/reservasAdminController');
+const reservasAdminController = require('../controller/reservasAdminController');
 
-// Todas as rotas abaixo exigem estar logado e ter perfil admin/bibliotecário
+// Middleware de auth para todas
 router.use(isAuthenticated, isAdminOrBibliotecario);
 
 // GET /api/admin/reservas
-router.get('/', ReservasAdminController.listarReservas);
+router.get('/', reservasAdminController.listarReservas);
 
 // POST /api/admin/reservas/:id/atender
-router.post('/:id/atender', ReservasAdminController.atenderReserva);
+router.post('/:id/atender', reservasAdminController.atenderReserva);
 
 // POST /api/admin/reservas/:id/cancelar
-router.post('/:id/cancelar', ReservasAdminController.cancelarReserva);
+router.post('/:id/cancelar', reservasAdminController.cancelarReserva);
 
 // POST /api/admin/reservas/:id/concluir
-router.post('/:id/concluir', ReservasAdminController.concluirReserva);
+router.post('/:id/concluir', reservasAdminController.concluirReserva);
+
+// POST /api/admin/reservas/:id/renovar
+router.post('/:id/renovar', reservasAdminController.renovarReserva);
 
 module.exports = router;

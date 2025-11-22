@@ -1,66 +1,101 @@
 // src/controller/reservasController.js
-const reservasService = require('../services/reservasService');
 
-exports.criarReserva = async (req, res) => {
+const reservasService = require('../services/reservasService');
+const CriarReservaCommand = require('../services/CriarReservaCommand');
+
+/**
+ * ============================================================
+ *  POST /api/reservas
+ *  Criação de reserva pelo usuário comum
+ *  (Aplicando o padrão Command + Mediator)
+ * ============================================================
+ */
+const criarReserva = async (req, res) => {
   try {
-    const usuarioId = req.user?.id;
+    const usuarioId = req.user?.id; // vem do authMiddleware
     const { submissaoId, dataRetirada } = req.body;
 
-    if (!submissaoId) {
-      return res.status(400).json({ message: 'ID da publicação é obrigatório.' });
-    }
-    if (!dataRetirada) {
-      return res.status(400).json({ message: 'Data de retirada é obrigatória.' });
+    if (!usuarioId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
 
-    const reserva = await reservasService.criarReserva(
+    if (!submissaoId || !dataRetirada) {
+      return res
+        .status(400)
+        .json({ message: 'submissaoId e dataRetirada são obrigatórios.' });
+    }
+
+    // COMMAND → O controller só dispara um comando
+    const command = new CriarReservaCommand({
       usuarioId,
       submissaoId,
-      dataRetirada
-    );
+      dataRetirada,
+    });
+
+    const reservaCriada = await command.execute();
+
     return res.status(201).json({
       message: 'Reserva criada com sucesso.',
-      reserva,
+      reserva: reservaCriada,
     });
   } catch (err) {
-    console.error('ERRO ao criar reserva:', err.message);
-    if (
-      err.message.includes('Somente itens físicos') ||
-      err.message.includes('não encontrado') ||
-      err.message.includes('não está disponível') ||
-      err.message.includes('já possui uma reserva') ||
-      err.message.includes('reserva ativa') ||
-      err.message.includes('Data de retirada') ||
-      err.message.includes('Formato de data')
-    ) {
-      return res.status(400).json({ message: err.message });
-    }
-    return res.status(500).json({ message: 'Falha ao criar reserva.' });
+    console.error('[ReservasController] ERRO criarReserva:', err);
+
+    const status = err.statusCode || 500;
+    return res.status(status).json({
+      message: err.message || 'Falha ao criar reserva.',
+    });
   }
 };
 
-exports.listarMinhasReservas = async (req, res) => {
+/**
+ * ============================================================
+ *  GET /api/reservas/minhas
+ *  Listar reservas do usuário logado
+ * ============================================================
+ */
+const listarMinhasReservas = async (req, res) => {
   try {
     const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+
     const reservas = await reservasService.listarPorUsuario(usuarioId);
     return res.json(reservas);
   } catch (err) {
-    console.error('ERRO ao listar reservas do usuário:', err.message);
+    console.error(
+      '[ReservasController] ERRO listarMinhasReservas:',
+      err.message
+    );
     return res.status(500).json({ message: 'Falha ao listar reservas.' });
   }
 };
 
-exports.listarTodasReservas = async (req, res) => {
+/**
+ * ============================================================
+ *  A PARTIR DAQUI: ROTAS DO ADMIN/BIBLIOTECÁRIO
+ *  (Ainda no mesmo controller por enquanto)
+ * ============================================================
+ */
+
+const listarTodasReservas = async (req, res) => {
   try {
     const reservas = await reservasService.listarTodas();
     return res.json(reservas);
   } catch (err) {
-    console.error('ERRO ao listar todas as reservas:', err.message);
-    return res.status(500).json({ message: 'Falha ao listar reservas.' });
+    console.error(
+      '[ReservasController] ERRO listarTodasReservas:',
+      err.message
+    );
+    return res
+      .status(500)
+      .json({ message: 'Falha ao listar todas as reservas.' });
   }
 };
 
-exports.atenderReserva = async (req, res) => {
+const atenderReserva = async (req, res) => {
   try {
     const { id } = req.params;
     const afetadas = await reservasService.atualizarStatus(id, 'atendida');
@@ -71,12 +106,12 @@ exports.atenderReserva = async (req, res) => {
 
     return res.json({ message: 'Reserva marcada como atendida.' });
   } catch (err) {
-    console.error('ERRO ao atender reserva:', err.message);
+    console.error('[ReservasController] ERRO ao atender reserva:', err.message);
     return res.status(500).json({ message: 'Falha ao atualizar reserva.' });
   }
 };
 
-exports.cancelarReserva = async (req, res) => {
+const cancelarReserva = async (req, res) => {
   try {
     const { id } = req.params;
     const afetadas = await reservasService.atualizarStatus(id, 'cancelada');
@@ -87,7 +122,20 @@ exports.cancelarReserva = async (req, res) => {
 
     return res.json({ message: 'Reserva cancelada.' });
   } catch (err) {
-    console.error('ERRO ao cancelar reserva:', err.message);
+    console.error('[ReservasController] ERRO ao cancelar reserva:', err.message);
     return res.status(500).json({ message: 'Falha ao atualizar reserva.' });
   }
+};
+
+/**
+ * ============================================================
+ *  EXPORTAÇÃO FINAL — AGORA SIM COMPLETA
+ * ============================================================
+ */
+module.exports = {
+  criarReserva,
+  listarMinhasReservas,
+  listarTodasReservas,
+  atenderReserva,
+  cancelarReserva,
 };

@@ -5,110 +5,88 @@ const { err } = require('../utils/httpError');
 
 class FavoritoController {
 
-    /**
-     * Rota POST: Adiciona um novo favorito
-     */
     async adicionar(req, res, next) {
         try {
-            // O seu authMiddleware salva o ID em 'req.user.id'
             const usuarioId = req.user.id; 
-            const { itemId } = req.body;
+            // itemId pode vir como número (10) ou string ("LEGACY_500")
+            let { itemId } = req.body; 
 
-            if (!itemId) {
-                return next(err(400, 'VALIDATION_ERROR', 'O ID do item (itemId) é obrigatório.'));
+            if (!itemId) return next(err(400, 'VALIDATION_ERROR', 'ID obrigatório.'));
+
+            let tipo = 'DIGITAL';
+            let idReal = itemId;
+
+            // Verifica se é físico
+            if (String(itemId).startsWith('LEGACY_')) {
+                tipo = 'FISICO';
+                idReal = itemId.split('_')[1]; // Pega o 500 de LEGACY_500
             }
 
-            if (!usuarioId) {
-                return next(err(401, 'UNAUTHORIZED', 'Usuário não autenticado.'));
-            }
-
-            const resultado = await FavoritoService.addFavorito(usuarioId, itemId);
+            const resultado = await FavoritoService.addFavorito(usuarioId, idReal, tipo);
             
             if (!resultado.success) {
-                return res.status(409).json({ message: resultado.message }); // 409 Conflict
+                return res.status(409).json({ message: resultado.message });
             }
 
-            res.status(201).json({ message: 'Item favoritado com sucesso!', favoritoId: resultado.insertId });
+            res.status(201).json({ message: 'Favoritado!', favoritoId: resultado.insertId });
 
         } catch (error) {
-            console.error('Erro no FavoritoController.adicionar:', error);
+            console.error('Erro add favorito:', error);
             next(error);
         }
     }
 
-    /**
-     * Rota DELETE: Remove um favorito
-     */
     async remover(req, res, next) {
         try {
-            // O seu authMiddleware salva o ID em 'req.user.id'
             const usuarioId = req.user.id;
             const { itemId } = req.params; 
 
-            if (!itemId) {
-                return next(err(400, 'VALIDATION_ERROR', 'O ID do item (itemId) é obrigatório na URL.'));
-            }
+            if (!itemId) return next(err(400, 'VALIDATION_ERROR', 'ID obrigatório.'));
             
-            if (!usuarioId) {
-                return next(err(401, 'UNAUTHORIZED', 'Usuário não autenticado.'));
+            let tipo = 'DIGITAL';
+            let idReal = itemId;
+
+            // Verifica se é físico
+            if (String(itemId).startsWith('LEGACY_')) {
+                tipo = 'FISICO';
+                idReal = itemId.split('_')[1];
             }
 
-            const resultado = await FavoritoService.removeFavorito(usuarioId, Number(itemId));
+            const resultado = await FavoritoService.removeFavorito(usuarioId, idReal, tipo);
 
             if (!resultado.success) {
-                return res.status(404).json({ message: resultado.message }); // 404 Not Found
+                return res.status(404).json({ message: resultado.message });
             }
 
-            res.status(200).json({ message: 'Favorito removido com sucesso.' });
+            res.status(200).json({ message: 'Removido.' });
 
         } catch (error) {
-            console.error('Erro no FavoritoController.remover:', error);
+            console.error('Erro remover favorito:', error);
             next(error);
         }
     }
 
-    /**
-     * [NOVO] Rota GET: Lista todos os favoritos do usuário logado
-     */
+    // Listar (IDs) e ListarDetalhes não precisam mudar muito
+    // pois o Service já entrega os IDs formatados (com e sem LEGACY_)
+    
     async listar(req, res, next) {
         try {
-            const usuarioId = req.user.id; // Pega o ID do usuário logado
-
-            if (!usuarioId) {
-                return next(err(401, 'UNAUTHORIZED', 'Usuário não autenticado.'));
-            }
-
-            // Chama o novo service
+            const usuarioId = req.user.id;
             const favoritosIds = await FavoritoService.listarPorUsuario(usuarioId);
-            
-            // Retorna a lista de IDs
-            res.status(200).json(favoritosIds); // Ex: [1, 5, 22]
-
+            res.status(200).json(favoritosIds);
         } catch (error) {
-            console.error('Erro no FavoritoController.listar:', error);
             next(error);
         }
     }
 
     async listarDetalhes(req, res, next) {
-      try {
-        const usuarioId = req.user.id;
-
-        if (!usuarioId) {
-          return next(err(401, 'UNAUTHORIZED', 'Usuário não autenticado.'));
+        try {
+            const usuarioId = req.user.id;
+            const favoritos = await FavoritoService.listarDetalhesPorUsuario(usuarioId);
+            res.status(200).json(favoritos); 
+        } catch (error) {
+            next(error);
         }
-
-        // Chama o novo service que criamos
-        const favoritos = await FavoritoService.listarDetalhesPorUsuario(usuarioId);
-        
-        // Retorna a lista de objetos
-        // Ex: [{ item_id: 152, submissao_id: 23, titulo: 'Teste' }]
-        res.status(200).json(favoritos); 
-
-      } catch (error) {
-        console.error('Erro no FavoritoController.listarDetalhes:', error);
-        next(error);
-      }
     }
 }
 

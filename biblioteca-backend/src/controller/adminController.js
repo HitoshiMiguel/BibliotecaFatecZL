@@ -714,7 +714,7 @@ const publicarDireto = async (req, res, next) => {
 
     // 2. LÓGICA DO GOOGLE DRIVE (COM A PASTA ALTERADA)
     // -------------------------------------------------------------------
-    const { tipo, ...meta } = req.body; 
+    const { tipo, status, data_publicacao, ...meta } = req.body; 
     const buffer = req.file.buffer;
     const filename = req.file.originalname;
     const mimeType = req.file.mimetype;
@@ -738,6 +738,35 @@ const publicarDireto = async (req, res, next) => {
     // -------------------------------------------------------------------
     const googleFileId = file.id;
     const usuarioId = req.user.id; // ID do Admin que está publicando
+
+    let statusFinal = 'publicado';
+    let dataFinal = new Date().toLocaleString('sv-SE').replace(' ', 'T');
+    // Se o front mandou 'agendado' e tem uma data válida
+    if (status === 'agendado' && data_publicacao) {
+        statusFinal = 'agendado';
+
+        let dataString = String(data_publicacao);
+
+        if (dataString.includes('.')) {
+            dataString = dataString.split('.')[0]; 
+        }
+
+        dataString = dataString.replace('T', ' ').replace('Z', '');
+        
+        // 4. Adiciona segundos se faltar (para ficar HH:MM:00)
+        if (dataString.length === 16) {
+            dataString += ':00';
+        }
+
+        dataFinal = dataString.trim();
+    } else {
+        // Se for publicar agora, formata a data atual para MySQL também
+        const agora = new Date();
+        // Truque para pegar YYYY-MM-DD HH:MM:SS localmente em JS
+        const offset = agora.getTimezoneOffset() * 60000;
+        const dataLocal = new Date(agora.getTime() - offset).toISOString();
+        dataFinal = dataLocal.slice(0, 19).replace('T', ' ');
+    }
     
     // Pega os metadados do form do admin
     const {
@@ -757,50 +786,64 @@ const publicarDireto = async (req, res, next) => {
     // --- PASSO 3.1: INSERIR NA TABELA DE SUBMISSÕES (CORRIGIDO) ---
     const sqlSubmissao = `
       INSERT INTO dg_submissoes (
-        usuario_id,
-        titulo_proposto,
-        descricao,
-        caminho_anexo,
-        status,
-        data_submissao,
-        revisado_por_id,  -- << CORRIGIDO (Adicionado)
-        
-        -- Colunas de metadados --
+        usuario_id, titulo_proposto, descricao, caminho_anexo, 
+        status, data_submissao, revisado_por_id, 
         autor, editora, ano_publicacao, conferencia, 
-        periodico, instituicao, orientador, curso, 
-        ano_defesa, tipo
-      ) VALUES (?, ?, ?, ?, 'aprovado', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); -- << CORRIGIDO (Removido um NOW())
+        periodico, instituicao, orientador, curso, ano_defesa, tipo
+      ) VALUES (?, ?, ?, ?, 'aprovado', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const valuesSubmissao = [
-      usuarioId,        // para usuario_id
-      titulo_proposto || null,
-      descricao || null,
-      googleFileId,
-      usuarioId,        // para revisado_por_id
-      
-      // Metadados
-      autor || null,
-      editora || null,
-      ano_publicacao || null, 
-      conferencia || null,
-      periodico || null,
-      instituicao || null,
-      orientador || null,
-      curso || null,
-      ano_defesa || null,
-      tipo || null
+      usuarioId, titulo_proposto || null, descricao || null, googleFileId,
+      usuarioId, // revisado_por_id
+      autor || null, editora || null, ano_publicacao || null, conferencia || null,
+      periodico || null, instituicao || null, orientador || null, curso || null, ano_defesa || null, tipo || null
     ];
 
-    const [result] = await pool.execute(sqlSubmissao, valuesSubmissao);
-    const novaSubmissaoId = result.insertId; // Pegamos o ID da submissão
+    const [resultSubmissao] = await pool.execute(sqlSubmissao, valuesSubmissao);
+    const submissaoId = resultSubmissao.insertId;
+
+    const sqlItem = `
+        INSERT INTO dg_itens_digitais (
+            titulo, autor, ano, descricao, 
+            caminho_arquivo, data_publicacao, submissao_id, 
+            status, tipo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const anoParaItem = ano_publicacao || new Date().getFullYear();
+
+    // GARANTIA FINAL DE FORMATAÇÃO PARA O MYSQL
+    // Se dataFinal ainda for objeto Date (caso Publicar Agora), converte.
+    // Se for String (caso Agendado tratado acima), mantém.
+    let dataParaMySQL;
+    if (typeof dataFinal === 'object') {
+        dataParaMySQL = dataFinal.toISOString().slice(0, 19).replace('T', ' ');
+    } else {
+        dataParaMySQL = dataFinal;
+    }
+
+    const valuesItem = [
+        titulo_proposto, 
+        autor, 
+        anoParaItem,
+        descricao,
+        googleFileId,
+        dataFinal, // <--- Agora vai salvar "2025-11-22 14:34:00"
+        submissaoId,   
+        statusFinal,   
+        tipo
+    ];
+
+    await pool.execute(sqlItem, valuesItem);
 
     // 4. SUCESSO
     // -------------------------------------------------------------------
     const novaPublicacao = {
-      id: result.insertId,
+      id: submissaoId,
       googleFileId,
       status: 'aprovado',
+      data_publicacao: dataFinal,
       ...meta
     };
     

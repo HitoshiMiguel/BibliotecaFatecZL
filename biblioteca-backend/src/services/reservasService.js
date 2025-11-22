@@ -189,9 +189,29 @@ async function atualizarStatus(reservaId, novoStatus) {
   return result.affectedRows;
 }
 
+const buscarEmprestimoAtivoPorUsuario = async (usuarioId) => {
+  const sql = `
+    SELECT 
+      titulo, 
+      data_prevista_devolucao, 
+      data_prevista_retirada,
+      status 
+    FROM dg_reservas 
+    WHERE usuario_id = ? 
+    AND status IN ('ativa', 'atendida')
+    ORDER BY data_reserva DESC 
+    LIMIT 1
+  `;
+
+  // Agora 'db' existe e aponta para o banco correto!
+  const [rows] = await pool.execute(sql, [usuarioId]);
+  return rows[0];
+};
+
 module.exports = {
   criarReserva,
   listarPorUsuario,
   listarTodas,
   atualizarStatus,
+  buscarEmprestimoAtivoPorUsuario,
 };

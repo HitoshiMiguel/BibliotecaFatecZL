@@ -124,6 +124,51 @@ class AcervoLegadoService {
     if (!anoBruto) return 'S/D';
     return anoBruto.replace(/[^0-9]/g, '') || 'S/D';
   }
+
+
+async buscarPorListaIds(listaIds) {
+    if (!listaIds || listaIds.length === 0) return [];
+
+    // Monta string de IDs segura: "1, 2, 3"
+    const idsString = listaIds.map(id => Number(id)).join(',');
+
+    const sql = `
+      SELECT 
+        b.bibid,
+        b.title as titulo,
+        b.author as autor,
+        c.barcode_nmbr as codigo_barras,
+        c.status_cd as status_original
+      FROM biblio b
+      LEFT JOIN biblio_copy c ON b.bibid = c.bibid
+      WHERE b.bibid IN (${idsString})
+    `;
+
+    try {
+      const [rows] = await poolOpenBiblio.execute(sql);
+      
+      // Remove duplicatas (caso o livro tenha 2 cópias, o join traz 2x)
+      const unicos = [];
+      const map = new Map();
+      for (const item of rows) {
+          if(!map.has(item.bibid)){
+              map.set(item.bibid, true);    // set any value to Map
+              unicos.push({
+                  id_legado: item.bibid,
+                  titulo: item.titulo,
+                  autor: item.autor,
+                  tipo: 'fisico',
+                  origem: 'FISICO'
+              });
+          }
+      }
+      return unicos;
+
+    } catch (error) {
+      console.error("Erro ao buscar lista legado:", error);
+      return [];
+    }
+  }
 }
 
 module.exports = new AcervoLegadoService();

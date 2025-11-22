@@ -1,102 +1,152 @@
 // Em: src/app/services/FavoritoService.js
 
-// 1. Importamos a conexão 'pool'
 const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
+// Importamos o serviço legado para buscar os dados físicos
+const acervoLegadoService = require('./AcervoLegadoService');
+
 class FavoritoService {
 
     /**
-     * Adiciona um item aos favoritos de um usuário
+     * Adiciona Favorito (Suporta Digital e Físico)
+     * @param {number} usuarioId 
+     * @param {number} idItem - ID do item ou bibid
+     * @param {string} tipo - 'DIGITAL' ou 'FISICO'
      */
-    async addFavorito(usuarioId, itemId) {
-        const sql = "INSERT INTO dg_favoritos (usuario_id, item_id) VALUES (?, ?)";
+    async addFavorito(usuarioId, idItem, tipo = 'DIGITAL') {
+        let sql = "";
+        let params = [];
+
+        if (tipo === 'FISICO') {
+            // Salva no campo id_legado, deixa item_id null
+            sql = "INSERT INTO dg_favoritos (usuario_id, id_legado, item_id) VALUES (?, ?, NULL)";
+            params = [usuarioId, idItem];
+        } else {
+            // Padrão antigo: Salva no item_id
+            sql = "INSERT INTO dg_favoritos (usuario_id, item_id, id_legado) VALUES (?, ?, NULL)";
+            params = [usuarioId, idItem];
+        }
         
         try {
-            const [results] = await pool.query(sql, [usuarioId, itemId]);
+            const [results] = await pool.query(sql, params);
             return { success: true, insertId: results.insertId };
-
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
                 return { success: false, message: 'Item já está nos favoritos.' };
             }
-            console.error('Erro ao adicionar favorito no service:', error);
+            console.error('Erro ao adicionar favorito:', error);
             throw error;
         }
     }
 
     /**
-     * Remove um item dos favoritos de um usuário
+     * Remove Favorito
      */
-    async removeFavorito(usuarioId, itemId) {
-        const sql = "DELETE FROM dg_favoritos WHERE usuario_id = ? AND item_id = ?";
+    async removeFavorito(usuarioId, idItem, tipo = 'DIGITAL') {
+        let sql = "";
+        
+        if (tipo === 'FISICO') {
+            sql = "DELETE FROM dg_favoritos WHERE usuario_id = ? AND id_legado = ?";
+        } else {
+            sql = "DELETE FROM dg_favoritos WHERE usuario_id = ? AND item_id = ?";
+        }
         
         try {
-            const [results] = await pool.query(sql, [usuarioId, itemId]);
+            const [results] = await pool.query(sql, [usuarioId, idItem]);
             
             if (results.affectedRows === 0) {
                 return { success: false, message: 'Favorito não encontrado.' };
             }
-            
-            return { success: true, message: 'Favorito removido com sucesso.' };
-
+            return { success: true, message: 'Favorito removido.' };
         } catch (error) {
-            console.error('Erro ao remover favorito no service:', error);
+            console.error('Erro ao remover favorito:', error);
             throw error;
         }
     }
 
     /**
-     * [NOVO] Lista todos os IDs de itens favoritados por um usuário
+     * Lista apenas IDs (Usado para verificar se o coração está pintado)
      */
     async listarPorUsuario(usuarioId) {
-        // Retorna apenas os IDs dos itens
-        const sql = "SELECT item_id FROM dg_favoritos WHERE usuario_id = ?";
+        const sql = "SELECT item_id, id_legado FROM dg_favoritos WHERE usuario_id = ?";
         
         try {
             const [rows] = await pool.query(sql, [usuarioId]);
-            const idList = rows.map(row => row.item_id);
-            return idList;
-
+            // Retorna lista mista: [10, 20, "LEGACY_500", "LEGACY_501"]
+            // Usamos prefixo para o front saber diferenciar
+            const lista = rows.map(row => {
+                if (row.id_legado) return `LEGACY_${row.id_legado}`;
+                return row.item_id;
+            });
+            return lista;
         } catch (error) {
-            console.error('Erro ao listar favoritos no service:', error);
+            console.error('Erro ao listar IDs favoritos:', error);
             throw error;
         }
-    } // <-- FIM DO MÉTODO (sem vírgula, sem chave extra)
+    }
 
     /**
-     * [NOVO] Lista os detalhes dos favoritos de um usuário
-     * (item_id, submissao_id e titulo)
+     * Lista Detalhes COMPLETOS (Mistura Digital + Físico)
      */
     async listarDetalhesPorUsuario(usuarioId) {
       try {
-        const sql = `
-          SELECT 
-            i.item_id,       -- ID real do item
-            s.submissao_id,  -- ID da submissão (PARA O LINK)
-            s.titulo_proposto AS titulo -- Título (para exibir)
-          FROM dg_favoritos AS f
-          
-          -- Join para pegar o item_id e o submissao_id
-          JOIN dg_itens_digitais AS i ON f.item_id = i.item_id
-          
-          -- Join para pegar o título e verificar o status
-          LEFT JOIN dg_submissoes AS s ON i.submissao_id = s.submissao_id
-          
-          WHERE f.usuario_id = ?
-            AND s.status = 'aprovado' -- Garante que o item ainda é visível
-        `;
+        // 1. Busca tudo na tabela de favoritos
+        const sql = `SELECT item_id, id_legado FROM dg_favoritos WHERE usuario_id = ?`;
+        const [favoritos] = await pool.query(sql, [usuarioId]);
         
-        const [rows] = await pool.query(sql, [usuarioId]);
-        
-        // Filtra caso algum item tenha sido deletado mas continue favorito
-        return rows.filter(row => row.submissao_id && row.titulo);
-        
+        const idsDigitais = [];
+        const idsFisicos = [];
+
+        // 2. Separa o joio do trigo
+        favoritos.forEach(fav => {
+            if (fav.item_id) idsDigitais.push(fav.item_id);
+            if (fav.id_legado) idsFisicos.push(fav.id_legado);
+        });
+
+        // 3. Busca os dados Digitais (Se houver)
+        let digitais = [];
+        if (idsDigitais.length > 0) {
+            // Mesma query de antes para digitais
+            const sqlDigital = `
+                SELECT i.item_id, s.submissao_id, s.titulo_proposto AS titulo, 'DIGITAL' as origem
+                FROM dg_itens_digitais i
+                JOIN dg_submissoes s ON i.submissao_id = s.submissao_id
+                WHERE i.item_id IN (?)
+            `;
+            const [rowsDig] = await pool.query(sqlDigital, [idsDigitais]);
+            digitais = rowsDig;
+        }
+
+        // 4. Busca os dados Físicos (Se houver)
+        let fisicos = [];
+        if (idsFisicos.length > 0) {
+            fisicos = await acervoLegadoService.buscarPorListaIds(idsFisicos);
+        }
+
+        // 5. Formata para o padrão unificado do front
+        const digitaisFormatados = digitais.map(d => ({
+            id_favorito: d.item_id, // ID para remover depois
+            id_visualizacao: d.submissao_id, // ID para o link
+            titulo: d.titulo,
+            tipo: 'DIGITAL'
+        }));
+
+        const fisicosFormatados = fisicos.map(f => ({
+            id_favorito: `LEGACY_${f.id_legado}`, // ID com prefixo
+            id_visualizacao: `LEGACY_${f.id_legado}`, // Link também usa prefixo
+            titulo: f.titulo,
+            autor: f.autor,
+            tipo: 'FISICO'
+        }));
+
+        // 6. Retorna tudo misturado
+        return [...fisicosFormatados, ...digitaisFormatados];
+
       } catch (error) {
-        console.error('Erro ao listar detalhes dos favoritos no service:', error);
+        console.error('Erro ao listar detalhes mistos:', error);
         throw error;
       }
     }
 
-} // <-- FIM DA CLASSE 'FavoritoService'
+}
 
-// Exportamos uma instância da classe (como estava no seu original)
 module.exports = new FavoritoService();

@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './MyEditModal.module.css';
 import { TIPOS, FIELDS_BY_TYPE } from './formConstants.js';
-import { FaPaperclip, FaTimes } from 'react-icons/fa'; // NOVO: Ícones
+import { FaPaperclip, FaTimes, FaCalendarAlt, FaClock } from 'react-icons/fa'; // NOVO: Ícones
 
 const API_URL = 'http://localhost:4000';
 
@@ -14,6 +14,9 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
   const [isUploading, setIsUploading] = useState(false);
 
   const fields = useMemo(() => FIELDS_BY_TYPE[tipo], [tipo]);
+
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
 
   useEffect(() => {
     const prevOverflow = document.documentElement.style.overflow;
@@ -85,6 +88,16 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
       return;
     }
 
+    if (isScheduled && !scheduleDate) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Data Obrigatória',
+        text: 'Para agendar, você deve selecionar uma data e hora.',
+        confirmButtonColor: '#b20000',
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     const uploadData = new FormData();
@@ -95,6 +108,18 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
       if (formData[key]) {
         uploadData.append(key, formData[key]);
       }
+    }
+
+    if (isScheduled) {
+      uploadData.append('status', 'agendado');
+      
+      // ⚠️ CORREÇÃO: Envie a string direta do input (ex: "2025-11-22T14:43")
+      // NÃO use new Date() aqui.
+      uploadData.append('data_publicacao', scheduleDate); 
+    } else {
+      uploadData.append('status', 'publicado');
+      // Se for publicado agora, o backend pode usar NOW(), 
+      // ou você pode enviar a data atual aqui: new Date().toISOString()
     }
 
     const UPLOAD_URL = `${API_URL}/api/admin/publicar-direto`;
@@ -221,6 +246,67 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
                 )}
               </div>
             ))}
+
+          {/* ======================================================= */}
+            {/* NOVA ÁREA: AGENDAMENTO DA PUBLICAÇÃO                   */}
+            {/* ======================================================= */}
+            <div className={styles.formGroup} style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Opções de Publicação
+              </label>
+              
+              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="agendamento"
+                    checked={!isScheduled}
+                    onChange={() => setIsScheduled(false)}
+                    disabled={isUploading}
+                  />
+                  <FaClock /> Publicar Agora
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="agendamento"
+                    checked={isScheduled}
+                    onChange={() => setIsScheduled(true)}
+                    disabled={isUploading}
+                  />
+                  <FaCalendarAlt /> Agendar
+                </label>
+              </div>
+
+              {isScheduled && (
+                <div className={styles.fadeIn}> {/* Assumindo que você possa ter uma classe de animação, senão pode remover */}
+                  <label htmlFor="scheduleDate" style={{ fontSize: '0.9rem', color: '#666' }}>
+                    Escolha a data e hora da publicação:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="scheduleDate"
+                    className={styles.inputDate} // Caso não tenha estilo específico, ele usará o padrão do navegador
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    disabled={isUploading}
+                    required={isScheduled}
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px', 
+                      marginTop: '5px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            {/* ======================================================= */}
+            {/* FIM DA NOVA ÁREA                                       */}
+            {/* ======================================================= */}
+
           </div>
 
           <div className={styles.footer}>

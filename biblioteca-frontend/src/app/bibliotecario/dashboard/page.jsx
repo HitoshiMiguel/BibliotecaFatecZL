@@ -758,7 +758,7 @@ export default function DashboardBibliotecarioPage() {
               <th>Status</th>
               <th>Data da reserva</th>
               <th>Retirada prevista</th>
-              <th>Devolução prevista</th> {/* NOVO */}
+              <th>Devolução prevista</th>
               <th>Ações</th>
             </tr>
           </thead>

@@ -1,37 +1,42 @@
-// src/routes/reservasRoutes.js
 const express = require('express');
 const router = express.Router();
 
+// Importa o Controller
 const reservasController = require('../controller/reservasController');
-const {
-  isAuthenticated,
-  isAdminOrBibliotecario,
-} = require('../middlewares/authMiddleware');
 
-// Usuário logado cria reserva e vê as dele
-router.post('/', isAuthenticated, reservasController.criarReserva);
+// Importa o Middleware correto (Desestruturando para pegar a função 'isAuthenticated')
+const { isAuthenticated } = require('../middlewares/authMiddleware');
+
+/**
+ * ============================================================
+ * ROTAS DE RESERVAS
+ * ============================================================
+ */
+
+// 1. Rota para buscar livro atual (NOVA)
+router.get('/usuario/atual', isAuthenticated, reservasController.getEmprestimoAtivo);
+
+// 2. Listar minhas reservas
 router.get('/minhas', isAuthenticated, reservasController.listarMinhasReservas);
 
-// Bibliotecário/Admin gerencia reservas
-router.get(
-  '/admin',
-  isAuthenticated,
-  isAdminOrBibliotecario,
-  reservasController.listarTodasReservas
-);
+// 3. Criar nova reserva
+router.post('/', isAuthenticated, reservasController.criarReserva);
 
-router.post(
-  '/admin/:id/atender',
-  isAuthenticated,
-  isAdminOrBibliotecario,
-  reservasController.atenderReserva
-);
+/**
+ * ============================================================
+ * ROTAS DE ADMIN / BIBLIOTECÁRIO
+ * (Se precisar proteger com isAdmin ou isAdminOrBibliotecario,
+ * importe e use aqui também)
+ * ============================================================
+ */
 
-router.post(
-  '/admin/:id/cancelar',
-  isAuthenticated,
-  isAdminOrBibliotecario,
-  reservasController.cancelarReserva
-);
+// Listar todas (Admin)
+router.get('/', isAuthenticated, reservasController.listarTodasReservas);
+
+// Atender reserva
+router.patch('/:id/atender', isAuthenticated, reservasController.atenderReserva);
+
+// Cancelar reserva
+router.patch('/:id/cancelar', isAuthenticated, reservasController.cancelarReserva);
 
 module.exports = router;

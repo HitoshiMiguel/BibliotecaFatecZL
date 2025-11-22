@@ -38,6 +38,7 @@ async function buscarAprovadas({ q = '', tipo = null, limit = 50, offset = 0 }) 
     FROM dg_submissoes s 
     LEFT JOIN dg_itens_digitais i ON s.submissao_id = i.submissao_id 
     WHERE s.status = 'aprovado'
+    AND i.status = 'publicado'
   `;
 
   if (q) {
@@ -173,7 +174,9 @@ async function buscarAprovadaPorId(id) {
       'DIGITAL' as origem
     FROM dg_submissoes s
     LEFT JOIN dg_itens_digitais i ON s.submissao_id = i.submissao_id
-    WHERE s.submissao_id = ? AND s.status = 'aprovado'
+    WHERE s.submissao_id = ? 
+    AND s.status = 'aprovado'   -- A submissão foi aprovada pelo admin
+    AND i.status = 'publicado'  -- O item já venceu o agendamento (SEGURANÇA AQUI)
     `,
     [id]
   );

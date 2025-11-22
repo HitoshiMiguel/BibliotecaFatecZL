@@ -26,6 +26,7 @@ const favoritoRoutes = require('./src/routes/FavoritoRoutes');
 // --- Caminhos que já estavam corretos ---
 const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const { isAuthenticated } = require('./src/middlewares/authMiddleware');
+const iniciarAgendador = require('./src/services/cronScheduler');
 
 const app = express();
 
@@ -93,4 +94,6 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 API da Biblioteca rodando na porta ${PORT}`);
+
+  iniciarAgendador();
 });

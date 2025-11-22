@@ -103,61 +103,55 @@ export default function ConsultaClient() {
   // ============================================================
   // [MODIFICADO] 4️⃣ Toggle de favorito (AGORA COM API)
   // ============================================================
-  const handleToggleFavorito = async (itemId) => {
-    setErro(''); // Limpa erros antigos
+  const handleToggleFavorito = async (idAlvo) => {
+    if (!idAlvo) return; // Segurança
 
-    // 2. Define o estado de loading para este item específico
-    setLoadingFavoritoId(itemId);
+    setErro(''); 
+    setLoadingFavoritoId(idAlvo);
 
-    const isFavorito = favoritos.includes(itemId);
+    const isFavorito = favoritos.includes(idAlvo);
     
-    // 3. Define a URL e o Método (DELETE ou POST)
+    // Se já é favorito, DELETE. Se não, POST.
     const url = isFavorito
-      ? `${API}/api/favoritos/${itemId}` // Rota DELETE
-      : `${API}/api/favoritos`; // Rota POST
+      ? `${API}/api/favoritos/${idAlvo}`
+      : `${API}/api/favoritos`;
 
     const method = isFavorito ? 'DELETE' : 'POST';
 
     try {
       const res = await fetch(url, {
         method: method,
-        credentials: 'include', // Envia cookies para autenticação
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Envia o 'itemId' no body APENAS se for POST
-        body: isFavorito ? null : JSON.stringify({ itemId: itemId }),
+        // Se for POST, enviamos o ID no corpo
+        body: isFavorito ? null : JSON.stringify({ itemId: idAlvo }),
       });
 
       if (!res.ok) {
         if (res.status === 401) {
-          setErro('Você precisa estar logado para favoritar itens.');
+          alert('Você precisa estar logado para favoritar itens.');
           return;
         }
-
         const errData = await res.json();
-        throw new Error(
-          errData.message || 'Falha ao salvar favorito. Tente novamente.'
-        );
+        throw new Error(errData.message || 'Erro ao atualizar favorito.');
       }
 
-      // 4. Sucesso! Atualiza o estado local do React
+      // Atualiza estado local
       if (isFavorito) {
-        // Remove o ID da lista
-        setFavoritos((prev) => prev.filter((id) => id !== itemId));
+        setFavoritos((prev) => prev.filter((id) => id !== idAlvo));
       } else {
-        // Adiciona o ID na lista
-        setFavoritos((prev) => [...prev, itemId]);
+        setFavoritos((prev) => [...prev, idAlvo]);
       }
 
     } catch (err) {
       console.error(err);
-      setErro(err.message); // Mostra o erro para o usuário
+      setErro(err.message);
     } finally {
-      // 5. Para o loading, independente de sucesso ou falha
       setLoadingFavoritoId(null);
     }
-  };
+  }
 
   return (
     <main className={styles.pageContainer}>
@@ -211,59 +205,50 @@ export default function ConsultaClient() {
            Lista de resultados
            ============================================================ */}
       {items.length > 0 && (
-        <ul className={styles.resultList} role="list">
+        <ul className={styles.resultList}>
           {items.map((it) => {
-            const isFavorito = favoritos.includes(it.item_id);
-            // [NOVO] Verifica se este é o coração que está carregando
-            const isCarregandoFav = loadingFavoritoId === it.item_id;
+            // --- LÓGICA CRÍTICA ---
+            // Se origem for FISICO, o ID é 'submissao_id'. 
+            // Se for DIGITAL, o ID é 'item_id'.
+            const idParaFavoritar = it.origem === 'FISICO' ? it.submissao_id : it.item_id;
+
+            const isFavorito = favoritos.includes(idParaFavoritar);
+            const isCarregandoFav = loadingFavoritoId === idParaFavoritar;
 
             return (
               <li key={it.submissao_id} className={styles.resultItem}>
-                <Link
-                  href={`/consulta/${it.submissao_id}`}
-                  className={styles.resultLink}
-                >
-                  <h3 className={styles.resultTitle}>
-                    {it.titulo_proposto}
-                  </h3>
+                <Link href={`/consulta/${it.submissao_id}`} className={styles.resultLink}>
+                  <h3 className={styles.resultTitle}>{it.titulo_proposto}</h3>
                   <p className={styles.resultMeta}>
                     {it.autor ? `${it.autor}. ` : ''}
                     {it.editora ? `${it.editora}, ` : ''}
-                    {it.ano_publicacao || it.ano_defesa
-                      ? it.ano_publicacao || it.ano_defesa
-                      : 's/d'}
-                    .
+                    {it.ano_publicacao || it.ano_defesa || 's/d'}.
+                    
+                    {/* Badge visual opcional para identificar itens físicos */}
+                    {it.origem === 'FISICO' && (
+                        <span style={{ marginLeft: '8px', fontSize: '0.8em', color: '#666', border: '1px solid #ccc', padding: '0 4px', borderRadius: '4px'}}>
+                            Físico
+                        </span>
+                    )}
                   </p>
                 </Link>
 
-                {/* [MODIFICADO] Botão de Favorito */}
                 <button
                   onClick={(e) => {
-                    e.preventDefault(); // não navegar ao clicar no coração
-                    if (!isCarregandoFav) { // Evita clique duplo
-                      handleToggleFavorito(it.item_id);
+                    e.preventDefault();
+                    if (!isCarregandoFav) {
+                      // Passamos o ID correto (Físico ou Digital)
+                      handleToggleFavorito(idParaFavoritar);
                     }
                   }}
                   className={styles.favoritoButton}
-                  // Desabilita o botão enquanto salva
-                  disabled={isCarregandoFav} 
-                  aria-label={
-                    isFavorito
-                      ? 'Remover dos favoritos'
-                      : 'Adicionar aos favoritos'
-                  }
+                  disabled={isCarregandoFav}
+                  title={isFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
                 >
-                  {/* [MODIFICADO] Mostra um spinner ao carregar */}
                   {isCarregandoFav ? (
                     <CgSpinner size={20} className={styles.spinner} />
                   ) : isFavorito ? (
-                    <FaHeart
-                      size={20}
-                      style={{
-                        color:
-                          'var(--cor-primaria-red, #D93025)',
-                      }}
-                    />
+                    <FaHeart size={20} style={{ color: 'var(--cor-primaria-red, #D93025)' }} />
                   ) : (
                     <FaRegHeart size={20} />
                   )}

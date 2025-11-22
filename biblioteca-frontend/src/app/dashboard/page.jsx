@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import styles from './dashboard.module.css';
 import {
   BsPerson, BsPersonVcard, BsEnvelope, BsBook, BsHourglassSplit,
-  BsBoxArrowRight, BsPencilSquare, BsPersonBadge, BsHeart
+  BsBoxArrowRight, BsPencilSquare, BsPersonBadge, BsHeart, BsCalendarCheck
 } from 'react-icons/bs';
 import Alert from '@/components/Alert';
 import Swal from 'sweetalert2';
@@ -39,6 +39,8 @@ export default function DashboardPage() {
   const [criandoReserva, setCriandoReserva] = useState(false);
   const [erroReserva, setErroReserva] = useState('');
   const [etapaReserva, setEtapaReserva] = useState('data'); // 'data' | 'confirmacao'
+  const [livroEmprestado, setLivroEmprestado] = useState(null);
+  const [isLoadingEmprestimo, setIsLoadingEmprestimo] = useState(true);
 
   // ---- BASE + ENDPOINTS ----
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -54,9 +56,11 @@ export default function DashboardPage() {
   useEffect(() => {
     document.title = 'Meu Painel - Biblioteca Fatec ZL';
 
+    const EMPRESTIMO_URL = `${API_URL}/api/reservas/usuario/atual`;
     const checkAuthAndFetchData = async () => {
       setIsLoading(true);
       setIsLoadingFavoritos(true);
+      setIsLoadingEmprestimo(true); // <--- Inicia loading
       setActionStatus({ message: '', type: '' });
 
       try {
@@ -65,6 +69,8 @@ export default function DashboardPage() {
           credentials: 'include',
           cache: 'no-store',
         });
+
+        
 
         if (!res.ok) {
           // 👉 trata 401 / 403 / 404 como "não autenticado"
@@ -105,6 +111,28 @@ export default function DashboardPage() {
           console.error('Erro ao buscar favoritos:', favErr);
         } finally {
           setIsLoadingFavoritos(false); // [NOVO] Termina o loading (só dos favoritos)
+        }
+
+        try {
+            const resEmp = await fetch(EMPRESTIMO_URL, {
+                method: 'GET',
+                credentials: 'include', // Importante para passar o cookie
+                cache: 'no-store'
+            });
+            
+            if (resEmp.ok) {
+                const dataEmp = await resEmp.json();
+                // O backend retorna { ativo: true, dados: {...} } ou { ativo: false }
+                if (dataEmp.ativo) {
+                    setLivroEmprestado(dataEmp.dados);
+                } else {
+                    setLivroEmprestado(null);
+                }
+            }
+        } catch (errorEmp) {
+            console.warn("Erro ao buscar empréstimo:", errorEmp);
+        } finally {
+            setIsLoadingEmprestimo(false);
         }
 
       } catch (err) {
@@ -298,9 +326,61 @@ export default function DashboardPage() {
             </div>
             {/* --- Fim do Bloco de Favoritos --- */}
 
+            {/* --- BLOCO DE STATUS ATUAL (PADRONIZADO) --- */}
             <div className={styles.detailItem}>
-              <span className={styles.detailLabel}><BsBook /> Livro Atual</span>
-              <span className={styles.detailValue}>Nenhum livro emprestado</span>
+              <span className={styles.detailLabel}>
+                <BsBook /> Status Atual
+              </span>
+              
+              {/* A mágica é colocar tudo DENTRO desta div com a classe detailValue */}
+              <div 
+                className={styles.detailValue} 
+                style={{ display: 'flex', flexDirection: 'column', gap: '5px', justifyContent: 'center' }}
+              >
+                {isLoadingEmprestimo ? (
+                   <span style={{ color: '#666', fontSize: '0.9rem' }}>Verificando...</span>
+                ) : livroEmprestado ? (
+                  <>
+                    {/* 1. Título do Livro */}
+                    <strong style={{ color: '#000', fontSize: '0.95rem' }}>
+                        {livroEmprestado.titulo}
+                    </strong>
+
+                    {/* 2. Status (Texto Colorido em vez de Bloco com Fundo) */}
+                    {livroEmprestado.status === 'ativa' ? (
+                        // STATUS: AGUARDANDO (Laranja Escuro)
+                        <span style={{ 
+                            color: '#c2410c', // Laranja escuro para ler bem no cinza
+                            fontWeight: '600', 
+                            fontSize: '0.9rem',
+                            display: 'flex', alignItems: 'center', gap: '6px' 
+                        }}>
+                            <BsHourglassSplit /> 
+                            Aguardando Retirada
+                            <span style={{ fontWeight: '400', color: '#444', fontSize: '0.85rem' }}>
+                                — até {new Date(livroEmprestado.data_retirada).toLocaleDateString('pt-BR')}
+                            </span>
+                        </span>
+                    ) : (
+                        // STATUS: EMPRESTADO (Verde Escuro)
+                        <span style={{ 
+                            color: '#15803d', // Verde escuro
+                            fontWeight: '600', 
+                            fontSize: '0.9rem',
+                            display: 'flex', alignItems: 'center', gap: '6px' 
+                        }}>
+                            <BsCalendarCheck /> 
+                            Empréstimo Ativo
+                            <span style={{ fontWeight: '400', color: '#444', fontSize: '0.85rem' }}>
+                                — devolver até {new Date(livroEmprestado.data_devolucao).toLocaleDateString('pt-BR')}
+                            </span>
+                        </span>
+                    )}
+                  </>
+                ) : (
+                  <span style={{ color: '#555' }}>Nenhuma pendência no momento.</span>
+                )}
+              </div>
             </div>
 
             <div className={styles.detailItem}>

@@ -75,6 +75,44 @@ const listarMinhasReservas = async (req, res) => {
 
 /**
  * ============================================================
+ * [NOVO] GET /api/reservas/usuario/atual
+ * Busca se o usuário tem algum livro reservado ou com ele agora
+ * ============================================================
+ */
+const getEmprestimoAtivo = async (req, res) => {
+  try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+
+    // Chama o novo método do service
+    const emprestimo = await reservasService.buscarEmprestimoAtivoPorUsuario(usuarioId);
+
+    if (!emprestimo) {
+      // Ativo: false indica para o frontend mostrar "Nenhum livro"
+      return res.status(200).json({ ativo: false, mensagem: "Nenhum livro pendente." });
+    }
+
+    return res.status(200).json({
+      ativo: true,
+      dados: {
+        titulo: emprestimo.titulo,
+        data_devolucao: emprestimo.data_prevista_devolucao,
+        data_retirada: emprestimo.data_prevista_retirada,
+        status: emprestimo.status // 'ativa' ou 'atendida'
+      }
+    });
+
+  } catch (err) {
+    console.error('[ReservasController] ERRO getEmprestimoAtivo:', err.message);
+    return res.status(500).json({ message: 'Erro ao buscar empréstimo ativo.' });
+  }
+};
+
+/**
+ * ============================================================
  *  A PARTIR DAQUI: ROTAS DO ADMIN/BIBLIOTECÁRIO
  *  (Ainda no mesmo controller por enquanto)
  * ============================================================
@@ -127,6 +165,8 @@ const cancelarReserva = async (req, res) => {
   }
 };
 
+
+
 /**
  * ============================================================
  *  EXPORTAÇÃO FINAL — AGORA SIM COMPLETA
@@ -138,4 +178,5 @@ module.exports = {
   listarTodasReservas,
   atenderReserva,
   cancelarReserva,
+  getEmprestimoAtivo,
 };

@@ -20,20 +20,21 @@
 }
 
 /* Card branco do modal */
+/* Procure a classe .modalBox e ATUALIZE para isso: */
 .modalBox {
   background: #ffffff;
-  border-radius: 8px;          /* mesmo padrão do resto do site */
-  border: 1px solid #555;      /* igual aos cards de dashboard/upload */
+  border-radius: 8px;
+  border: 1px solid #555;
   width: 100%;
-  max-width: 980px;            /* mesma largura do card de upload */
+  max-width: 980px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
 
-  display: flex;
-  flex-direction: column;
-
-  /* garante que o card nunca passe da viewport:
-     24px (padding top da overlay) + 24px (bottom) = 48px */
-  max-height: calc(100vh - 48px);
+  /* CORREÇÃO CRÍTICA AQUI: */
+  display: flex;            /* Faz com que o Header, Body e Footer se comportem como blocos flexíveis */
+  flex-direction: column;   /* Um embaixo do outro */
+  max-height: 90vh;         /* Limita a altura a 90% da tela (antes estava calc complexo) */
+  height: auto;             /* Altura automática, mas respeitando o max-height */
+  overflow: hidden;         /* Garante que o scroll seja interno, não externo */
 }
 
 /* Cabeçalho do modal */
@@ -87,7 +88,11 @@
 /* Corpo do modal: rola por dentro do card */
 .body {
   padding: 20px 24px;
-  overflow-y: auto;                 /* scroll interno */
+  
+  /* CORREÇÃO CRÍTICA AQUI: */
+  overflow-y: auto;         /* Cria o scroll SE necessário */
+  flex: 1;                  /* Ocupa todo o espaço disponível entre Header e Footer */
+  
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -194,6 +199,14 @@
 .btnAprovarModal:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Adicione isso no final do seu CSS */
+.modalBox > form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;       /* Ocupa 100% da altura do card */
+  overflow: hidden;   /* Previne scroll duplo */
 }
 
 /* Responsivo */

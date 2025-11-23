@@ -22,6 +22,10 @@ router.get('/minhas', isAuthenticated, reservasController.listarMinhasReservas);
 // 3. Criar nova reserva
 router.post('/', isAuthenticated, reservasController.criarReserva);
 
+// rota de renovação (usuário proprietário renova seu empréstimo)
+router.post('/:id/renovar', isAuthenticated, reservasController.renovarReserva);
+
+
 /**
  * ============================================================
  * ROTAS DE ADMIN / BIBLIOTECÁRIO

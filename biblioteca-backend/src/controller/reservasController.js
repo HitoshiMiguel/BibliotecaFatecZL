@@ -165,6 +165,31 @@ const cancelarReserva = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/reservas/:id/renovar
+ * Usuário solicita renovação de sua reserva/empréstimo.
+ */
+const renovarReserva = async (req, res) => {
+  try {
+    const usuarioId = req.user?.id;
+    const { id } = req.params;
+
+    if (!usuarioId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+    const resultado = await reservasService.renovarReserva(Number(id), usuarioId);
+
+    return res.status(200).json({
+      message: 'Renovação efetuada com sucesso.',
+      novaDataDevolucao: resultado.novaDataDevolucao,
+      renovacoes: resultado.renovacoes
+    });
+  } catch (err) {
+    console.error('[ReservasController] ERRO renovarReserva:', err);
+    const status = err.statusCode || 500;
+    return res.status(status).json({ message: err.message || 'Falha ao renovar reserva.' });
+  }
+};
+
 
 
 /**
@@ -179,4 +204,5 @@ module.exports = {
   atenderReserva,
   cancelarReserva,
   getEmprestimoAtivo,
+  renovarReserva, // <-- adicionado
 };

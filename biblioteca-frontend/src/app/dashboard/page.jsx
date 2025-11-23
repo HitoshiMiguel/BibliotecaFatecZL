@@ -1,5 +1,4 @@
 // app/dashboard/page.jsx
-
 'use client';
 export const dynamic = 'force-dynamic';
 
@@ -34,33 +33,64 @@ export default function DashboardPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [reservaModalAberto, setReservaModalAberto] = useState(false);
-  const [dataRetirada, setDataRetirada] = useState('');
-  const [criandoReserva, setCriandoReserva] = useState(false);
-  const [erroReserva, setErroReserva] = useState('');
-  const [etapaReserva, setEtapaReserva] = useState('data'); // 'data' | 'confirmacao'
-  const [livroEmprestado, setLivroEmprestado] = useState(null);
-  const [isLoadingEmprestimo, setIsLoadingEmprestimo] = useState(true);
+  // reserva local UI
+  const [activeTab, setActiveTab] = useState('dados'); // 'dados' | 'favoritos' | 'reservas'
+
+  const [reservas, setReservas] = useState([]);
+  const [isLoadingReservas, setIsLoadingReservas] = useState(false);
+  const [reservasFilter, setReservasFilter] = useState('ativas'); // 'ativas' | 'finalizadas' | 'todas'
+  const [selectedReserva, setSelectedReserva] = useState(null);
+  const [isReservaModalOpen, setIsReservaModalOpen] = useState(false);
+  const [processingReservaId, setProcessingReservaId] = useState(null);
 
   // ---- BASE + ENDPOINTS ----
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`; // usa a sua rota original
-  const LOGOUT_URL     = `${API_URL}/api/auth/logout`;
+  const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
   const PROFILE_URL    = `${API_URL}/api/auth/profile`;
-  const FAVORITOS_URL  = `${API_URL}/api/favoritos/detalhes`;
+  // important: use the same endpoint the consultaClient uses
+  const FAVORITOS_URL  = `${API_URL}/api/favoritos`;
+  const MINHAS_RESERVAS_URL = `${API_URL}/api/reservas/minhas`;
+  const FAVORITOS_API = `${API_URL}/api/favoritos`;
 
   // ---- LOGOUT DO MENU LATERAL
   const { logout } = useGlobalMenu();
 
-  // Guard + fetch do usuário logado (via cookie httpOnly)
+  // ----------------- Helpers de data (corrige problema de timezone) -----------------
+  const parseDateOnly = (v) => {
+    if (!v) return null;
+    if (v instanceof Date) return v;
+    const s = String(v).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      const y = Number(m[1]);
+      const mm = Number(m[2]) - 1;
+      const d = Number(m[3]);
+      return new Date(y, mm, d);
+    }
+    const dobj = new Date(s);
+    if (isNaN(dobj.getTime())) return null;
+    return dobj;
+  };
+
+  const formatDate = (d) => {
+    if (!d) return '-';
+    try {
+      const dt = parseDateOnly(d);
+      if (!dt) return '-';
+      return dt.toLocaleDateString('pt-BR');
+    } catch {
+      return '-';
+    }
+  };
+
+  // ----------------- Fetch inicial / guard -----------------
   useEffect(() => {
     document.title = 'Meu Painel - Biblioteca Fatec ZL';
 
-    const EMPRESTIMO_URL = `${API_URL}/api/reservas/usuario/atual`;
     const checkAuthAndFetchData = async () => {
       setIsLoading(true);
       setIsLoadingFavoritos(true);
-      setIsLoadingEmprestimo(true); // <--- Inicia loading
+      setIsLoadingReservas(false);
       setActionStatus({ message: '', type: '' });
 
       try {
@@ -70,18 +100,11 @@ export default function DashboardPage() {
           cache: 'no-store',
         });
 
-        
-
         if (!res.ok) {
-          // 👉 trata 401 / 403 / 404 como "não autenticado"
           if (res.status === 401 || res.status === 403 || res.status === 404) {
-            console.warn('Usuário não autenticado ou rota não encontrada, redirecionando para login...');
             router.replace('/login');
             return;
           }
-
-          // outros erros: só mostra mensagem, sem "throw"
-          console.error(`Falha ao buscar dados: ${res.status}`);
           setActionStatus({
             message: `Erro ao carregar dados do usuário (código ${res.status}).`,
             type: 'error',
@@ -93,47 +116,19 @@ export default function DashboardPage() {
         setUser(data);
         setProfileFormData({ nome: data.nome, email: data.email });
 
-        try {
-          const resFav = await fetch(FAVORITOS_URL, {
-            method: 'GET',
-            credentials: 'include', // Essencial para enviar o cookie de auth
-            cache: 'no-store',
-          });
-          
-          if (resFav.ok) {
-            const dataFav = await resFav.json(); // Ex: [1, 5, 22]
-            setfavoritosDetalhados(dataFav);
-          } else {
-            // Não quebra a página se favoritos falhar, apenas avisa no console
-            console.warn(`Falha ao carregar favoritos: ${resFav.status}`);
+        // favoritos (carrega com a mesma rota que consultaClient usa)
+        (async () => {
+          try {
+            await fetchFavoritosDetalhados();
+          } catch (favErr) {
+            console.error('Erro ao buscar favoritos:', favErr);
+          } finally {
+            setIsLoadingFavoritos(false);
           }
-        } catch (favErr) {
-          console.error('Erro ao buscar favoritos:', favErr);
-        } finally {
-          setIsLoadingFavoritos(false); // [NOVO] Termina o loading (só dos favoritos)
-        }
+        })();
 
-        try {
-            const resEmp = await fetch(EMPRESTIMO_URL, {
-                method: 'GET',
-                credentials: 'include', // Importante para passar o cookie
-                cache: 'no-store'
-            });
-            
-            if (resEmp.ok) {
-                const dataEmp = await resEmp.json();
-                // O backend retorna { ativo: true, dados: {...} } ou { ativo: false }
-                if (dataEmp.ativo) {
-                    setLivroEmprestado(dataEmp.dados);
-                } else {
-                    setLivroEmprestado(null);
-                }
-            }
-        } catch (errorEmp) {
-            console.warn("Erro ao buscar empréstimo:", errorEmp);
-        } finally {
-            setIsLoadingEmprestimo(false);
-        }
+        // reservas (pré-carrega)
+        await carregarReservas();
 
       } catch (err) {
         console.error('Falha na autenticação/fetch:', err);
@@ -143,25 +138,50 @@ export default function DashboardPage() {
         });
         setTimeout(() => router.replace('/login'), 1500);
       } finally {
-        setIsLoading(false); // Termina o loading principal (usuário)
+        setIsLoading(false);
       }
     };
 
     checkAuthAndFetchData();
-
-    // evita “back cache” reexibindo sem checar
-    const handlePageShow = (e) => { 
-      if (e.persisted) window.location.reload(); 
-    };
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, AUTH_CHECK_URL, FAVORITOS_URL]);
+
+  // Fetch das reservas do usuário
+  const carregarReservas = async () => {
+    setIsLoadingReservas(true);
+    try {
+      const res = await fetch(MINHAS_RESERVAS_URL, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      if (!res.ok) {
+        console.warn('Falha ao obter reservas:', res.status);
+        setReservas([]);
+        return;
+      }
+
+      const data = await res.json();
+      const normalized = (data || []).map(r => ({
+        ...r,
+        data_reserva: parseDateOnly(r.data_reserva),
+        data_atendimento: parseDateOnly(r.data_atendimento),
+        data_prevista_retirada: parseDateOnly(r.data_prevista_retirada),
+        data_prevista_devolucao: parseDateOnly(r.data_prevista_devolucao),
+      }));
+      setReservas(normalized);
+    } catch (err) {
+      console.error('Erro ao carregar reservas:', err);
+      setReservas([]);
+    } finally {
+      setIsLoadingReservas(false);
+    }
+  };
 
   // Logout
   const handleLogout = async () => {
-    
     await logout();
-
     router.replace('/login');
   };
 
@@ -186,22 +206,12 @@ export default function DashboardPage() {
     setActionStatus({ message: '', type: '' });
 
     if (!formData.nome || formData.nome.trim().length < 2) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: 'Nome inválido (mínimo 2 caracteres).',
-        confirmButtonColor: '#b20000'
-      });
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Nome inválido (mínimo 2 caracteres).', confirmButtonColor: '#b20000' });
       setIsUpdating(false);
       return;
     }
     if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Erro',
-        text: 'Formato de e-mail inválido.',
-        confirmButtonColor: '#b20000'
-      });
+      Swal.fire({ icon: 'error', title: 'Erro', text: 'Formato de e-mail inválido.', confirmButtonColor: '#b20000' });
       setIsUpdating(false);
       return;
     }
@@ -222,30 +232,301 @@ export default function DashboardPage() {
       if (res.ok) {
         setUser(data.user || { ...user, ...formData });
         handleModalClose();
-        Swal.fire({
-          icon: 'success',
-          title: 'Sucesso!',
-          text: 'Perfil atualizado com sucesso!',
-          confirmButtonColor: '#28a745'
-        });
+        Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Perfil atualizado com sucesso!', confirmButtonColor: '#28a745' });
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Erro!',
-          text: data.message || 'Não foi possível atualizar o perfil.',
-          confirmButtonColor: '#b20000'
-        });
+        Swal.fire({ icon: 'error', title: 'Erro!', text: data.message || 'Não foi possível atualizar o perfil.', confirmButtonColor: '#b20000' });
       }
     } catch (err) {
       console.error('Erro ao atualizar perfil:', err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Erro de Rede',
-        text: 'Não foi possível conectar ao servidor.',
-        confirmButtonColor: '#b20000'
-      });
+      Swal.fire({ icon: 'error', title: 'Erro de Rede', text: 'Não foi possível conectar ao servidor.', confirmButtonColor: '#b20000' });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  // ----------------- Favoritos: toggle (adicionar/remover) -----------------
+  // Copiado da lógica do consultaClient (aceita id puro ou objeto)
+  const handleToggleFavorito = async (itemOrId) => {
+    const maybeObj = itemOrId && typeof itemOrId === 'object' ? itemOrId : null;
+    const idAlvo =
+      maybeObj?.submissao_id ??
+      maybeObj?.submissaoId ??
+      maybeObj?.item_id ??
+      maybeObj?.itemId ??
+      (typeof itemOrId === 'string' || typeof itemOrId === 'number' ? String(itemOrId) : null);
+
+    if (!idAlvo) {
+      Swal.fire('Erro', 'ID do item indefinido. Não foi possível atualizar favorito.', 'error');
+      return;
+    }
+
+    // Verifica se esse ID está entre os favoritos carregados (compara submissao_id ou item_id)
+    const existe = favoritosDetalhados.some(f => String(f.submissao_id) === String(idAlvo) || String(f.item_id) === String(idAlvo));
+
+    const url = existe ? `${FAVORITOS_API}/${encodeURIComponent(idAlvo)}` : `${FAVORITOS_API}`;
+    const method = existe ? 'DELETE' : 'POST';
+
+    try {
+      setIsLoadingFavoritos(true);
+
+      const res = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify({ itemId: idAlvo }) : null,
+      });
+
+      // fallback: às vezes o backend implementa delete via body
+      if (res.status === 404 && existe) {
+        const res2 = await fetch(`${FAVORITOS_API}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: idAlvo }),
+        });
+        if (!res2.ok) throw new Error((await res2.json()).message || `Falha ao remover favorito (${res2.status})`);
+        await fetchFavoritosDetalhados();
+        Swal.fire('Removido', 'Favorito removido com sucesso.', 'success');
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `Erro ao atualizar favorito (${res.status})`);
+      }
+
+      // recarrega pra garantir consistência
+      await fetchFavoritosDetalhados();
+      Swal.fire(existe ? 'Removido' : 'Adicionado', existe ? 'Favorito removido.' : 'Favorito adicionado.', 'success');
+    } catch (err) {
+      console.error('Erro Favorito:', err);
+      Swal.fire('Erro', err.message || 'Erro ao atualizar favorito.', 'error');
+    } finally {
+      setIsLoadingFavoritos(false);
+    }
+  };
+
+  // helper: recarrega favoritos do backend (comporta arrays de IDs ou arrays de objetos)
+  // substitua a função fetchFavoritosDetalhados atual por esta
+const fetchFavoritosDetalhados = async () => {
+  try {
+    setIsLoadingFavoritos(true);
+    const resFav = await fetch(FAVORITOS_URL, {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+
+    if (!resFav.ok) {
+      console.warn('Falha carregando favoritos:', resFav.status);
+      setfavoritosDetalhados([]);
+      return;
+    }
+
+    const dataFav = await resFav.json();
+
+    // Normaliza rapidamente: transforma cada entrada em objeto com submissao_id/item_id quando possível
+    let normalized = (dataFav || []).map((f, i) => {
+      if (typeof f === 'string' || typeof f === 'number') {
+        return { submissao_id: String(f), _needsFetch: true };
+      }
+      // já é um objeto
+      return {
+        item_id: f.item_id ?? f.itemId ?? f.id ?? null,
+        submissao_id: f.submissao_id ?? f.submissaoId ?? null,
+        titulo_proposto: f.titulo_proposto ?? f.titulo ?? f.title ?? null,
+        autor: f.autor ?? f.author ?? '',
+        editora: f.editora ?? f.publisher ?? '',
+        origem: f.origem ?? (f.submissao_id ? 'FISICO' : 'DIGITAL'),
+        _raw: f,
+      };
+    });
+
+    // Para os que precisam, buscar detalhes via /api/publicacoes/:id
+    const toFetch = normalized.filter(n => n._needsFetch || (!n.titulo_proposto && !n.titulo && (n.submissao_id || n.item_id)));
+    if (toFetch.length > 0) {
+      // monta promises — usa submissao_id preferencialmente, se não item_id
+      const detailPromises = toFetch.map(async (entry) => {
+        const id = entry.submissao_id ?? entry.item_id;
+        if (!id) return entry;
+        try {
+          const resp = await fetch(`${API_URL}/api/publicacoes/${encodeURIComponent(id)}`, {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (!resp.ok) {
+            // se não encontrou, retorna o entry original sem quebrar tudo
+            return { ...entry };
+          }
+          const body = await resp.json();
+          const pub = body?.item ?? body?.publicacao ?? body; // adapta formatos diferentes
+          return {
+            ...entry,
+            titulo_proposto: entry.titulo_proposto ?? pub?.titulo_proposto ?? pub?.titulo ?? pub?.title ?? pub?.titulo_proposto ?? null,
+            titulo: entry.titulo ?? pub?.titulo ?? pub?.title ?? null,
+            autor: entry.autor ?? pub?.autor ?? pub?.author ?? '',
+            editora: entry.editora ?? pub?.editora ?? pub?.publisher ?? '',
+            origem: entry.origem ?? (pub?.origem ?? (entry.submissao_id ? 'FISICO' : 'DIGITAL')),
+            _raw: entry._raw ?? pub,
+          };
+        } catch (err) {
+          console.warn('Erro ao buscar detalhe de publicação', id, err);
+          return { ...entry };
+        }
+      });
+
+      const fetched = await Promise.all(detailPromises);
+
+      // mescla fetched de volta em `normalized` (match por submissao_id/item_id)
+      const fetchedMap = {};
+      fetched.forEach(f => {
+        const key = String(f.submissao_id ?? f.item_id ?? '');
+        if (key) fetchedMap[key] = f;
+      });
+
+      normalized = normalized.map(n => {
+        const key = String(n.submissao_id ?? n.item_id ?? '');
+        if (key && fetchedMap[key]) {
+          return { ...n, ...fetchedMap[key] };
+        }
+        return n;
+      });
+    }
+
+    // garante campos mínimos e títulos amigáveis
+    const final = normalized.map((f, i) => ({
+      item_id: f.item_id ?? f._raw?.item_id ?? null,
+      submissao_id: f.submissao_id ?? f._raw?.submissao_id ?? null,
+      titulo_proposto: f.titulo_proposto ?? f.titulo ?? f._raw?.titulo ?? f._raw?.title ?? 'Sem título',
+      titulo: f.titulo ?? f.titulo_proposto ?? f._raw?.titulo ?? f._raw?.title ?? null,
+      autor: f.autor ?? f._raw?.autor ?? '',
+      editora: f.editora ?? f._raw?.editora ?? '',
+      origem: f.origem ?? (f.submissao_id ? 'FISICO' : 'DIGITAL'),
+      _raw: f._raw ?? f,
+    }));
+
+    setfavoritosDetalhados(final);
+  } catch (err) {
+    console.error('Erro ao buscar favoritos:', err);
+    setfavoritosDetalhados([]);
+  } finally {
+    setIsLoadingFavoritos(false);
+  }
+};
+
+
+  // Filtra as reservas conforme seleção
+  const reservasFiltradas = reservas.filter(r => {
+    if (reservasFilter === 'todas') return true;
+    if (reservasFilter === 'ativas') {
+      const st = String(r.status || '').toLowerCase();
+      return st === 'ativa' || st === 'atendida';
+    }
+    if (reservasFilter === 'finalizadas') {
+      const st = String(r.status || '').toLowerCase();
+      return st === 'cancelada' || st === 'concluida';
+    }
+    return true;
+  });
+
+  const isOverdue = (r) => {
+    if (!r.data_prevista_devolucao) return false;
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    const devol = parseDateOnly(r.data_prevista_devolucao);
+    if (!devol) return false;
+    devol.setHours(0,0,0,0);
+    return devol < hoje && (String(r.status).toLowerCase() === 'ativa' || String(r.status).toLowerCase() === 'atendida');
+  };
+
+  // abre modal com detalhes
+  const openReservaDetalhe = (r) => {
+    setSelectedReserva(r);
+    setIsReservaModalOpen(true);
+  };
+
+  // Fecha modal e limpa
+  const closeReservaDetalhe = () => {
+    setSelectedReserva(null);
+    setIsReservaModalOpen(false);
+  };
+
+  // Renova reserva (chama backend)
+  const handleRenovar = async (reserva) => {
+    if (!reserva || !reserva.reserva_id) return;
+    const id = reserva.reserva_id;
+
+    const confirm = await Swal.fire({
+      title: 'Confirmar renovação?',
+      text: 'Deseja renovar esta reserva por mais 7 dias (se permitido)?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, renovar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#28a745'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setProcessingReservaId(id);
+    try {
+      const res = await fetch(`${API_URL}/api/reservas/${id}/renovar`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || 'Falha ao renovar reserva.');
+      }
+
+      const nova = json?.novaDataDevolucao ?? json?.nova_data_devolucao ?? null;
+      Swal.fire('Renovado', `Nova data de devolução: ${formatDate(nova)}`, 'success');
+      await carregarReservas();
+    } catch (err) {
+      console.error('Erro ao renovar:', err);
+      Swal.fire('Erro', err.message || 'Falha ao renovar reserva.', 'error');
+    } finally {
+      setProcessingReservaId(null);
+    }
+  };
+
+  // Cancela reserva (usuário)
+  const handleCancelar = async (reserva) => {
+    if (!reserva || !reserva.reserva_id) return;
+    const id = reserva.reserva_id;
+
+    const conf = await Swal.fire({
+      title: 'Cancelar reserva?',
+      text: 'Deseja realmente cancelar esta reserva?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sim, cancelar',
+      cancelButtonText: 'Não',
+      confirmButtonColor: '#b20000',
+    });
+
+    if (!conf.isConfirmed) return;
+
+    setProcessingReservaId(id);
+    try {
+      const res = await fetch(`${API_URL}/api/reservas/${id}/cancelar`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        Swal.fire('Erro', json?.message || 'Falha ao cancelar reserva.', 'error');
+        return;
+      }
+      Swal.fire('Cancelado', 'Sua reserva foi cancelada.', 'success');
+      await carregarReservas();
+    } catch (err) {
+      console.error('Erro ao cancelar:', err);
+      Swal.fire('Erro', 'Falha ao cancelar reserva.', 'error');
+    } finally {
+      setProcessingReservaId(null);
     }
   };
 
@@ -256,14 +537,8 @@ export default function DashboardPage() {
   if (!user) {
     return (
       <div className={styles.container}>
-        <Alert
-          id="dashboard-error"
-          kind={actionStatus.type || 'error'}
-          message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'}
-        />
-        <button onClick={() => router.replace('/login')} className={styles.button}>
-          Ir para Login
-        </button>
+        <Alert id="dashboard-error" kind={actionStatus.type || 'error'} message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'} />
+        <button onClick={() => router.replace('/login')} className={styles.button}>Ir para Login</button>
       </div>
     );
   }
@@ -271,143 +546,216 @@ export default function DashboardPage() {
   return (
     <>
       <section className="title-section">
-        <h1 className="title-section-heading">Meus Dados</h1>
+        <h1 className="title-section-heading">Meu Painel</h1>
       </section>
 
       <div className={styles.contentWrapper}>
         <div className={styles.dashboardContainer}>
           {actionStatus.message && (
-            // ... (seu Alert de actionStatus) ...
             <div className={styles.actionAlert}>
-              <Alert
-                id="dashboard-status"
-                kind={actionStatus.type}
-                message={actionStatus.message}
-              />
+              <Alert id="dashboard-status" kind={actionStatus.type} message={actionStatus.message} />
             </div>
           )}
 
-          <div className={styles.userDetails}>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}><BsPerson /> Meu Nome</span>
-              <span className={styles.detailValue}>{user.nome}</span>
+          {/* ===== TABS NO TOPO ===== */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className={`${styles.button} ${activeTab === 'dados' ? styles.editButton : ''}`} onClick={() => setActiveTab('dados')}>Dados</button>
+              <button className={`${styles.button} ${activeTab === 'favoritos' ? styles.editButton : ''}`} onClick={() => setActiveTab('favoritos')}>Favoritos</button>
+              <button className={`${styles.button} ${activeTab === 'reservas' ? styles.editButton : ''}`} onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}>Reservas</button>
             </div>
 
-            {user.ra && (
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
-                <span className={styles.detailValue}>{user.ra}</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleLogout} className={styles.logoutButton}><BsBoxArrowRight /> Sair</button>
+            </div>
+          </div>
+
+          {/* ===== CONTEÚDO DAS ABAS ===== */}
+          <div>
+            {/* --- DADOS (APENAS QUANDO ABA 'dados' ATIVA) --- */}
+            {activeTab === 'dados' && (
+              <div style={{ marginBottom: 20 }}>
+                <div className={styles.userDetails}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsPerson /> Meu Nome</span>
+                    <span className={styles.detailValue}>{user.nome}</span>
+                  </div>
+
+                  {user.ra && (
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}><BsPersonVcard /> Meu RA</span>
+                      <span className={styles.detailValue}>{user.ra}</span>
+                    </div>
+                  )}
+
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsEnvelope /> Email</span>
+                    <span className={styles.detailValue}>{user.email}</span>
+                  </div>
+
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsBook /> Status da Conta</span>
+                    <span className={styles.detailValue}>{user.status_conta || 'ativa'}</span>
+                  </div>
+
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
+                    <span className={styles.detailValue}>{user.perfil}</span>
+                  </div>
+
+                  <div className={styles.editButtonWrapper}>
+                    <button onClick={handleEditProfileClick} className={`${styles.button} ${styles.editButton}`}><BsPencilSquare /> Editar Perfil</button>
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}><BsEnvelope /> Email</span>
-              <span className={styles.detailValue}>{user.email}</span>
-            </div>
-
-            {/* --- [NOVO] Bloco de Favoritos --- */}
-            <div 
-              className={`${styles.detailItem} ${styles.clickableItem}`} // Adicione uma classe se quiser estilizar o hover
-              onClick={() => setModalFavoritosAberto(true)}
-              style={{ cursor: 'pointer' }} // Estilo rápido para mostrar que é clicável
-              role="button"
-              tabIndex={0}
-              aria-label="Abrir lista de favoritos"
-              onKeyPress={(e) => (e.key === 'Enter' || e.key === ' ') && setModalFavoritosAberto(true)} // Acessibilidade
-            >
-              <span className={styles.detailLabel}><BsHeart /> Meus Favoritos</span>
-              <span className={styles.detailValue}>
-                {isLoadingFavoritos
-                  ? 'A carregar...'
-                  // [MODIFICADO] Usa o .length da nova lista
-                  : `${favoritosDetalhados.length} item(ns) salvos` 
-                }
-              </span>
-            </div>
-            {/* --- Fim do Bloco de Favoritos --- */}
-
-            {/* --- BLOCO DE STATUS ATUAL (PADRONIZADO) --- */}
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>
-                <BsBook /> Status Atual
-              </span>
-              
-              {/* A mágica é colocar tudo DENTRO desta div com a classe detailValue */}
-              <div 
-                className={styles.detailValue} 
-                style={{ display: 'flex', flexDirection: 'column', gap: '5px', justifyContent: 'center' }}
-              >
-                {isLoadingEmprestimo ? (
-                   <span style={{ color: '#666', fontSize: '0.9rem' }}>Verificando...</span>
-                ) : livroEmprestado ? (
-                  <>
-                    {/* 1. Título do Livro */}
-                    <strong style={{ color: '#000', fontSize: '0.95rem' }}>
-                        {livroEmprestado.titulo}
-                    </strong>
-
-                    {/* 2. Status (Texto Colorido em vez de Bloco com Fundo) */}
-                    {livroEmprestado.status === 'ativa' ? (
-                        // STATUS: AGUARDANDO (Laranja Escuro)
-                        <span style={{ 
-                            color: '#c2410c', // Laranja escuro para ler bem no cinza
-                            fontWeight: '600', 
-                            fontSize: '0.9rem',
-                            display: 'flex', alignItems: 'center', gap: '6px' 
-                        }}>
-                            <BsHourglassSplit /> 
-                            Aguardando Retirada
-                            <span style={{ fontWeight: '400', color: '#444', fontSize: '0.85rem' }}>
-                                — até {new Date(livroEmprestado.data_retirada).toLocaleDateString('pt-BR')}
-                            </span>
-                        </span>
-                    ) : (
-                        // STATUS: EMPRESTADO (Verde Escuro)
-                        <span style={{ 
-                            color: '#15803d', // Verde escuro
-                            fontWeight: '600', 
-                            fontSize: '0.9rem',
-                            display: 'flex', alignItems: 'center', gap: '6px' 
-                        }}>
-                            <BsCalendarCheck /> 
-                            Empréstimo Ativo
-                            <span style={{ fontWeight: '400', color: '#444', fontSize: '0.85rem' }}>
-                                — devolver até {new Date(livroEmprestado.data_devolucao).toLocaleDateString('pt-BR')}
-                            </span>
-                        </span>
-                    )}
-                  </>
+            {/* --- FAVORITOS (APENAS NA ABA 'favoritos') --- */}
+            {activeTab === 'favoritos' && (
+              <div style={{ marginBottom: 20 }}>
+                <h3>Meus Favoritos</h3>
+                {isLoadingFavoritos ? (
+                  <p>Carregando favoritos...</p>
+                ) : favoritosDetalhados.length === 0 ? (
+                  <p>Você não possui favoritos ainda.</p>
                 ) : (
-                  <span style={{ color: '#555' }}>Nenhuma pendência no momento.</span>
+                  <ul style={{ paddingLeft: 0, listStyle: 'none' }}>
+                    {favoritosDetalhados.map((f, i) => {
+                      // determina o ID que a rota /consulta/:id espera (prioriza submissao_id)
+                      const alvoParaConsulta = f.submissao_id ?? f.submissaoId ?? f.item_id ?? f.itemId ?? (f._raw && (f._raw.submissao_id ?? f._raw.id)) ?? null;
+
+                      if (!alvoParaConsulta) {
+                        console.warn('Favorito sem ID detectado (pulando):', f);
+                        return null;
+                      }
+
+                      const fid = f.item_id ?? f.submissao_id ?? f._raw?.id ?? `fav-${i}`;
+
+                      return (
+                        <li key={fid} style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>{f.titulo_proposto || f.titulo || 'Sem título'}</strong>
+                            {f.autor && <span> — {f.autor}</span>}
+                            {f.editora && <div style={{ fontSize: '0.9rem', color:'#666' }}>{f.editora}</div>}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              className={styles.button}
+                              onClick={() => {
+                                if (!alvoParaConsulta) {
+                                  Swal.fire('Erro', 'ID do item indefinido.', 'error');
+                                  return;
+                                }
+                                router.push(`/consulta/${encodeURIComponent(alvoParaConsulta)}`);
+                              }}
+                            >
+                              Ver
+                            </button>
+
+                            <button
+                              className={styles.button}
+                              onClick={() => handleToggleFavorito(alvoParaConsulta)}
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
-            </div>
+            )}
 
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}><BsHourglassSplit /> Status da Conta</span>
-              <span className={styles.detailValue}>{user.status_conta || 'ativa'}</span>
-            </div>
+            {/* --- RESERVAS (APENAS NA ABA 'reservas') --- */}
+            {activeTab === 'reservas' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <label htmlFor="filtro-reservas" style={{ fontWeight: 600 }}>Mostrar:</label>
+                    <select id="filtro-reservas" value={reservasFilter} onChange={(e) => setReservasFilter(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6 }}>
+                      <option value="ativas">Reservas Ativas</option>
+                      <option value="finalizadas">Reservas Finalizadas (Histórico)</option>
+                      <option value="todas">Todas</option>
+                    </select>
+                  </div>
 
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
-              <span className={styles.detailValue}>{user.perfil}</span>
-            </div>
+                  <div>
+                    <button className={styles.button} onClick={carregarReservas}>Atualizar Reservas</button>
+                  </div>
+                </div>
 
-            <div className={styles.editButtonWrapper}>
-              <button
-                onClick={handleEditProfileClick}
-                className={`${styles.button} ${styles.editButton}`}
-              >
-                <BsPencilSquare /> Editar Perfil
-              </button>
-            </div>
+                <div style={{ marginTop: 12 }}>
+                  {isLoadingReservas ? (
+                    <p>Carregando suas reservas...</p>
+                  ) : reservasFiltradas.length === 0 ? (
+                    <p>Nenhuma reserva encontrada para o filtro selecionado.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>
+                            <th style={{ padding: '8px' }}>Título</th>
+                            <th style={{ padding: '8px' }}>Código</th>
+                            <th style={{ padding: '8px' }}>Retirada</th>
+                            <th style={{ padding: '8px' }}>Devolução</th>
+                            <th style={{ padding: '8px' }}>Status</th>
+                            <th style={{ padding: '8px' }}>Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reservasFiltradas.map(r => {
+                            const st = String(r.status || '-').toLowerCase();
+                            const podeRenovar = st === 'atendida'; // só renova quando já atendida (empréstimo ativo)
+                            return (
+                              <tr key={r.reserva_id} style={{ borderBottom: '1px solid #f1f1f1' }}>
+                                <td style={{ padding: '8px', maxWidth: 300 }}>{r.titulo || '-'}</td>
+                                <td style={{ padding: '8px' }}>{r.codigo_barras || '-'}</td>
+                                <td style={{ padding: '8px' }}>{formatDate(r.data_prevista_retirada)}</td>
+                                <td style={{ padding: '8px', color: isOverdue(r) ? '#b20000' : undefined }}>
+                                  {formatDate(r.data_prevista_devolucao)}
+                                  {isOverdue(r) && <span style={{ marginLeft: 8, fontWeight: 700, color: '#b20000' }}> (Atrasada)</span>}
+                                </td>
+                                <td style={{ padding: '8px', textTransform: 'capitalize' }}>{String(r.status || '-')}</td>
+                                <td style={{ padding: '8px' }}>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <button className={styles.button} onClick={() => openReservaDetalhe(r)}>Ver</button>
+
+                                    {podeRenovar && (
+                                      <button
+                                        className={styles.button}
+                                        onClick={() => handleRenovar(r)}
+                                        disabled={processingReservaId === r.reserva_id}
+                                      >
+                                        {processingReservaId === r.reserva_id ? 'Aguarde...' : 'Renovar'}
+                                      </button>
+                                    )}
+
+                                    {st === 'ativa' && (
+                                      <button
+                                        className={styles.button}
+                                        onClick={() => handleCancelar(r)}
+                                        disabled={processingReservaId === r.reserva_id}
+                                      >
+                                        {processingReservaId === r.reserva_id ? 'Aguarde...' : 'Cancelar'}
+                                      </button>
+                                    )}
+
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className={styles.logoutButtonWrapper}>
-            <button onClick={handleLogout} className={styles.logoutButton}>
-              <BsBoxArrowRight /> Sair
-            </button>
-          </div>
         </div>
       </div>
 
@@ -427,6 +775,33 @@ export default function DashboardPage() {
         onClose={() => setModalFavoritosAberto(false)}
         favoritos={favoritosDetalhados}
       />
+
+      {/* Modal de detalhe da reserva */}
+      {isReservaModalOpen && selectedReserva && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 9999
+        }}>
+          <div style={{ background: '#fff', padding: 20, borderRadius: 8, maxWidth: 640, width: '95%' }}>
+            <h3 style={{ marginTop: 0 }}>{selectedReserva.titulo || 'Reserva'}</h3>
+            <p><strong>Código de barras:</strong> {selectedReserva.codigo_barras || '-'}</p>
+            <p><strong>Data da reserva:</strong> {formatDate(selectedReserva.data_reserva)}</p>
+            <p><strong>Data prevista de retirada:</strong> {formatDate(selectedReserva.data_prevista_retirada)}</p>
+            <p><strong>Data prevista de devolução:</strong> {formatDate(selectedReserva.data_prevista_devolucao)}</p>
+            <p><strong>Status:</strong> {selectedReserva.status}</p>
+            <p><strong>Origem:</strong> {selectedReserva.origem}</p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button className={styles.button} onClick={closeReservaDetalhe}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

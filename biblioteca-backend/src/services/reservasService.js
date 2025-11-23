@@ -107,6 +107,9 @@ async function listarPorUsuario(usuarioId) {
       status,
       data_reserva,
       data_atendimento,
+      data_prevista_retirada,
+      data_prevista_devolucao,
+      renovacoes,
       origem
     FROM dg_reservas
     WHERE usuario_id = ?
@@ -116,6 +119,7 @@ async function listarPorUsuario(usuarioId) {
   );
   return rows;
 }
+
 
 async function listarTodas() {
   const [rows] = await pool.query(
@@ -175,8 +179,11 @@ async function atualizarStatus(reservaId, novoStatus) {
   const params = [novoStatus];
 
   if (novoStatus === 'atendida') {
+    // marca atendimento e define data prevista de devolução para 7 dias a partir do momento do atendimento
     campos.push('data_atendimento = NOW()');
+    campos.push('data_prevista_devolucao = DATE_ADD(NOW(), INTERVAL 7 DAY)');
   }
+
 
   const sql = `
     UPDATE dg_reservas
@@ -188,6 +195,106 @@ async function atualizarStatus(reservaId, novoStatus) {
   const [result] = await pool.query(sql, params);
   return result.affectedRows;
 }
+
+/**
+ * Renova uma reserva/emprestimo:
+ * - verifica que a reserva existe
+ * - verifica que pertence ao usuário (segurança)
+ * - só permite renovar quando status = 'atendida' (usuário já retirou o livro)
+ * - estende data_prevista_devolucao em +7 dias (se não existir, usa data_prevista_retirada + 7 e soma mais 7)
+ */
+/**
+ * Renova uma reserva (usuário dono):
+ * - só permite renovar quando status = 'atendida' (empréstimo ativo)
+ * - bloqueia se estiver atrasado
+ * - permite até MAX_RENEW renovações
+ * - incrementa contador 'renovacoes' e estende data_prevista_devolucao em +7 dias
+ */
+async function renovarReserva(reservaId, usuarioId) {
+  const MAX_RENEW = 2; // sugestão: 2 renovações máximas
+
+  if (!reservaId || !usuarioId) {
+    const e = new Error('Reserva ou usuário inválido.');
+    e.statusCode = 400;
+    throw e;
+  }
+
+  // buscar reserva
+  const [rows] = await pool.query(
+    `SELECT reserva_id, usuario_id, status, data_prevista_devolucao, data_prevista_retirada, renovacoes
+     FROM dg_reservas WHERE reserva_id = ? LIMIT 1`,
+    [reservaId]
+  );
+
+  if (rows.length === 0) {
+    const e = new Error('Reserva não encontrada.');
+    e.statusCode = 404;
+    throw e;
+  }
+  const reserva = rows[0];
+
+  // propriedade
+  if (reserva.usuario_id !== usuarioId) {
+    const e = new Error('Você não tem permissão para renovar esta reserva.');
+    e.statusCode = 403;
+    throw e;
+  }
+
+  // apenas se estiver atendida (empréstimo ativo)
+  if (reserva.status !== 'atendida') {
+    const e = new Error('Só é possível renovar reservas já atendidas (empréstimo ativo).');
+    e.statusCode = 400;
+    throw e;
+  }
+
+  // bloqueia se já estiver atrasado
+  if (reserva.data_prevista_devolucao) {
+    const hoje = new Date();
+    const dv = new Date(reserva.data_prevista_devolucao);
+    if (hoje > dv) {
+      const e = new Error('Não é possível renovar: empréstimo já está em atraso. Procure a biblioteca.');
+      e.statusCode = 400;
+      throw e;
+    }
+  }
+
+  // limite de renovações
+  if ((reserva.renovacoes || 0) >= MAX_RENEW) {
+    const e = new Error(`Limite de renovações atingido (máx. ${MAX_RENEW}).`);
+    e.statusCode = 400;
+    throw e;
+  }
+
+  // atualiza: incrementa renovacoes e soma 7 dias na data_prevista_devolucao
+  const sqlUpdate = `
+    UPDATE dg_reservas SET
+      data_prevista_devolucao = DATE_ADD(
+        COALESCE(data_prevista_devolucao, DATE_ADD(data_prevista_retirada, INTERVAL 7 DAY)),
+        INTERVAL 7 DAY
+      ),
+      renovacoes = renovacoes + 1
+    WHERE reserva_id = ?
+  `;
+  const [resUpdate] = await pool.query(sqlUpdate, [reservaId]);
+  if (resUpdate.affectedRows === 0) {
+    const e = new Error('Falha ao renovar reserva.');
+    e.statusCode = 500;
+    throw e;
+  }
+
+  // busca nova data
+  const [rows2] = await pool.query(
+    `SELECT data_prevista_devolucao, renovacoes FROM dg_reservas WHERE reserva_id = ? LIMIT 1`,
+    [reservaId]
+  );
+
+  return {
+    reservaId,
+    novaDataDevolucao: rows2[0]?.data_prevista_devolucao ?? null,
+    renovacoes: rows2[0]?.renovacoes ?? null
+  };
+}
+
 
 const buscarEmprestimoAtivoPorUsuario = async (usuarioId) => {
   const sql = `
@@ -214,4 +321,6 @@ module.exports = {
   listarTodas,
   atualizarStatus,
   buscarEmprestimoAtivoPorUsuario,
+  renovarReserva, // <-- adicionado
 };
+

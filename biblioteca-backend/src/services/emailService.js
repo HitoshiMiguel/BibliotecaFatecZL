@@ -73,8 +73,6 @@ const sendResetPasswordEmail = async (to, link) => {
     }
 };
 
-
-
 const sendConfirmationEmail = async (to, confirmationLink) => {
     const subject = `Confirme sua conta - ${APP_NAME}`;
     // HTML Ultra Simplificado e Limpo
@@ -149,5 +147,208 @@ const sendActivationEmail = async (to, activationLink) => {
     }
 };
 
-// ... (sendResetPasswordEmail e module.exports)
-module.exports = { sendResetPasswordEmail, sendConfirmationEmail, sendActivationEmail };
+// adiciona isso em emailService.js (junto com as outras exports)
+const sendBookAvailableEmail = async (to, payload = {}) => {
+  const APP_NAME = 'Biblioteca Fatec ZL';
+  const FROM = process.env.EMAIL_USER;
+  const titulo = payload.titulo ?? 'Livro disponível';
+  const usuarioNome = payload.usuario_nome ?? 'usuário';
+  const linkConsulta = payload.linkConsulta ?? (process.env.FRONTEND_URL || 'http://localhost:3000');
+
+  const subject = `📚 Agora disponível — ${titulo}`;
+
+  const html = `
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>${subject}</title>
+  <style>
+    body { margin:0; padding:0; background:#f6f7fb; font-family: Arial, sans-serif; color:#333; font-size:14px; line-height:1.5; }
+    .wrapper { max-width: 640px; margin: 20px auto; padding: 20px; background: #ffffff; border: 1px solid #e6e6e6; border-radius: 10px; }
+    .header { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+    .logo { width:48px; height:48px; border-radius:8px; background:#b71c1c; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; }
+    .title { font-size:18px; margin:0; color:#111; }
+    .lead { color:#555; margin: 8px 0 18px; }
+    .card { border:1px solid #f0f0f0; padding:14px; border-radius:8px; background:#fafafa; }
+    .book-title { font-weight:700; font-size:16px; margin:0 0 6px; color:#0b2a4a; }
+    .meta { color:#666; font-size:13px; margin-bottom:12px; }
+    .cta { display:inline-block; padding:12px 20px; background:#b71c1c; color:#fff !important; border-radius:8px; text-decoration:none; font-weight:700; }
+    .small { font-size:12px; color:#777; margin-top:14px; }
+    .footer { font-size:12px; color:#999; text-align:center; margin-top:20px; }
+    a.plain { color:#b71c1c; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div>
+        <h1 class="title">Livro disponível na biblioteca</h1>
+        <div style="color:#666; font-size:13px;">Aviso automático — ${APP_NAME}</div>
+      </div>
+    </div>
+
+    <p class="lead">Olá <strong>${usuarioNome}</strong>,</p>
+
+    <div class="card">
+      <p class="book-title">${titulo}</p>
+      ${payload.autor ? `<div class="meta">Autor: ${payload.autor}</div>` : ''}
+      ${payload.editora ? `<div class="meta">Editora: ${payload.editora}</div>` : ''}
+      <p style="margin:10px 0 0;">
+        O item que você favoritou está disponível para empréstimo. Clique no botão abaixo para ver a publicação e, se desejar, efetuar a reserva.
+      </p>
+
+      <div style="margin-top:14px;">
+        <a class="cta" href="${linkConsulta}" target="_blank" rel="noopener">Ver publicação</a>
+      </div>
+
+      <p class="small">
+        Caso prefira, copie/cole este link no navegador: <br/>
+        <a class="plain" href="${linkConsulta}">${linkConsulta}</a>
+      </p>
+    </div>
+
+    <p class="small">
+      Se você não deseja receber mais avisos sobre este item, remova-o dos seus favoritos na sua conta.
+    </p>
+
+    <p class="footer">© ${new Date().getFullYear()} ${APP_NAME}</p>
+  </div>
+</body>
+</html>
+`;
+
+  try {
+    await transporter.sendMail({
+      from: `"${APP_NAME}" <${FROM}>`,
+      to,
+      subject,
+      html
+    });
+    console.log(`[EmailService] livro_disponivel enviado para ${to} — ${titulo}`);
+  } catch (err) {
+    console.error('[EmailService] falha ao enviar livro_disponivel:', err);
+    throw err;
+  }
+};
+
+module.exports.sendBookAvailableEmail = sendBookAvailableEmail;
+
+// src/services/emailService.js
+// (coloque isto onde suas outras funções de email estão, antes do `module.exports`)
+
+const sendDueReminderEmail = async (to, { titulo, usuario_nome, linkConsulta, codigo_barras }) => {
+  const subject = `Lembrete: seu empréstimo vence hoje — Biblioteca Fatec ZL`;
+  const html = `
+  <!doctype html>
+  <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <style>
+      body { margin:0; padding:0; background:#f6f7fb; font-family: Arial, sans-serif; color:#333; }
+      .card { max-width:600px; margin:20px auto; padding:20px; background:#fff; border-radius:8px; border:1px solid #e6e6e6; }
+      .title { color:#b71c1c; font-size:20px; margin:0 0 10px; }
+      .btn { display:inline-block; padding:12px 18px; background:#b71c1c; color:#fff; text-decoration:none; border-radius:6px; font-weight:bold; }
+      .muted { color:#555; font-size:14px; }
+      .meta { font-size:13px; color:#666; margin-top:8px; }
+      .footer { font-size:12px; color:#888; text-align:center; margin-top:20px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 class="title">Lembrete de Devolução — Hoje</h1>
+      <p class="muted">Olá ${usuario_nome || ''},</p>
+      <p>Este é um lembrete de que o empréstimo do livro <strong>${titulo || '—'}</strong> vence hoje. Por favor, devolva o exemplar na biblioteca para evitar multa.</p>
+      ${codigo_barras ? `<p class="meta"><strong>Código:</strong> ${codigo_barras}</p>` : ''}
+      <p style="text-align:center;margin:24px 0;">
+      <a href="${linkConsulta}" target="_blank" rel="noopener"
+         style="display:inline-block;padding:12px 20px;border-radius:6px;background:#b71c1c;text-decoration:none;font-weight:600;color:#ffffff !important;">
+         Ver publicação
+      </a>
+    </p>
+      <p class="muted" style="margin-top:14px;">Se já devolveu, desconsidere este aviso.</p>
+    </div>
+    <div class="footer">© ${new Date().getFullYear()} Biblioteca Fatec ZL</div>
+  </body>
+  </html>
+  `;
+  try {
+    await transporter.sendMail({ from: `"Biblioteca Fatec ZL" <${FROM}>`, to, subject, html });
+    console.log(`[EmailService] sendDueReminderEmail -> enviado para ${to}`);
+  } catch (err) {
+    console.error(`[EmailService] erro sendDueReminderEmail para ${to}:`, err);
+    throw err;
+  }
+};
+
+const sendOverdueEmail = async (to, { titulo, usuario_nome, dias_atraso = 0, linkConsulta, codigo_barras }) => {
+  const subject = `Atenção: empréstimo em atraso — Biblioteca Fatec ZL`;
+  const html = `
+  <!doctype html>
+  <html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <style>
+      body { margin:0; padding:0; background:#fff6f6; font-family: Arial, sans-serif; color:#333; }
+      .card { max-width:600px; margin:20px auto; padding:20px; background:#fff; border-radius:8px; border:1px solid #f3c6c6; }
+      .title { color:#b20000; font-size:20px; margin:0 0 10px; }
+      .btn { display:inline-block; padding:12px 18px; background:#b20000; color:#fff; text-decoration:none; border-radius:6px; font-weight:bold; }
+      .muted { color:#555; font-size:14px; }
+      .meta { font-size:13px; color:#666; margin-top:8px; }
+      .footer { font-size:12px; color:#888; text-align:center; margin-top:20px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 class="title">Empréstimo em Atraso</h1>
+      <p class="muted">Olá ${usuario_nome || ''},</p>
+      <p>O empréstimo do livro <strong>${titulo || '—'}</strong> encontra-se <strong>em atraso</strong> há ${dias_atraso} dia(s). Por favor, devolva o mais rápido possível ou entre em contato com a biblioteca.</p>
+      ${codigo_barras ? `<p class="meta"><strong>Código:</strong> ${codigo_barras}</p>` : ''}
+      <p style="text-align:center;margin:24px 0;">
+      <a href="${linkConsulta}" target="_blank" rel="noopener"
+         style="display:inline-block;padding:12px 20px;border-radius:6px;background:#b71c1c;text-decoration:none;font-weight:600;color:#ffffff !important;">
+         Ver publicação
+      </a>
+    </p>
+      <p class="muted" style="margin-top:14px;">A não devolução pode acarretar penalidades (consulte regras da biblioteca).</p>
+    </div>
+    <div class="footer">© ${new Date().getFullYear()} Biblioteca Fatec ZL</div>
+  </body>
+  </html>
+  `;
+  try {
+    await transporter.sendMail({ from: `"Biblioteca Fatec ZL" <${FROM}>`, to, subject, html });
+    console.log(`[EmailService] sendOverdueEmail -> enviado para ${to}`);
+  } catch (err) {
+    console.error(`[EmailService] erro sendOverdueEmail para ${to}:`, err);
+    throw err;
+  }
+};
+
+
+const sendGenericEmail = async (to, subject, html) => {
+    try {
+        await transporter.sendMail({
+            from: `"${APP_NAME}" <${FROM}>`,
+            to,
+            subject,
+            html,
+        });
+    } catch (e) {
+        console.error("Erro ao enviar e-mail genérico:", e);
+        throw e;
+    }
+};
+
+module.exports = {
+   sendResetPasswordEmail,
+   sendConfirmationEmail,
+   sendActivationEmail,
+   sendGenericEmail,
+   sendBookAvailableEmail,
+   sendDueReminderEmail,
+    sendOverdueEmail
+};

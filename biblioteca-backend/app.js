@@ -19,11 +19,10 @@ const pool = require('./src/config/db');
 const acervoRoutes = require('./src/routes/acervoRoutes');
 const reservasRoutes = require('./src/routes/reservasRoutes');
 const reservasAdminRoutes = require('./src/routes/reservasAdminRoutes');
-
-// --- NOVO (No caminho certo) ---
+const observers = require('./src/services/observers'); // só importa pra inicializar
+const overdueJob = require('./src/jobs/overdueNotifier');
+const { start: startReservaScheduler } = require('./src/services/schedulers/reservaNotificationsScheduler');
 const favoritoRoutes = require('./src/routes/FavoritoRoutes'); 
-
-// --- Caminhos que já estavam corretos ---
 const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const { isAuthenticated } = require('./src/middlewares/authMiddleware');
 const iniciarAgendador = require('./src/services/cronScheduler');
@@ -34,6 +33,20 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
+
+// testes
+
+const { checkDueTodayAndOverdue } = require('./src/services/schedulers/reservaNotificationsScheduler');
+
+// roda todo dia às 08:00
+setInterval(checkDueTodayAndOverdue, 24 * 60 * 60 * 1000);
+
+// roda 1 vez ao subir o servidor (pra testar)
+checkDueTodayAndOverdue()
+  .then(() => console.log('[Scheduler] Primeira execução concluída.'))
+  .catch(err => console.error('[Scheduler] Erro inicial:', err));
+
+
 
 /** ================================
  *  Middlewares globais
@@ -97,3 +110,6 @@ app.listen(PORT, () => {
 
   iniciarAgendador();
 });
+
+overdueJob.startOverdueJob();
+startReservaScheduler();

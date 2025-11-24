@@ -1,9 +1,10 @@
 // src/controller/reservasAdminController.js
 const {
-  poolSistemaNovo,
-  poolOpenBiblio,
+  poolSistemaNovo, 
+  poolOpenBiblio 
 } = require('../infra/db/mysql/connection');
 
+const {subject} = require('../services/observers'); 
 /**
  * GET /api/admin/reservas
  * Lista todas as reservas com dados do usuário.
@@ -151,9 +152,68 @@ const concluirReserva = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // atualiza status (sua função existente)
     const reservaAtualizada = await atualizarStatusReserva(id, 'concluida', {
       atualizarOpenBiblioPara: 'in',
     });
+
+    // 1) tenta obter legacy_bibid e titulo direto da resposta da atualização
+    let legacyId = reservaAtualizada?.legacy_bibid ?? reservaAtualizada?.legacyBibid ?? null;
+    let tituloDoLivro =
+      reservaAtualizada?.titulo ??
+      reservaAtualizada?.titulo_proposto ??
+      reservaAtualizada?.title ??
+      null;
+
+    // 2) se não tiver, busca no DB a reserva (fallback seguro)
+    if (!legacyId || !tituloDoLivro) {
+      const [rows] = await poolSistemaNovo.query(
+        'SELECT legacy_bibid, titulo FROM dg_reservas WHERE reserva_id = ? LIMIT 1',
+        [id]
+      );
+      if (rows.length > 0) {
+        legacyId = legacyId ?? rows[0].legacy_bibid;
+        tituloDoLivro = tituloDoLivro ?? rows[0].titulo;
+      }
+    }
+
+    // validações finais
+    if (!legacyId) {
+      // se ainda não encontramos, aborta com log
+      const err = new Error('Legacy bibid (legacy_bibid) não encontrado para esta reserva.');
+      err.statusCode = 500;
+      throw err;
+    }
+    // tituloDoLivro pode ser nulo; isso não quebra, mas é melhor ter algo legível:
+    tituloDoLivro = tituloDoLivro ?? `LEGACY_${legacyId}`;
+
+    // pega usuários que favoritaram esse item (procura pelo campo de submissao_id ou legacy_bibid)
+    const [favoritosRows] = await poolSistemaNovo.query(
+      `SELECT f.usuario_id, u.email, u.nome
+        FROM dg_favoritos f
+        JOIN dg_usuarios u ON u.usuario_id = f.usuario_id
+        WHERE f.id_legado = ?`,
+      [legacyId]
+    );
+
+
+    for (const fav of favoritosRows) {
+      // subject.notify deve existir / ter sido instanciado antes; mantive payload compatível
+      await subject.notify({
+        type: 'livro_disponivel',
+        payload: {
+          legacy_bibid: legacyId,
+          titulo: tituloDoLivro,
+          autor: "Nome do autor se disponível",
+          editora: "Editora se disponível",
+          usuario_id: fav.usuario_id,
+          usuario_nome: fav.nome,
+          usuario_email: fav.email,
+          linkConsulta: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consulta/LEGACY_${legacyId}`,
+          eventKey: `livro_disponivel_bibid_${legacyId}_user_${fav.usuario_id}`
+        }
+      });
+    }
 
     return res.json({
       message: 'Reserva concluída (devolução registrada).',
@@ -177,7 +237,7 @@ const renovarReserva = async (req, res) => {
     const { id } = req.params;
 
     // Busca a reserva atual
-    const [rows] = await poolSistemaNovo.query(
+    const [rows] = await SistemaNovo.query(
       'SELECT * FROM dg_reservas WHERE reserva_id = ?',
       [id]
     );

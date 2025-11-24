@@ -1,6 +1,7 @@
 // src/services/reservasService.js
 const {poolSistemaNovo: pool, poolOpenBiblio,} = require('../infra/db/mysql/connection');
 const acervoLegadoService = require('./AcervoLegadoService');
+const { subject } = require('./observers'); // design pattern observer
 
 const ALLOWED_STATUS = ['ativa', 'atendida', 'cancelada'];
 
@@ -182,6 +183,35 @@ async function atualizarStatus(reservaId, novoStatus) {
     // marca atendimento e define data prevista de devolução para 7 dias a partir do momento do atendimento
     campos.push('data_atendimento = NOW()');
     campos.push('data_prevista_devolucao = DATE_ADD(NOW(), INTERVAL 7 DAY)');
+  }
+
+  // 4. alertas
+
+  if (novoStatus === 'atendida') { 
+  // reserva transformou-se em empréstimo ativo — notificar usuário (confirmação)
+    try {
+      // recupera dados básicos para payload (titulo, usuário, email)
+      const [rowsMeta] = await pool.query(
+        `SELECT r.reserva_id, r.legacy_bibid, r.titulo, r.usuario_id, u.nome AS usuario_nome, u.email AS usuario_email 
+        FROM dg_reservas r
+        LEFT JOIN dg_usuarios u ON u.usuario_id = r.usuario_id
+        WHERE r.reserva_id = ? LIMIT 1`, [reservaId]
+      );
+      const meta = rowsMeta[0];
+      await subject.notify({
+        type: 'reserva_atendida',
+        payload: {
+          reserva_id: reservaId,
+          titulo: meta?.titulo,
+          usuario_id: meta?.usuario_id,
+          usuario_nome: meta?.usuario_nome,
+          usuario_email: meta?.usuario_email,
+          eventKey: `reserva_atendida_${reservaId}`
+        }
+      });
+    } catch (err) {
+      console.warn('[reservasService] erro ao notificar atendimento', err.message);
+    }
   }
 
 

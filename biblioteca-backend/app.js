@@ -19,6 +19,7 @@ const pool = require('./src/config/db');
 const acervoRoutes = require('./src/routes/acervoRoutes');
 const reservasRoutes = require('./src/routes/reservasRoutes');
 const reservasAdminRoutes = require('./src/routes/reservasAdminRoutes');
+const avaliacaoRoutes = require('./src/routes/avaliacaoRoutes');
 
 // --- NOVO (No caminho certo) ---
 const favoritoRoutes = require('./src/routes/FavoritoRoutes'); 
@@ -48,14 +49,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 /** ================================
- *  Rotas principais da API
- *  ================================ */
+ *  Rotas principais da API
+ *  ================================ */
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', isAuthenticated, uploadRouter);
 app.use('/api/google', googleRouter);
 app.use('/api/moderation', moderationRouter);
-app.use('/api', publicacoes); // <— monta /api/publicacoes e /api/publicacoes/:id
+
+// --- Avaliações de publicações (ANTES de publicacoes para ter prioridade) ---
+app.use('/api/publicacoes', avaliacaoRoutes);
+
+app.use('/api', publicacoes); // <— monta /api/publicacoes e /api/publicacoes/:id (rota genérica depois)
 app.use('/db-test', dbTestRoute);
 app.use('/api/reservas', reservasRoutes);
 

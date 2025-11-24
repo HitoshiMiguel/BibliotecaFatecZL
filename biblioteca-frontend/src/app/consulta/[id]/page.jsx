@@ -3,6 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import Swal from 'sweetalert2'
 import styles from './publicacao.module.css';
+import RatingStars from '@/components/RatingStars';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
@@ -259,6 +260,11 @@ export default function PublicacaoPage({ params }) {
               Reservar Livro
             </button>
           )}
+
+          {/* Componente de Avaliação */}
+          <div style={{ marginTop: '30px' }}>
+            <RatingStars itemId={data.item_id || id} publicacaoId={id} />
+          </div>
         </article>
       </section>
 

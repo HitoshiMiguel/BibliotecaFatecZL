@@ -1,18 +1,20 @@
-// src/services/observers/index.js
 console.log('[OBSERVERS] require path:', __filename);
 
 const BookSubject = require('./BookSubject');
 const EmailObserver = require('./EmailObserver');
 const DBObserver = require('./DBObserver');
 
-const subject = new BookSubject();
-const emailObs = new EmailObserver();
-const dbObs = new DBObserver();
+if (!global.__BOOK_SUBJECT_SINGLETON) {
+  const subject = new BookSubject();
+  const emailObs = new EmailObserver();
+  const dbObs = new DBObserver();
 
-// anexar uma vez só (attach é idempotente graças ao Set)
-subject.attach(dbObs);
-subject.attach(emailObs);
+  subject.attach(dbObs);
+  subject.attach(emailObs);
 
-module.exports = { subject, emailObs, dbObs };
+  global.__BOOK_SUBJECT_SINGLETON = { subject, emailObs, dbObs };
+}
 
-console.log('[OBSERVERS] require path:', __filename);
+module.exports = global.__BOOK_SUBJECT_SINGLETON;
+
+console.log('[OBSERVERS] singleton criado/exportado');

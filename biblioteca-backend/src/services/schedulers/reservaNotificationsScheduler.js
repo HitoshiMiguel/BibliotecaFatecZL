@@ -1,30 +1,23 @@
-// src/services/schedulers/reservaNotificationsScheduler.js
 const cron = require('node-cron');
 const { poolSistemaNovo: pool } = require('../../infra/db/mysql/connection');
-const { subject } = require('../../services/observers/index'); // seu subject já instanciado
+const { subject } = require('../../services/observers/index');
 
 console.log('[Scheduler] require path:', __filename);
 
-// Proteção para evitar double-loading (hot-reload / requires duplicados)
 if (global.__RESERVA_NOTIFS_SCHEDULER_LOADED) {
   console.log('[Scheduler] já carregado globalmente — exportando stubs.');
   module.exports = {
     start: () => console.log('[Scheduler] start() chamado, mas scheduler já carregado.'),
-    checkDueTodayAndOverdue: async () => {
-      console.log('[Scheduler] checkDueTodayAndOverdue() stub chamado - scheduler carregado em outro lugar.');
-      return { due: 0, overdue: 0 };
-    },
+    checkDueTodayAndOverdue: async () => ({ due: 0, overdue: 0 }),
   };
   return;
 }
 global.__RESERVA_NOTIFS_SCHEDULER_LOADED = true;
+global.__RESERVA_NOTIFS_CHECK_STARTED = false;
 
-// --------------------------------------------------
-// Helpers de data (seguros e sem dependência externa)
-// --------------------------------------------------
 function parseISODateOnly(v) {
   if (!v) return null;
-  const s = String(v).slice(0, 10); // YYYY-MM-DD
+  const s = String(v).slice(0, 10);
   const parts = s.split('-').map(Number);
   if (parts.length === 3 && parts.every(n => !Number.isNaN(n))) {
     const [y, m, d] = parts;
@@ -41,26 +34,23 @@ function startOfDay(d) {
 }
 
 function formatDateISO(d) {
-  const dt = new Date(d);
-  return dt.toISOString().slice(0,10);
+  return new Date(d).toISOString().slice(0,10);
 }
 
-function formatDateBR(v) {
-  const d = parseISODateOnly(v);
-  if (!d) return '-';
-  return d.toLocaleDateString('pt-BR');
+async function fetchUserEmail(usuario_id) {
+  const [rows] = await pool.query('SELECT email FROM dg_usuarios WHERE usuario_id = ?', [usuario_id]);
+  return rows[0]?.email || null;
 }
 
-// --------------------------------------------------
-// Função que faz a verificação (pode ser chamada para testes)
-// --------------------------------------------------
 async function checkDueTodayAndOverdue() {
+  if (global.__RESERVA_NOTIFS_CHECK_STARTED) return { due: 0, overdue: 0 };
+  global.__RESERVA_NOTIFS_CHECK_STARTED = true;
+
   try {
     console.log('[Scheduler] checkDueTodayAndOverdue: início', new Date().toISOString());
-
     const hojeISO = formatDateISO(new Date());
 
-    // 1) reservas que vencem HOJE e estão 'atendida'
+    // reservas vencendo hoje
     const [dueRows] = await pool.query(
       `SELECT reserva_id, usuario_id, titulo, codigo_barras, data_prevista_devolucao, legacy_bibid
        FROM dg_reservas
@@ -69,31 +59,27 @@ async function checkDueTodayAndOverdue() {
       [hojeISO]
     );
 
-    let dueCount = 0;
-    if (Array.isArray(dueRows) && dueRows.length > 0) {
-      dueCount = dueRows.length;
-      for (const r of dueRows) {
-        const eventKey = `devolucao_hoje_reserva_${r.reserva_id}_user_${r.usuario_id}`;
-        try {
-          await subject.notify({
-            type: 'lembrar_devolucao_hoje',
-            payload: {
-              reserva_id: r.reserva_id,
-              usuario_id: r.usuario_id,
-              titulo: r.titulo,
-              codigo_barras: r.codigo_barras,
-              legacy_bibid: r.legacy_bibid,
-              linkConsulta: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consulta/LEGACY_${r.legacy_bibid}`,
-              eventKey
-            }
-          });
-        } catch (innerErr) {
-          console.error('[Scheduler] erro ao notificar lembrete de devolução hoje para reserva', r.reserva_id, innerErr);
+    for (const r of dueRows) {
+      const email = await fetchUserEmail(r.usuario_id);
+      if (!email) continue;
+
+      const eventKey = `devolucao_hoje_reserva_${r.reserva_id}_user_${r.usuario_id}`;
+      await subject.notify({
+        type: 'lembrar_devolucao_hoje',
+        payload: {
+          reserva_id: r.reserva_id,
+          usuario_id: r.usuario_id,
+          titulo: r.titulo,
+          codigo_barras: r.codigo_barras,
+          legacy_bibid: r.legacy_bibid,
+          linkConsulta: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consulta/LEGACY_${r.legacy_bibid}`,
+          usuario_email: email,
+          eventKey
         }
-      }
+      });
     }
 
-    // 2) reservas com devolução anterior (atrasadas)
+    // reservas atrasadas
     const [overRows] = await pool.query(
       `SELECT reserva_id, usuario_id, titulo, codigo_barras, data_prevista_devolucao, legacy_bibid
        FROM dg_reservas
@@ -102,62 +88,46 @@ async function checkDueTodayAndOverdue() {
       [hojeISO]
     );
 
-    let overdueCount = 0;
-    if (Array.isArray(overRows) && overRows.length > 0) {
-      overdueCount = overRows.length;
-      for (const r of overRows) {
-        try {
-          // calcula dias de atraso com segurança
-          const devol = parseISODateOnly(r.data_prevista_devolucao) || new Date(r.data_prevista_devolucao);
-          const hoje = startOfDay(new Date());
-          const devolDay = startOfDay(devol);
-          const diffDays = Math.round((hoje - devolDay) / (1000*60*60*24));
-          const eventKey = `devolucao_atrasada_reserva_${r.reserva_id}_user_${r.usuario_id}`;
+    for (const r of overRows) {
+      const email = await fetchUserEmail(r.usuario_id);
+      if (!email) continue;
 
-          await subject.notify({
-            type: 'reserva_atrasada',
-            payload: {
-              reserva_id: r.reserva_id,
-              usuario_id: r.usuario_id,
-              titulo: r.titulo,
-              codigo_barras: r.codigo_barras,
-              dias_atraso: diffDays,
-              legacy_bibid: r.legacy_bibid,
-              linkConsulta: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consulta/LEGACY_${r.legacy_bibid}`,
-              eventKey
-            }
-          });
-        } catch (innerErr) {
-          console.error('[Scheduler] erro ao notificar atraso para reserva', r.reserva_id, innerErr);
+      const devol = parseISODateOnly(r.data_prevista_devolucao) || new Date(r.data_prevista_devolucao);
+      const hoje = startOfDay(new Date());
+      const diffDays = Math.round((hoje - startOfDay(devol)) / (1000*60*60*24));
+
+      const eventKey = `devolucao_atrasada_reserva_${r.reserva_id}_user_${r.usuario_id}`;
+      await subject.notify({
+        type: 'reserva_atrasada',
+        payload: {
+          reserva_id: r.reserva_id,
+          usuario_id: r.usuario_id,
+          titulo: r.titulo,
+          codigo_barras: r.codigo_barras,
+          dias_atraso: diffDays,
+          legacy_bibid: r.legacy_bibid,
+          linkConsulta: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/consulta/LEGACY_${r.legacy_bibid}`,
+          usuario_email: email,
+          eventKey
         }
-      }
+      });
     }
 
-    console.log(`[Scheduler] checkDueTodayAndOverdue: done. due:${dueCount} overdue:${overdueCount}`);
-    return { due: dueCount, overdue: overdueCount };
+    console.log(`[Scheduler] checkDueTodayAndOverdue: done. due:${dueRows.length} overdue:${overRows.length}`);
+    return { due: dueRows.length, overdue: overRows.length };
+
   } catch (err) {
     console.error('[Scheduler] erro ao checar devoluções:', err);
     throw err;
   }
 }
 
-// --------------------------------------------------
-// start() — garante que só inicia 1 vez e seta flag ANTES de chamar check
-// --------------------------------------------------
 function start() {
-  if (global.__RESERVA_NOTIFS_SCHEDULER_STARTED) {
-    console.log('[Scheduler] start() ignorado — já iniciado anteriormente.');
-    return;
-  }
-  // marca iniciado rapidamente para prevenir race conditions / double-start
+  if (global.__RESERVA_NOTIFS_SCHEDULER_STARTED) return;
   global.__RESERVA_NOTIFS_SCHEDULER_STARTED = true;
 
-  console.log('[Scheduler] iniciando reservaNotificationsScheduler (guardado).');
-
-  // Executa uma vez ao iniciar (try/catch para evitar crash)
   checkDueTodayAndOverdue().catch(e => console.error('[Scheduler] check inicial falhou:', e));
 
-  // Cron diário às 08:00
   cron.schedule('0 8 * * *', () => {
     console.log('[Scheduler] Cron disparado: verificando devoluções', new Date().toISOString());
     checkDueTodayAndOverdue().catch(e => console.error('[Scheduler] erro no cron:', e));
@@ -165,9 +135,6 @@ function start() {
     scheduled: true,
     timezone: 'America/Sao_Paulo'
   });
-
-  console.log('[Scheduler] reservaNotificationsScheduler iniciado (rotina diária às 08:00).');
 }
 
-// export
 module.exports = { start, checkDueTodayAndOverdue };

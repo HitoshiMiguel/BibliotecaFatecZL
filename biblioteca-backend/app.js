@@ -23,8 +23,6 @@ const avaliacaoRoutes = require('./src/routes/avaliacaoRoutes');
 
 // --- NOVO (No caminho certo) ---
 const favoritoRoutes = require('./src/routes/FavoritoRoutes'); 
-
-// --- Caminhos que já estavam corretos ---
 const { notFound, errorHandler } = require('./src/middlewares/errorHandler');
 const { isAuthenticated } = require('./src/middlewares/authMiddleware');
 const iniciarAgendador = require('./src/services/cronScheduler');
@@ -35,6 +33,20 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
+
+// testes
+
+const { checkDueTodayAndOverdue } = require('./src/services/schedulers/reservaNotificationsScheduler');
+
+// roda todo dia às 08:00
+setInterval(checkDueTodayAndOverdue, 24 * 60 * 60 * 1000);
+
+// roda 1 vez ao subir o servidor (pra testar)
+checkDueTodayAndOverdue()
+  .then(() => console.log('[Scheduler] Primeira execução concluída.'))
+  .catch(err => console.error('[Scheduler] Erro inicial:', err));
+
+
 
 /** ================================
  *  Middlewares globais
@@ -98,7 +110,7 @@ app.use(errorHandler);
  *  ================================ */
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 API da Biblioteca rodando na porta ${PORT}`);
+  console.log(`🚀 API da Biblioteca rodando na porta ${PORT}`);
 
   iniciarAgendador();
 });

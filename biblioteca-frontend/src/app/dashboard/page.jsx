@@ -37,6 +37,10 @@ export default function DashboardPage() {
   const [isLoadingFavoritos, setIsLoadingFavoritos] = useState(true);
   const [modalFavoritosAberto, setModalFavoritosAberto] = useState(false);
 
+  // Submissões (nova aba)
+  const [submissoes, setSubmissoes] = useState([]);
+  const [isLoadingSubmissoes, setIsLoadingSubmissoes] = useState(false);
+
   // edição de perfil (via modal)
   const [isEditing, setIsEditing] = useState(false);
   const [profileFormData, setProfileFormData] = useState({ nome: '', email: '' });
@@ -44,7 +48,7 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // reserva local UI
-  const [activeTab, setActiveTab] = useState('dados'); // 'dados' | 'favoritos' | 'reservas'
+  const [activeTab, setActiveTab] = useState('dados'); // 'dados' | 'favoritos' | 'reservas' | 'submissoes'
 
   const [reservas, setReservas] = useState([]);
   const [isLoadingReservas, setIsLoadingReservas] = useState(false);
@@ -57,15 +61,15 @@ export default function DashboardPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
   const AUTH_CHECK_URL = `${API_URL}/api/auth/current-user`;
   const PROFILE_URL    = `${API_URL}/api/auth/profile`;
-  // important: use the same endpoint the consultaClient uses
   const FAVORITOS_URL  = `${API_URL}/api/favoritos`;
   const MINHAS_RESERVAS_URL = `${API_URL}/api/reservas/minhas`;
+  const MINHAS_SUBMISSOES_URL = `${API_URL}/api/submissoes/minhas`;
   const FAVORITOS_API = `${API_URL}/api/favoritos`;
 
-  // ---- LOGOUT DO MENU LATERAL
+  // ----LOGOUT DO MENU LATERAL
   const { logout } = useGlobalMenu();
 
-  // ----------------- Helpers de data (corrige problema de timezone) -----------------
+  // ----------------- Helpers de data -----------------
   const parseDateOnly = (v) => {
     if (!v) return null;
     if (v instanceof Date) return v;
@@ -126,7 +130,7 @@ export default function DashboardPage() {
         setUser(data);
         setProfileFormData({ nome: data.nome, email: data.email });
 
-        // favoritos (carrega com a mesma rota que consultaClient usa)
+        // favoritos
         (async () => {
           try {
             await fetchFavoritosDetalhados();
@@ -186,6 +190,39 @@ export default function DashboardPage() {
       setReservas([]);
     } finally {
       setIsLoadingReservas(false);
+    }
+  };
+
+  // ----------------- Submissões: carregar -----------------
+  const carregarSubmissoes = async () => {
+    setIsLoadingSubmissoes(true);
+    try {
+      const res = await fetch(MINHAS_SUBMISSOES_URL, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        console.warn('Falha ao obter submissões:', res.status);
+        setSubmissoes([]);
+        return;
+      }
+      const data = await res.json();
+      // converte datas
+      const normalized = (data || []).map(s => ({
+        ...s,
+        data_submissao: parseDateOnly(s.data_submissao),
+        itens: (s.itens || []).map(it => ({
+          ...it,
+          data_publicacao: parseDateOnly(it.data_publicacao)
+        }))
+      }));
+      setSubmissoes(normalized);
+    } catch (err) {
+      console.error('Erro ao carregar submissões:', err);
+      setSubmissoes([]);
+    } finally {
+      setIsLoadingSubmissoes(false);
     }
   };
 
@@ -255,7 +292,6 @@ export default function DashboardPage() {
   };
 
   // ----------------- Favoritos: toggle (adicionar/remover) -----------------
-  // Copiado da lógica do consultaClient (aceita id puro ou objeto)
   const handleToggleFavorito = async (itemOrId) => {
     const maybeObj = itemOrId && typeof itemOrId === 'object' ? itemOrId : null;
     const idAlvo =
@@ -270,7 +306,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Verifica se esse ID está entre os favoritos carregados (compara submissao_id ou item_id)
     const existe = favoritosDetalhados.some(f => String(f.submissao_id) === String(idAlvo) || String(f.item_id) === String(idAlvo));
 
     const url = existe ? `${FAVORITOS_API}/${encodeURIComponent(idAlvo)}` : `${FAVORITOS_API}`;
@@ -286,7 +321,6 @@ export default function DashboardPage() {
         body: method === 'POST' ? JSON.stringify({ itemId: idAlvo }) : null,
       });
 
-      // fallback: às vezes o backend implementa delete via body
       if (res.status === 404 && existe) {
         const res2 = await fetch(`${FAVORITOS_API}`, {
           method: 'DELETE',
@@ -305,7 +339,6 @@ export default function DashboardPage() {
         throw new Error(errData.message || `Erro ao atualizar favorito (${res.status})`);
       }
 
-      // recarrega pra garantir consistência
       await fetchFavoritosDetalhados();
       Swal.fire(existe ? 'Removido' : 'Adicionado', existe ? 'Favorito removido.' : 'Favorito adicionado.', 'success');
     } catch (err) {
@@ -315,6 +348,7 @@ export default function DashboardPage() {
       setIsLoadingFavoritos(false);
     }
   };
+
 
   // helper: recarrega favoritos do backend (comporta arrays de IDs ou arrays de objetos)
   // substitua a função fetchFavoritosDetalhados atual por esta
@@ -334,6 +368,7 @@ const fetchFavoritosDetalhados = async () => {
       }
 
       const dataFav = await resFav.json();
+
 
       // Normaliza: transforma cada entrada em objeto com submissao_id/item_id
       let normalized = (dataFav || []).map((f, i) => {
@@ -360,16 +395,17 @@ const fetchFavoritosDetalhados = async () => {
           
           // Origem
           origem: f.origem ?? (f.tipo === 'FISICO' ? 'FISICO' : 'DIGITAL'),
-          
+
           _raw: f,
         };
       });
+
 
       // --- DAQUI PRA BAIXO CONTINUA IGUAL A SUA LÓGICA INTELIGENTE ---
       // (Filtra quem não tem título ou ID e busca na API pública)
 
       const toFetch = normalized.filter(n => (!n.titulo_proposto && !n.titulo) || (!n.submissao_id && !n.item_id));
-      
+
       if (toFetch.length > 0) {
         const detailPromises = toFetch.map(async (entry) => {
           const id = entry.submissao_id ?? entry.item_id;
@@ -383,6 +419,7 @@ const fetchFavoritosDetalhados = async () => {
               return { ...entry };
             }
             const body = await resp.json();
+
             const pub = body?.item ?? body?.publicacao ?? body; 
             
             return {
@@ -393,6 +430,7 @@ const fetchFavoritosDetalhados = async () => {
               editora: entry.editora || pub?.editora || '',
               origem: entry.origem ?? pub?.origem ?? (entry.submissao_id ? 'FISICO' : 'DIGITAL'),
               _raw: { ...entry._raw, ...pub },
+
             };
           } catch (err) {
             console.warn('Erro ao buscar detalhe de publicação', id, err);
@@ -417,6 +455,7 @@ const fetchFavoritosDetalhados = async () => {
         });
       }
 
+
       // Garante campos finais
       const final = normalized.map((f, i) => ({
         item_id: f.item_id ?? f._raw?.item_id ?? null,
@@ -438,6 +477,14 @@ const fetchFavoritosDetalhados = async () => {
     }
   };
 
+      setfavoritosDetalhados(final);
+    } catch (err) {
+      console.error('Erro ao buscar favoritos:', err);
+      setfavoritosDetalhados([]);
+    } finally {
+      setIsLoadingFavoritos(false);
+    }
+  };
 
   // Filtra as reservas conforme seleção
   const reservasFiltradas = reservas.filter(r => {
@@ -587,6 +634,7 @@ const fetchFavoritosDetalhados = async () => {
               <button className={`${styles.button} ${activeTab === 'dados' ? styles.editButton : ''}`} onClick={() => setActiveTab('dados')}>Dados</button>
               <button className={`${styles.button} ${activeTab === 'favoritos' ? styles.editButton : ''}`} onClick={() => setActiveTab('favoritos')}>Favoritos</button>
               <button className={`${styles.button} ${activeTab === 'reservas' ? styles.editButton : ''}`} onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}>Reservas</button>
+              <button className={`${styles.button} ${activeTab === 'submissoes' ? styles.editButton : ''}`} onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}>Submissões</button>
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
@@ -707,6 +755,69 @@ const fetchFavoritosDetalhados = async () => {
   </div>
 )}
 
+            {/* --- SUBMISSÕES (APENAS NA ABA 'submissoes') --- */}
+            {activeTab === 'submissoes' && (
+              <div style={{ marginBottom: 20 }}>
+                <h3>Minhas Submissões</h3>
+
+                {isLoadingSubmissoes ? (
+                  <p>Carregando submissões...</p>
+                ) : submissoes.length === 0 ? (
+                  <p>Você não possui submissões.</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {submissoes.map((s) => (
+                      <div key={s.submissao_id} style={{ border: '1px solid #eee', padding: 12, borderRadius: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>{s.titulo_proposto || `Submissão #${s.submissao_id}`}</strong>
+                            <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                              {s.autor ? `${s.autor} • ` : ''}{s.editora ? `${s.editora} • ` : ''}{formatDate(s.data_submissao)}
+                            </div>
+                          </div>
+                          <div style={{ textTransform: 'capitalize', color: s.status === 'aprovado' ? '#0b6' : s.status === 'rejeitado' ? '#b20000' : '#666' }}>
+                            {s.status}
+                          </div>
+                        </div>
+
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ margin: 0 }}>{s.titulo_proposto ? null : <em>Sem título</em>}</p>
+                          {/* iténs associados (se houver) */}
+                          {s.itens && s.itens.length > 0 ? (
+                            <div style={{ marginTop: 8 }}>
+                              <strong>Itens publicados a partir desta submissão:</strong>
+                              <ul>
+                                {s.itens.map(it => (
+                                  <li key={it.item_id}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                      <div>
+                                        <div><strong>{it.titulo}</strong> {it.ano ? <span>({it.ano})</span> : null}</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#666' }}>{it.autor}</div>
+                                      </div>
+                                      <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.85rem', color: '#666' }}>{it.status}</div>
+                                        {it.caminho_arquivo && (
+                                          <a href={it.caminho_arquivo} target="_blank" rel="noopener noreferrer" className={styles.button} style={{ marginTop: 6 }}>Ver Arquivo</a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <div style={{ marginTop: 8, fontSize: '0.9rem', color: '#666' }}>
+                              Nenhum item publicado a partir desta submissão.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* --- RESERVAS (APENAS NA ABA 'reservas') --- */}
             {activeTab === 'reservas' && (
               <div>
@@ -746,7 +857,7 @@ const fetchFavoritosDetalhados = async () => {
                         <tbody>
                           {reservasFiltradas.map(r => {
                             const st = String(r.status || '-').toLowerCase();
-                            const podeRenovar = st === 'atendida'; // só renova quando já atendida (empréstimo ativo)
+                            const podeRenovar = st === 'atendida';
                             return (
                               <tr key={r.reserva_id} style={{ borderBottom: '1px solid #f1f1f1' }}>
                                 <td style={{ padding: '8px', maxWidth: 300 }}>{r.titulo || '-'}</td>

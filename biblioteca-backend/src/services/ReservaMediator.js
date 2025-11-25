@@ -2,25 +2,43 @@
 const { poolSistemaNovo, poolOpenBiblio } = require('../infra/db/mysql/connection');
 const UserModel = require('../model/UserModel');
 const acervoLegadoService = require('./AcervoLegadoService');
+const { isUserBlocked } = require('./userBlockService');
 
 /**
- * ReservaMediator (Mediator)
+ * ReservaMediator
  *
- * Responsável por mediar a comunicação entre:
- * - Usuário (UserModel)
- * - Livro físico (AcervoLegadoService / OpenBiblio)
- * - Tabela de reservas (dg_reservas no sistema novo)
+ * Responsável por orquestrar Usuário + Livro (OpenBiblio) + criação de reserva no sistema novo.
+ * Exporta UMA instância (singleton).
  */
 class ReservaMediator {
+  constructor() {}
+
+  _parseLegacyId(submissaoId) {
+    const str = String(submissaoId || '');
+    if (!str.startsWith('LEGACY_')) {
+      const e = new Error('Somente itens físicos (LEGACY_) podem ser reservados.');
+      e.statusCode = 400;
+      throw e;
+    }
+    const partes = str.split('_');
+    const idReal = partes[1];
+    if (!idReal || isNaN(Number(idReal))) {
+      const e = new Error('ID legado inválido.');
+      e.statusCode = 400;
+      throw e;
+    }
+    return Number(idReal);
+  }
+
   /**
-   * Cria uma reserva de livro físico a partir de um ID legado (LEGACY_xxx).
-   *
+   * criarReserva
    * @param {object} payload
-   * @param {number} payload.usuarioId      ID do usuário logado (sistema novo)
-   * @param {string} payload.submissaoId    ID recebido do front (ex: "LEGACY_105")
-   * @param {string} payload.dataRetirada   Data em formato "AAAA-MM-DD"
+   * @param {number} payload.usuarioId
+   * @param {string} payload.submissaoId (ex: "LEGACY_105")
+   * @param {string} payload.dataRetirada (AAAA-MM-DD)
    */
   async criarReserva({ usuarioId, submissaoId, dataRetirada }) {
+    // validações básicas de entrada
     if (!usuarioId) {
       const err = new Error('Usuário não informado para a reserva.');
       err.statusCode = 401;
@@ -36,8 +54,22 @@ class ReservaMediator {
       err.statusCode = 400;
       throw err;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dataRetirada))) {
+      const err = new Error('Formato de data inválido. Use AAAA-MM-DD.');
+      err.statusCode = 400;
+      throw err;
+    }
 
-    // 1. Buscar usuário (classe Usuário)
+    // 1) Verificar bloqueio do usuário (regra de negócio: bloqueado não pode reservar)
+    const blockedInfo = await isUserBlocked(usuarioId);
+    if (blockedInfo.blocked) {
+      const until = blockedInfo.bloqueadoAte ? blockedInfo.bloqueadoAte.toISOString().slice(0,10) : 'indefinido';
+      const err = new Error(`Conta temporariamente bloqueada até ${until}. Procure a biblioteca.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2) Buscar usuário (classe UserModel)
     const usuario = await UserModel.findById(usuarioId);
     if (!usuario) {
       const err = new Error('Usuário não encontrado.');
@@ -45,10 +77,9 @@ class ReservaMediator {
       throw err;
     }
 
-    // 2. Buscar livro físico no acervo legado (classe Livro)
-    const legacyId = String(submissaoId).split('_')[1];
+    // 3) Buscar livro físico no acervo legado (OpenBiblio)
+    const legacyId = this._parseLegacyId(submissaoId);
     const livro = await acervoLegadoService.buscarPorId(legacyId);
-
     if (!livro) {
       const err = new Error('Livro físico não encontrado no acervo.');
       err.statusCode = 404;
@@ -64,7 +95,7 @@ class ReservaMediator {
     // Validação básica de status: só permite reservar se estiver disponível
     const statusLower = String(livro.status || '').toLowerCase();
     const estaDisponivel =
-      statusLower.startsWith('disponível') || statusLower === 'disponível';
+      statusLower.startsWith('dispon') || statusLower === 'disponível' || statusLower === 'disponivel';
 
     if (!estaDisponivel) {
       const err = new Error(
@@ -74,7 +105,29 @@ class ReservaMediator {
       throw err;
     }
 
-    // 3. Criar registro na tabela de reservas (dg_reservas)
+    // 4) Evitar duplicidade: já existe reserva ativa para o mesmo bibid?
+    const [existRows] = await poolSistemaNovo.query(
+      'SELECT reserva_id FROM dg_reservas WHERE legacy_bibid = ? AND status = "ativa" LIMIT 1',
+      [legacyId]
+    );
+    if (existRows && existRows.length > 0) {
+      const e = new Error('Já existe uma reserva ativa para este item.');
+      e.statusCode = 409;
+      throw e;
+    }
+
+    // 5) Evitar que o mesmo usuário tenha reserva ativa duplicada para o mesmo item
+    const [userRows] = await poolSistemaNovo.query(
+      'SELECT reserva_id FROM dg_reservas WHERE legacy_bibid = ? AND usuario_id = ? AND status = "ativa" LIMIT 1',
+      [legacyId, usuarioId]
+    );
+    if (userRows && userRows.length > 0) {
+      const e = new Error('Você já possui uma reserva ativa para este item.');
+      e.statusCode = 409;
+      throw e;
+    }
+
+    // 6) Inserir reserva no sistema novo
     const sqlInsert = `
     INSERT INTO dg_reservas (
         usuario_id,
@@ -83,11 +136,11 @@ class ReservaMediator {
         titulo,
         origem,
         data_prevista_retirada,
-        data_prevista_devolucao
+        data_prevista_devolucao,
+        status,
+        data_reserva
     )
-    VALUES (
-        ?, ?, ?, ?, ?, ?, DATE_ADD(?, INTERVAL 7 DAY)
-    )
+    VALUES (?, ?, ?, ?, ?, ?, NULL, 'ativa', NOW())
     `;
     const paramsInsert = [
       usuarioId,
@@ -95,19 +148,22 @@ class ReservaMediator {
       livro.codigo_barras,
       livro.titulo,
       'FISICO',
-      dataRetirada, // data_prevista_retirada
-      dataRetirada, // usado no DATE_ADD pra calcular devolução
+      dataRetirada // data_prevista_retirada
     ];
 
     const [result] = await poolSistemaNovo.query(sqlInsert, paramsInsert);
 
-    // 4. Atualizar o status do exemplar no OpenBiblio para "hld" (reservado)
-    await poolOpenBiblio.query(
-      'UPDATE biblio_copy SET status_cd = ? WHERE bibid = ? AND barcode_nmbr = ?',
-      ['hld', legacyId, livro.codigo_barras]
-    );
+    // 7) Tentar marcar exemplar no OpenBiblio como "hld" (reservado) - não fatal se falhar
+    try {
+      await poolOpenBiblio.query(
+        'UPDATE biblio_copy SET status_cd = ? WHERE bibid = ? AND barcode_nmbr = ?',
+        ['hld', legacyId, livro.codigo_barras]
+      );
+    } catch (err) {
+      console.warn('ReservaMediator: falha ao atualizar OpenBiblio (não crítico):', err.message);
+    }
 
-    // 5. Retornar um "DTO" da reserva criada
+    // 8) Retornar DTO da reserva criada
     return {
       reserva_id: result.insertId,
       usuario_id: usuarioId,
@@ -117,14 +173,12 @@ class ReservaMediator {
       origem: 'FISICO',
       status: 'ativa',
       data_prevista_retirada: dataRetirada,
-      // NOVO:
-      data_prevista_devolucao: null, // ainda não atendida (vamos usar esse campo mais na fase emprestado)
+      data_prevista_devolucao: null,
       usuario_nome: usuario.nome,
       usuario_email: usuario.email,
-      usuario_ra: usuario.ra,
+      usuario_ra: usuario.ra
     };
-  }
-}
+  } // criarReserva
+} // class
 
-// Exporta UMA instância (padrão Mediator como "central" única)
 module.exports = new ReservaMediator();

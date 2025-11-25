@@ -1,7 +1,10 @@
 // src/services/reservasService.js
-const {poolSistemaNovo: pool, poolOpenBiblio,} = require('../infra/db/mysql/connection');
+const { poolSistemaNovo: pool, poolOpenBiblio } = require('../infra/db/mysql/connection');
 const acervoLegadoService = require('./AcervoLegadoService');
 const { subject } = require('./observers'); // design pattern observer
+
+// serviço para checar bloqueio do usuário
+const { isUserBlocked } = require('./userBlockService');
 
 const ALLOWED_STATUS = ['ativa', 'atendida', 'cancelada'];
 
@@ -18,10 +21,25 @@ function parseLegacyId(submissaoId) {
   return Number(idReal);
 }
 
+/**
+ * criarReserva
+ * - verifica bloqueio do usuário (usando isUserBlocked)
+ * - valida dados
+ * - cria reserva em dg_reservas
+ * - atualiza OpenBiblio para hld (reservado)
+ */
 async function criarReserva(usuarioId, submissaoId, dataPrevistaRetirada) {
-
   if (!usuarioId) {
     throw new Error('Usuário não informado.');
+  }
+
+  // 0) bloquear usuários que estão no estado "bloqueado"
+  const blockedInfo = await isUserBlocked(usuarioId);
+  if (blockedInfo.blocked) {
+    const until = blockedInfo.bloqueadoAte ? blockedInfo.bloqueadoAte.toISOString().slice(0,10) : 'indefinido';
+    const err = new Error(`Conta temporariamente bloqueada até ${until}. Procure a biblioteca.`);
+    err.statusCode = 403;
+    throw err;
   }
 
   if (!dataPrevistaRetirada) {
@@ -32,6 +50,7 @@ async function criarReserva(usuarioId, submissaoId, dataPrevistaRetirada) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPrevistaRetirada)) {
     throw new Error('Formato de data inválido. Use AAAA-MM-DD.');
   }
+
   const legacyBibid = parseLegacyId(submissaoId);
 
   // 1. Busca o livro no OpenBiblio para validar
@@ -40,7 +59,8 @@ async function criarReserva(usuarioId, submissaoId, dataPrevistaRetirada) {
     throw new Error('Item físico não encontrado no acervo.');
   }
 
-  if (livro.status !== 'Disponível') {
+  if (typeof livro.status === 'string' && !String(livro.status).toLowerCase().startsWith('dispon')) {
+    // se status não começar com "dispon" consideramos indisponível; isso lida com variações "Disponível", "disponível", etc.
     throw new Error(
       `Item não está disponível para reserva (status atual: ${livro.status}).`
     );
@@ -74,16 +94,16 @@ async function criarReserva(usuarioId, submissaoId, dataPrevistaRetirada) {
     [usuarioId, legacyBibid, livro.codigo_barras || null, livro.titulo, dataPrevistaRetirada]
   );
 
-  // 5. Atualiza o status no OpenBiblio para "hld" (reservado)
-    try {
+  // 5. Atualiza o status no OpenBiblio para "hld" (reservado) - não estoura erro se falhar
+  try {
     await poolOpenBiblio.query(
-        'UPDATE biblio_copy SET status_cd = "hld" WHERE bibid = ?',
-        [legacyBibid]
+      'UPDATE biblio_copy SET status_cd = "hld" WHERE bibid = ?',
+      [legacyBibid]
     );
-    } catch (err) {
+  } catch (err) {
     console.error('Falha ao atualizar status no OpenBiblio:', err.message);
     // não damos throw aqui pra não quebrar a reserva do sistema novo
-    }
+  }
 
   return {
     reserva_id: result.insertId,
@@ -120,7 +140,6 @@ async function listarPorUsuario(usuarioId) {
   );
   return rows;
 }
-
 
 async function listarTodas() {
   const [rows] = await pool.query(
@@ -186,9 +205,8 @@ async function atualizarStatus(reservaId, novoStatus) {
   }
 
   // 4. alertas
-
   if (novoStatus === 'atendida') { 
-  // reserva transformou-se em empréstimo ativo — notificar usuário (confirmação)
+    // reserva transformou-se em empréstimo ativo — notificar usuário (confirmação)
     try {
       // recupera dados básicos para payload (titulo, usuário, email)
       const [rowsMeta] = await pool.query(
@@ -214,7 +232,6 @@ async function atualizarStatus(reservaId, novoStatus) {
     }
   }
 
-
   const sql = `
     UPDATE dg_reservas
     SET ${campos.join(', ')}
@@ -226,13 +243,6 @@ async function atualizarStatus(reservaId, novoStatus) {
   return result.affectedRows;
 }
 
-/**
- * Renova uma reserva/emprestimo:
- * - verifica que a reserva existe
- * - verifica que pertence ao usuário (segurança)
- * - só permite renovar quando status = 'atendida' (usuário já retirou o livro)
- * - estende data_prevista_devolucao em +7 dias (se não existir, usa data_prevista_retirada + 7 e soma mais 7)
- */
 /**
  * Renova uma reserva (usuário dono):
  * - só permite renovar quando status = 'atendida' (empréstimo ativo)
@@ -325,7 +335,6 @@ async function renovarReserva(reservaId, usuarioId) {
   };
 }
 
-
 const buscarEmprestimoAtivoPorUsuario = async (usuarioId) => {
   const sql = `
     SELECT 
@@ -340,7 +349,6 @@ const buscarEmprestimoAtivoPorUsuario = async (usuarioId) => {
     LIMIT 1
   `;
 
-  // Agora 'db' existe e aponta para o banco correto!
   const [rows] = await pool.execute(sql, [usuarioId]);
   return rows[0];
 };
@@ -351,6 +359,5 @@ module.exports = {
   listarTodas,
   atualizarStatus,
   buscarEmprestimoAtivoPorUsuario,
-  renovarReserva, // <-- adicionado
+  renovarReserva,
 };
-

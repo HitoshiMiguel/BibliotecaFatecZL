@@ -600,6 +600,10 @@
   letter-spacing: 0.2px;
 }
 
+.profileBtn + .profileBtn {
+  margin-left: 15px;
+}
+
 /* =====================  RESPONSIVO  ===================== */
 
 @media (max-width: 1180px) {

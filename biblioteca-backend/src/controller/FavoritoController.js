@@ -72,8 +72,8 @@ class FavoritoController {
     async listar(req, res, next) {
         try {
             const usuarioId = req.user.id;
-            const favoritosIds = await FavoritoService.listarPorUsuario(usuarioId);
-            res.status(200).json(favoritosIds);
+            const favoritos = await FavoritoService.listarDetalhesPorUsuario(usuarioId);
+            res.status(200).json(favoritos);
         } catch (error) {
             next(error);
         }

@@ -18,6 +18,16 @@ import FavoritosModal from '@/components/FavoritosModal';
 export default function DashboardPage() {
   const router = useRouter();
 
+  const fixEncoding = (text) => {
+    if (!text) return '';
+    try {
+      // Truque para forçar a interpretação correta de UTF-8
+      return decodeURIComponent(escape(text));
+    } catch (e) {
+      return text;
+    }
+  };
+
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState({ message: '', type: '' });
@@ -339,8 +349,10 @@ export default function DashboardPage() {
     }
   };
 
-  // helper: recarrega favoritos do backend
-  const fetchFavoritosDetalhados = async () => {
+
+  // helper: recarrega favoritos do backend (comporta arrays de IDs ou arrays de objetos)
+  // substitua a função fetchFavoritosDetalhados atual por esta
+const fetchFavoritosDetalhados = async () => {
     try {
       setIsLoadingFavoritos(true);
       const resFav = await fetch(FAVORITOS_URL, {
@@ -357,22 +369,43 @@ export default function DashboardPage() {
 
       const dataFav = await resFav.json();
 
+
+      // Normaliza: transforma cada entrada em objeto com submissao_id/item_id
       let normalized = (dataFav || []).map((f, i) => {
+        // Se vier só um ID solto (string ou numero)
         if (typeof f === 'string' || typeof f === 'number') {
           return { submissao_id: String(f), _needsFetch: true };
         }
+        
+        // --- AQUI ESTÁ A CORREÇÃO ---
+        // Ensinamos o frontend a ler os campos novos do backend (id_favorito/id_visualizacao)
+        // e salvamos nas variáveis que o seu sistema já usa (item_id/submissao_id)
         return {
-          item_id: f.item_id ?? f.itemId ?? f.id ?? null,
-          submissao_id: f.submissao_id ?? f.submissaoId ?? null,
-          titulo_proposto: f.titulo_proposto ?? f.titulo ?? f.title ?? null,
+          // item_id é usado para REMOVER (pega id_favorito ou fallback)
+          item_id: f.id_favorito ?? f.item_id ?? f.itemId ?? f.id ?? null,
+          
+          // submissao_id é usado para o LINK (pega id_visualizacao ou fallback)
+          submissao_id: f.id_visualizacao ?? f.submissao_id ?? f.submissaoId ?? null,
+          
+          // Títulos e autores
+          titulo_proposto: f.titulo ?? f.titulo_proposto ?? f.title ?? null,
+          titulo: f.titulo ?? f.titulo_proposto ?? f.title ?? null,
           autor: f.autor ?? f.author ?? '',
           editora: f.editora ?? f.publisher ?? '',
-          origem: f.origem ?? (f.submissao_id ? 'FISICO' : 'DIGITAL'),
+          
+          // Origem
+          origem: f.origem ?? (f.tipo === 'FISICO' ? 'FISICO' : 'DIGITAL'),
+
           _raw: f,
         };
       });
 
-      const toFetch = normalized.filter(n => n._needsFetch || (!n.titulo_proposto && !n.titulo && (n.submissao_id || n.item_id)));
+
+      // --- DAQUI PRA BAIXO CONTINUA IGUAL A SUA LÓGICA INTELIGENTE ---
+      // (Filtra quem não tem título ou ID e busca na API pública)
+
+      const toFetch = normalized.filter(n => (!n.titulo_proposto && !n.titulo) || (!n.submissao_id && !n.item_id));
+
       if (toFetch.length > 0) {
         const detailPromises = toFetch.map(async (entry) => {
           const id = entry.submissao_id ?? entry.item_id;
@@ -386,15 +419,18 @@ export default function DashboardPage() {
               return { ...entry };
             }
             const body = await resp.json();
-            const pub = body?.item ?? body?.publicacao ?? body;
+
+            const pub = body?.item ?? body?.publicacao ?? body; 
+            
             return {
               ...entry,
-              titulo_proposto: entry.titulo_proposto ?? pub?.titulo_proposto ?? pub?.titulo ?? pub?.title ?? pub?.titulo_proposto ?? null,
-              titulo: entry.titulo ?? pub?.titulo ?? pub?.title ?? null,
-              autor: entry.autor ?? pub?.autor ?? pub?.author ?? '',
-              editora: entry.editora ?? pub?.editora ?? pub?.publisher ?? '',
-              origem: entry.origem ?? (pub?.origem ?? (entry.submissao_id ? 'FISICO' : 'DIGITAL')),
-              _raw: entry._raw ?? pub,
+              titulo_proposto: entry.titulo_proposto ?? pub?.titulo_proposto ?? pub?.titulo ?? 'Sem título',
+              titulo: entry.titulo ?? pub?.titulo ?? null,
+              autor: entry.autor || pub?.autor || '',
+              editora: entry.editora || pub?.editora || '',
+              origem: entry.origem ?? pub?.origem ?? (entry.submissao_id ? 'FISICO' : 'DIGITAL'),
+              _raw: { ...entry._raw, ...pub },
+
             };
           } catch (err) {
             console.warn('Erro ao buscar detalhe de publicação', id, err);
@@ -419,16 +455,27 @@ export default function DashboardPage() {
         });
       }
 
+
+      // Garante campos finais
       const final = normalized.map((f, i) => ({
         item_id: f.item_id ?? f._raw?.item_id ?? null,
         submissao_id: f.submissao_id ?? f._raw?.submissao_id ?? null,
-        titulo_proposto: f.titulo_proposto ?? f.titulo ?? f._raw?.titulo ?? f._raw?.title ?? 'Sem título',
-        titulo: f.titulo ?? f.titulo_proposto ?? f._raw?.titulo ?? f._raw?.title ?? null,
-        autor: f.autor ?? f._raw?.autor ?? '',
-        editora: f.editora ?? f._raw?.editora ?? '',
-        origem: f.origem ?? (f.submissao_id ? 'FISICO' : 'DIGITAL'),
+        titulo_proposto: f.titulo_proposto ?? f.titulo ?? 'Sem título',
+        titulo: f.titulo ?? f.titulo_proposto ?? null,
+        autor: f.autor ?? '',
+        editora: f.editora ?? '',
+        origem: f.origem ?? 'DIGITAL',
         _raw: f._raw ?? f,
       }));
+
+      setfavoritosDetalhados(final);
+    } catch (err) {
+      console.error('Erro ao buscar favoritos:', err);
+      setfavoritosDetalhados([]);
+    } finally {
+      setIsLoadingFavoritos(false);
+    }
+  };
 
       setfavoritosDetalhados(final);
     } catch (err) {
@@ -637,60 +684,76 @@ export default function DashboardPage() {
 
             {/* --- FAVORITOS (APENAS NA ABA 'favoritos') --- */}
             {activeTab === 'favoritos' && (
-              <div style={{ marginBottom: 20 }}>
-                <h3>Meus Favoritos</h3>
-                {isLoadingFavoritos ? (
-                  <p>Carregando favoritos...</p>
-                ) : favoritosDetalhados.length === 0 ? (
-                  <p>Você não possui favoritos ainda.</p>
-                ) : (
-                  <ul style={{ paddingLeft: 0, listStyle: 'none' }}>
-                    {favoritosDetalhados.map((f, i) => {
-                      const alvoParaConsulta = f.submissao_id ?? f.submissaoId ?? f.item_id ?? f.itemId ?? (f._raw && (f._raw.submissao_id ?? f._raw.id)) ?? null;
+  <div style={{ marginBottom: 20 }}>
+    <h3>Meus Favoritos</h3>
+    {isLoadingFavoritos ? (
+      <p>Carregando favoritos...</p>
+    ) : favoritosDetalhados.length === 0 ? (
+      <p>Você não possui favoritos ainda.</p>
+    ) : (
+      <ul style={{ paddingLeft: 0, listStyle: 'none' }}>
+        {favoritosDetalhados.map((f, i) => {
+          // 1. ID para o LINK (Prioriza submissao_id / id_visualizacao)
+          const alvoParaConsulta = f.submissao_id ?? f.submissaoId ?? f.item_id ?? f.itemId ?? (f._raw && (f._raw.submissao_id ?? f._raw.id)) ?? null;
 
-                      if (!alvoParaConsulta) {
-                        console.warn('Favorito sem ID detectado (pulando):', f);
-                        return null;
-                      }
+          // 2. ID para REMOVER (Prioriza item_id / id_favorito) <--- ESSA LINHA FALTAVA
+          const alvoParaRemover = f.item_id ?? f.id_favorito ?? f.itemId;
 
-                      const fid = f.item_id ?? f.submissao_id ?? f._raw?.id ?? `fav-${i}`;
+          if (!alvoParaConsulta) {
+            console.warn('Favorito sem ID detectado (pulando):', f);
+            return null;
+          }
 
-                      return (
-                        <li key={fid} style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <strong>{f.titulo_proposto || f.titulo || 'Sem título'}</strong>
-                            {f.autor && <span> — {f.autor}</span>}
-                            {f.editora && <div style={{ fontSize: '0.9rem', color:'#666' }}>{f.editora}</div>}
-                          </div>
+          const fid = f.item_id ?? f.submissao_id ?? f._raw?.id ?? `fav-${i}`;
 
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button
-                              className={styles.button}
-                              onClick={() => {
-                                if (!alvoParaConsulta) {
-                                  Swal.fire('Erro', 'ID do item indefinido.', 'error');
-                                  return;
-                                }
-                                router.push(`/consulta/${encodeURIComponent(alvoParaConsulta)}`);
-                              }}
-                            >
-                              Ver
-                            </button>
+          return (
+            <li key={fid} style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong>
+                  {/* Função de correção de texto */}
+                  {fixEncoding(f.titulo_proposto || f.titulo || 'Sem título')}
+                </strong>
 
-                            <button
-                              className={styles.button}
-                              onClick={() => handleToggleFavorito(alvoParaConsulta)}
-                            >
-                              Remover
-                            </button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                {f.autor && (
+                  <span> — {fixEncoding(f.autor)}</span>
                 )}
+                
+                <div style={{ fontSize: '0.8rem', color: '#888' }}>
+                    {/* Mostra se é Físico ou Digital */}
+                    {f.origem === 'FISICO' ? 'Acervo Físico' : 'Acervo Digital'}
+                </div>
               </div>
-            )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className={styles.button}
+                  onClick={() => {
+                    if (!alvoParaConsulta) {
+                      Swal.fire('Erro', 'ID do item indefinido.', 'error');
+                      return;
+                    }
+                    router.push(`/consulta/${encodeURIComponent(alvoParaConsulta)}`);
+                  }}
+                >
+                  Ver
+                </button>
+
+                <button
+                  className={styles.button}
+                  // AQUI ESTÁ A CORREÇÃO DO ERRO 404:
+                  // Usamos alvoParaRemover em vez de alvoParaConsulta
+                  onClick={() => handleToggleFavorito(alvoParaRemover)}
+                >
+                  Remover
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+  </div>
+)}
 
             {/* --- SUBMISSÕES (APENAS NA ABA 'submissoes') --- */}
             {activeTab === 'submissoes' && (

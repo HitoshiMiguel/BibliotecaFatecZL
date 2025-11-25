@@ -181,6 +181,24 @@ async function buscarAprovadaPorId(id) {
     [id]
   );
   return rows[0] || null;
+
+}
+  async function contarPublicados() {
+  try {
+    const sql = `
+      SELECT COUNT(*) as total
+      FROM dg_submissoes s
+      INNER JOIN dg_itens_digitais i ON s.submissao_id = i.submissao_id
+      WHERE s.status = 'aprovado'
+      AND i.status = 'publicado'
+    `;
+    
+    const [rows] = await pool.query(sql);
+    return rows[0].total;
+  } catch (error) {
+    console.error("Erro ao contar itens digitais:", error);
+    return 0;
+  }
 }
 
-module.exports = { buscarAprovadas, buscarAprovadaPorId };
+module.exports = { buscarAprovadas, buscarAprovadaPorId, contarPublicados };

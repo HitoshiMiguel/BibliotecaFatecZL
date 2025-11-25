@@ -198,10 +198,7 @@ function GlobalMenuSheet() {
   const baseLinks = [
     { href: '/siteFatec', label: 'Home', icon: '🏠' },
     { href: '/consulta', label: 'Consulta', icon: '🔎' },
-    { href: '/acervo', label: 'Acervo', icon: '📚' },
-    { href: '/eventos', label: 'Eventos', icon: '📅' },
     { href: '/uploadForm', label: 'Uploads', icon: '📤' },
-    { href: '/servicos', label: 'Serviços', icon: '🧰' },
   ];
 
   const authAction = isAuthed

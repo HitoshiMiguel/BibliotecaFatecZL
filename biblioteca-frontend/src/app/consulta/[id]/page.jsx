@@ -263,7 +263,14 @@ export default function PublicacaoPage({ params }) {
 
           {/* Componente de Avaliação */}
           <div style={{ marginTop: '30px' }}>
-            <RatingStars itemId={data.item_id || id} publicacaoId={id} />
+           <RatingStars 
+              itemId={data.item_id || id} 
+              publicacaoId={id} 
+              onRatingChange={(novoValor) => {
+                  console.log("Nova avaliação:", novoValor);
+                  // Aqui entraria sua lógica para atualizar o estado ou chamar a API
+              }} 
+            />
           </div>
         </article>
       </section>

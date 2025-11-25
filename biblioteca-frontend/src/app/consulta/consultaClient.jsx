@@ -64,6 +64,20 @@ export default function ConsultaClient() {
         // O backend retorna um array de IDs: [1, 5, 22]
         const data = await res.json();
         setFavoritos(data);
+
+        const listaApenasIds = data.map(fav => {
+            // Se for um objeto (novo padrão), extraímos o ID
+            if (typeof fav === 'object' && fav !== null) {
+                // Tenta pegar o item_id (Digital) ou id_legado/submissao (Físico)
+                // O 'id_favorito' costuma ser o fallback seguro
+                return fav.item_id || fav.id_visualizacao || fav.id_favorito;
+            }
+            // Se já for número (padrão antigo), retorna ele mesmo
+            return fav;
+        });
+
+        setFavoritos(listaApenasIds);
+
       } catch (err) {
         console.error('Erro ao carregar favoritos:', err.message);
         // Não definimos um erro 'fatal' aqui, o usuário ainda pode navegar
@@ -210,10 +224,17 @@ export default function ConsultaClient() {
             // --- LÓGICA CRÍTICA ---
             // Se origem for FISICO, o ID é 'submissao_id'. 
             // Se for DIGITAL, o ID é 'item_id'.
-            const idParaFavoritar = it.origem === 'FISICO' ? it.submissao_id : it.item_id;
+           const idParaAcao = it.item_id ?? it.submissao_id;
 
-            const isFavorito = favoritos.includes(idParaFavoritar);
-            const isCarregandoFav = loadingFavoritoId === idParaFavoritar;
+            // 2. VERIFICAÇÃO BLINDADA (AQUI É O PULO DO GATO) 😺
+            // Verifica se o ID do item_id OU do submissao_id está na lista de favoritos.
+            // E usa String() para garantir que "6" seja igual a 6.
+            const isFavorito = favoritos.some(favId => 
+                (it.item_id && String(favId) === String(it.item_id)) || 
+                (it.submissao_id && String(favId) === String(it.submissao_id))
+            );
+
+            const isCarregandoFav = loadingFavoritoId === idParaAcao;
 
             return (
               <li key={it.submissao_id} className={styles.resultItem}>
@@ -238,7 +259,7 @@ export default function ConsultaClient() {
                     e.preventDefault();
                     if (!isCarregandoFav) {
                       // Passamos o ID correto (Físico ou Digital)
-                      handleToggleFavorito(idParaFavoritar);
+                      handleToggleFavorito(idParaAcao);
                     }
                   }}
                   className={styles.favoritoButton}

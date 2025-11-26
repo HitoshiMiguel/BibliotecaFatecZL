@@ -263,14 +263,7 @@ export default function PublicacaoPage({ params }) {
 
           {/* Componente de Avaliação CORRIGIDO */}
           <div style={{ marginTop: '30px' }}>
-            <RatingStars 
-              itemId={data.item_id || id} 
-              publicacaoId={id} 
-              // Corrigimos o tipo
-              tipo={data.tipo === 'fisico' ? 'fisico' : 'digital'}
-              // Corrigimos o erro passando uma função vazia
-              onRatingChange={() => {}}
-            />
+            <RatingStars itemId={data.item_id || id} publicacaoId={id} />
           </div>
         </article>
       </section>

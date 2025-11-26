@@ -107,7 +107,7 @@ class FavoritoService {
         if (idsDigitais.length > 0) {
             // Mesma query de antes para digitais
             const sqlDigital = `
-                SELECT i.item_id, s.submissao_id, s.titulo_proposto AS titulo, 'DIGITAL' as origem
+                SELECT i.item_id, s.submissao_id, s.titulo_proposto AS titulo, s.autor, 'DIGITAL' as origem
                 FROM dg_itens_digitais i
                 JOIN dg_submissoes s ON i.submissao_id = s.submissao_id
                 WHERE i.item_id IN (?)
@@ -124,11 +124,20 @@ class FavoritoService {
 
         // 5. Formata para o padrão unificado do front
         const digitaisFormatados = digitais.map(d => ({
-            id_favorito: d.item_id, // ID para remover depois
-            id_visualizacao: d.submissao_id, // ID para o link
+            id_favorito: d.item_id, 
+            id_visualizacao: d.submissao_id, // Tente garantir que aqui está d.item_id
             titulo: d.titulo,
-            tipo: 'DIGITAL'
+            autor: d.autor,
+            tipo: 'DIGITAL',
+            // DEBUG: Vamos ver os IDs crus
+            _debug_submissao: d.submissao_id,
+            _debug_item: d.item_id
         }));
+
+        // ADICIONE ISSO AQUI:
+        console.log("--- DEBUG FAVORITOS ---");
+        console.log("SQL Retornou:", digitais); 
+        console.log("Formatado:", digitaisFormatados);
 
         const fisicosFormatados = fisicos.map(f => ({
             id_favorito: `LEGACY_${f.id_legado}`, // ID com prefixo

@@ -1,10 +1,21 @@
 // src/controller/reservasAdminController.js
 const {
-  poolSistemaNovo, 
-  poolOpenBiblio 
+  poolSistemaNovo,
+  poolOpenBiblio
 } = require('../infra/db/mysql/connection');
 
-const {subject} = require('../services/observers'); 
+const { blockUserForDays, isUserBlocked } = require('../services/userBlockService');
+const { subject } = require('../services/observers');
+
+/**
+ * Helper local
+ */
+function startOfDay(d) {
+  const dt = new Date(d || Date.now());
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+
 /**
  * GET /api/admin/reservas
  * Lista todas as reservas com dados do usuário.
@@ -77,10 +88,18 @@ async function atualizarStatusReserva(reservaId, novoStatus, options = {}) {
     reserva.legacy_bibid &&
     reserva.codigo_barras
   ) {
-    await poolOpenBiblio.query(
-      'UPDATE biblio_copy SET status_cd = ? WHERE bibid = ? AND barcode_nmbr = ?',
-      [atualizarOpenBiblioPara, reserva.legacy_bibid, reserva.codigo_barras]
-    );
+    try {
+      await poolOpenBiblio.query(
+        'UPDATE biblio_copy SET status_cd = ? WHERE bibid = ? AND barcode_nmbr = ?',
+        [atualizarOpenBiblioPara, reserva.legacy_bibid, reserva.codigo_barras]
+      );
+    } catch (err) {
+      console.error(
+        'Falha ao atualizar status no OpenBiblio (atualizarStatus):',
+        err.message
+      );
+      // Não estouramos erro pra não matar o fluxo
+    }
   }
 
   // Retorna a reserva "atualizada" (objeto merged)
@@ -95,15 +114,59 @@ async function atualizarStatusReserva(reservaId, novoStatus, options = {}) {
  * POST /api/admin/reservas/:id/atender
  * Marca a reserva como atendida (usuário apareceu e pegou o livro).
  * Atualiza o OpenBiblio para status "out".
+ *
+ * Nota: verifica bloqueio DO USUÁRIO antes de atender.
  */
 const atenderReserva = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // 0) buscar reserva para ter usuario_id antes de atualizar
+    const [rowsReserva] = await poolSistemaNovo.query(
+      'SELECT reserva_id, usuario_id FROM dg_reservas WHERE reserva_id = ? LIMIT 1',
+      [id]
+    );
+    if (!rowsReserva || rowsReserva.length === 0) {
+      return res.status(404).json({ message: 'Reserva não encontrada.' });
+    }
+    const reservaRow = rowsReserva[0];
+
+    // 1) verificar bloqueio do usuário
+    const blocked = await isUserBlocked(reservaRow.usuario_id);
+    if (blocked.blocked) {
+      return res.status(400).json({ message: `Usuário bloqueado até ${blocked.bloqueadoAte.toISOString().slice(0,10)}.`});
+    }
+
+    // 2) atualiza status para atendida e atualiza OpenBiblio
     const reservaAtualizada = await atualizarStatusReserva(id, 'atendida', {
-      // No OpenBiblio: "out" = emprestado
       atualizarOpenBiblioPara: 'out',
     });
+
+    // 3) notificar (opcional: subject.notify para reserva_atendida)
+    try {
+      const [rowsMeta] = await poolSistemaNovo.query(
+        `SELECT r.reserva_id, r.legacy_bibid, r.titulo, r.usuario_id, u.nome AS usuario_nome, u.email AS usuario_email 
+         FROM dg_reservas r
+         LEFT JOIN dg_usuarios u ON u.usuario_id = r.usuario_id
+         WHERE r.reserva_id = ? LIMIT 1`, [id]
+      );
+      const meta = rowsMeta[0];
+      if (meta) {
+        await subject.notify({
+          type: 'reserva_atendida',
+          payload: {
+            reserva_id: id,
+            titulo: meta?.titulo,
+            usuario_id: meta?.usuario_id,
+            usuario_nome: meta?.usuario_nome,
+            usuario_email: meta?.usuario_email,
+            eventKey: `reserva_atendida_${id}`
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[ReservasAdminController] erro ao notificar atendimento (não crítico):', err.message);
+    }
 
     return res.json({
       message: 'Reserva marcada como atendida.',
@@ -127,7 +190,6 @@ const cancelarReserva = async (req, res) => {
     const { id } = req.params;
 
     const reservaAtualizada = await atualizarStatusReserva(id, 'cancelada', {
-      // No OpenBiblio: "in" = disponível
       atualizarOpenBiblioPara: 'in',
     });
 
@@ -147,6 +209,7 @@ const cancelarReserva = async (req, res) => {
  * POST /api/admin/reservas/:id/concluir
  * Conclui a reserva (empréstimo encerrado / livro devolvido).
  * Atualiza o OpenBiblio para status "in".
+ * Aplica bloqueio ao usuário por dias_atraso (se houver).
  */
 const concluirReserva = async (req, res) => {
   try {
@@ -165,7 +228,34 @@ const concluirReserva = async (req, res) => {
       reservaAtualizada?.title ??
       null;
 
-    // 2) se não tiver, busca no DB a reserva (fallback seguro)
+    // 2) calcular dias de atraso e aplicar bloqueio (se houver)
+    let diasAtraso = 0;
+    try {
+      // buscar a reserva atualizada para garantir que temos a data_prevista_devolucao
+      const [rowsReserva] = await poolSistemaNovo.query(
+        'SELECT data_prevista_devolucao, usuario_id FROM dg_reservas WHERE reserva_id = ? LIMIT 1',
+        [id]
+      );
+      if (rowsReserva.length) {
+        const r = rowsReserva[0];
+        if (r.data_prevista_devolucao) {
+          const dataPrev = new Date(r.data_prevista_devolucao);
+          const hoje = startOfDay(new Date());
+          // calcular dias inteiros (floor)
+          const diffMs = hoje - startOfDay(dataPrev);
+          diasAtraso = Math.max(0, Math.round(diffMs / (1000*60*60*24)));
+        }
+        if (diasAtraso > 0) {
+          await blockUserForDays(r.usuario_id, diasAtraso);
+          console.log(`[ReservasAdminController] Usuario ${r.usuario_id} bloqueado por ${diasAtraso} dia(s) por atraso.`);
+          // opcional: notificar usuário do bloqueio via subject.notify/email
+        }
+      }
+    } catch (err) {
+      console.warn('[ReservasAdminController] falha ao calcular/aplicar bloqueio:', err.message);
+    }
+
+    // 3) se não tiver legacyId/titulo, busca no DB (fallback seguro)
     if (!legacyId || !tituloDoLivro) {
       const [rows] = await poolSistemaNovo.query(
         'SELECT legacy_bibid, titulo FROM dg_reservas WHERE reserva_id = ? LIMIT 1',
@@ -179,15 +269,13 @@ const concluirReserva = async (req, res) => {
 
     // validações finais
     if (!legacyId) {
-      // se ainda não encontramos, aborta com log
       const err = new Error('Legacy bibid (legacy_bibid) não encontrado para esta reserva.');
       err.statusCode = 500;
       throw err;
     }
-    // tituloDoLivro pode ser nulo; isso não quebra, mas é melhor ter algo legível:
     tituloDoLivro = tituloDoLivro ?? `LEGACY_${legacyId}`;
 
-    // pega usuários que favoritaram esse item (procura pelo campo de submissao_id ou legacy_bibid)
+    // 4) pega usuários que favoritaram esse item (procura pelo campo de submissao_id ou legacy_bibid)
     const [favoritosRows] = await poolSistemaNovo.query(
       `SELECT f.usuario_id, u.email, u.nome
         FROM dg_favoritos f
@@ -195,7 +283,6 @@ const concluirReserva = async (req, res) => {
         WHERE f.id_legado = ?`,
       [legacyId]
     );
-
 
     for (const fav of favoritosRows) {
       // subject.notify deve existir / ter sido instanciado antes; mantive payload compatível
@@ -237,7 +324,7 @@ const renovarReserva = async (req, res) => {
     const { id } = req.params;
 
     // Busca a reserva atual
-    const [rows] = await SistemaNovo.query(
+    const [rows] = await poolSistemaNovo.query(
       'SELECT * FROM dg_reservas WHERE reserva_id = ?',
       [id]
     );
@@ -251,6 +338,14 @@ const renovarReserva = async (req, res) => {
     if (reserva.status !== 'atendida') {
       return res.status(400).json({
         message: 'Somente reservas em estado "atendida" podem ser renovadas.',
+      });
+    }
+
+    // bloqueia se usuário estiver bloqueado
+    const blockedInfo = await isUserBlocked(reserva.usuario_id);
+    if (blockedInfo.blocked) {
+      return res.status(403).json({
+        message: `Não é possível renovar: conta do usuário bloqueada até ${blockedInfo.bloqueadoAte.toISOString().slice(0,10)}.`
       });
     }
 

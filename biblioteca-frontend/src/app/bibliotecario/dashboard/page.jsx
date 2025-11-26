@@ -686,8 +686,8 @@ export default function DashboardBibliotecarioPage() {
             </tr>
           </thead>
           <tbody>
-            {publicacoes.map((pub) => (
-              <tr key={pub.submissao_id}>
+            {publicacoes.map((pub, index) => (
+              <tr key={pub.submissao_id || pub.id ||`pub-${index}`}>
                 <td data-label="Título:">{pub.titulo_proposto}</td>
                 <td data-label="Autor:">{pub.autor || '—'}</td>
                 <td data-label="Tipo:">

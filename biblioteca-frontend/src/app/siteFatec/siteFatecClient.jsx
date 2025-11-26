@@ -6,50 +6,47 @@ import { Container } from 'react-bootstrap';
 import styles from './siteFatec.module.css';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
 import { useAccessibility } from '@/components/Accessibility/AccessibilityProvider';
-/* ==========================
-   Notícias – estilo Fatec
-   ========================== */
-function NoticiasCPS() {
-  const NEWS = [
-    { id: 1, img: '/images/biblio-acervo1.jpg', title: 'Biblioteca da Fatec ZL recebe novos títulos no acervo digital', date: '28 de outubro de 2025', href: '#', excerpt: 'Foram adicionados mais de 300 novos e-books e periódicos acadêmicos, ampliando as possibilidades de pesquisa dos alunos.' },
-    { id: 2, img: '/images/biblio-leitura.jpg', title: 'Projeto incentiva leitura com clube de livros e rodas de conversa', date: '22 de outubro de 2025', href: '#', excerpt: 'A iniciativa busca estimular o hábito da leitura entre os estudantes, com encontros mensais e curadoria do corpo docente.' },
-    { id: 3, img: '/images/biblio-renovacao.jpg', title: 'Sistema de empréstimo e renovação online é modernizado', date: '18 de outubro de 2025', href: '#', excerpt: 'A nova interface do sistema permite solicitar empréstimos e renovar obras diretamente pelo site da biblioteca.' },
-    { id: 4, img: '/images/biblio-exposicao.jpg', title: 'Exposição celebra o Dia Nacional do Livro na Fatec ZL', date: '15 de outubro de 2025', href: '#', excerpt: 'Com o tema “O livro como ponte para o conhecimento”, a mostra reuniu obras raras e interativas no saguão da biblioteca.' },
-  ];
-
-  return (
-    <section id="noticias" className={styles.newsSection} aria-labelledby="noticiasTitulo">
-      <div className={styles.newsHeader}>
-        <h2 id="noticiasTitulo" className={styles.newsTitle}>Últimas notícias sobre a Biblioteca</h2>
-        <span className={styles.newsUnderline} aria-hidden="true" />
-      </div>
-
-      <div className={styles.newsGrid}>
-        {NEWS.map((n) => (
-          <article key={n.id} className={styles.newsCard}>
-            <a href={n.href} className={styles.newsLink}>
-              <div className={styles.newsThumbWrap}>
-                <img className={styles.newsThumb} src={n.img} alt="" loading="lazy" />
-              </div>
-              <div className={styles.newsCardBody}>
-                <h3 className={styles.newsCardTitle}>{n.title}</h3>
-                {n.excerpt ? <p className={styles.newsExcerpt}>{n.excerpt}</p> : null}
-                <time className={styles.newsDate}>{n.date}</time>
-              </div>
-            </a>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 /* ==========================================
    PÁGINA CLIENT – Biblioteca Fatec Online
    ========================================== */
 export default function SiteFatecPage() {
-  const { isAuthed, logout } = useGlobalMenu();
+  const { isAuthed, logout, user } = useGlobalMenu();
   const [showTop, setShowTop] = useState(false);
+
+  // 1. ESTADOS PARA OS NÚMEROS DO BANCO
+  const [stats, setStats] = useState({
+    totalTitulos: 0,
+    itensDigitais: 0,
+    livrosFisicos: 0
+  });
+
+  // 2. BUSCAR DADOS NO BACKEND
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        // ⚠️ ATENÇÃO À PORTA: Verifique se seu backend roda na 5000, 3001, etc.
+        // Se no app.js estiver app.use('/api/acervo'...), mude para /api/acervo/stats
+        const response = await fetch('http://localhost:4000/api/acervo/stats'); 
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStats({
+            totalTitulos: data.totalTitulos || 0,
+            itensDigitais: data.itensDigitais || 0,
+            livrosFisicos: data.livrosFisicos || 0
+          });
+        } else {
+          console.error("Erro na resposta da API:", response.status);
+        }
+      } catch (error) {
+        console.error("Erro ao conectar com o backend:", error);
+        // Se der erro (servidor desligado), mantém 0 ou coloca valores de fallback
+      }
+    }
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     document.title = 'Site Fatec Online - Biblioteca Fatec ZL';
@@ -58,10 +55,8 @@ export default function SiteFatecPage() {
   // calcula a altura do header
   useEffect(() => {
     const setHeaderOffset = () => {
-      // ✅ Use 'as HTMLElement' no FINAL
-      // Adicione este comentário "mágico" logo ANTES da linha
-    /** @type {HTMLElement | null} */
-    const headerEl = document.querySelector('.app-header');
+      /** @type {HTMLElement | null} */
+      const headerEl = document.querySelector('.app-header');
       const h = headerEl?.offsetHeight || 0;
       document.documentElement.style.setProperty('--header-offset', `${h}px`);
     };
@@ -90,31 +85,43 @@ export default function SiteFatecPage() {
 
   const { currentFilter, handleChangeColorFilter } = useAccessibility();
 
+  let profileHref = '/dashboard'; // ou '/perfil' (Padrão para aluno/comum)
+  let profileLabel = 'Perfil';
+
+  if (user?.role === 'admin') {
+    profileHref = '/admin/dashboard';
+    profileLabel = 'Perfil';
+  } else if (user?.role === 'bibliotecario') {
+    profileHref = '/bibliotecario/dashboard';
+    profileLabel = 'Perfil';
+  }
+
   return (
     <>
       <div id="top-anchor" aria-hidden="true" />
 
-      {/* ⬅️ REMOVIDO o skip-link duplicado daqui */}
-
       <div className={styles.topBarsWrapper}>
         <div className={styles.topRedBar} role="navigation" aria-label="Navegação rápida">
           <Container className={styles.tabsContainer}>
-            <ul className={styles.tabsList}>
-              <li><a href="#noticias" className={styles.tab}>Notícias</a></li>
-              <li><a href="#eventos" className={styles.tab}>Eventos</a></li>
-              <li><a href="#acervo" className={styles.tab}>Acervo</a></li>
-              <li><a href="#servicos" className={styles.tab}>Serviços</a></li>
-            </ul>
-
-            {/* Botão dinâmico: Entrar / Sair */}
             <div className={styles.authArea}>
               {isAuthed ? (
-                <button onClick={logout} className={styles.profileBtn} aria-label="Sair da conta">
-                  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor" d="M16 13v-2H7V8l-5 4l5 4v-3zM20 3H8v2h12v14H8v2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/>
-                  </svg>
-                  <span className={styles.profileText}>Sair</span>
-                </button>
+                <>
+                  {/* --- NOVO BOTÃO DE PERFIL --- */}
+                  <Link href={profileHref} className={styles.profileBtn} aria-label={`Ir para ${profileLabel}`}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z"/>
+                    </svg>
+                    <span className={styles.profileText}>{profileLabel}</span>
+                  </Link>
+
+                  {/* --- BOTÃO DE SAIR (JÁ EXISTENTE) --- */}
+                  <button onClick={logout} className={styles.profileBtn} aria-label="Sair da conta">
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="currentColor" d="M16 13v-2H7V8l-5 4l5 4v-3zM20 3H8v2h12v14H8v2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/>
+                    </svg>
+                    <span className={styles.profileText}>Sair</span>
+                  </button>
+                </>
               ) : (
                 <Link href="/login" className={styles.profileBtn} aria-label="Ir para a tela de login">
                   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -125,6 +132,7 @@ export default function SiteFatecPage() {
               )}
             </div>
           </Container>
+          
         </div>
 
         <div className={styles.crumbBar} role="navigation" aria-label="Breadcrumb">
@@ -141,7 +149,7 @@ export default function SiteFatecPage() {
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>Biblioteca Online da Fatec Zona Leste</h1>
           <p className={styles.heroLead}>
-            Acesse o acervo, solicite materiais e acompanhe eventos e notícias da biblioteca.
+            Acesse o acervo, solicite materiais e faça reservas de forma rápida e prática.
           </p>
           <nav aria-label="Ações principais">
             <Link href="/consulta" className={styles.primaryBtn}>Consulte o acervo online</Link>
@@ -158,27 +166,45 @@ export default function SiteFatecPage() {
           {/* Sobre a Biblioteca */}
           <section className={styles.aboutLib}>
             <div className={styles.aboutLeft}>
-              <span className={styles.badge}>Acervo Digital • Fatec ZL</span>
+              <span className={styles.badge}>Acervo Híbrido • Fatec Zona Leste</span>
               <p className={styles.aboutText}>
-                A Biblioteca da Fatec Zona Leste apoia ensino, pesquisa e extensão, oferecendo
-                empréstimo de materiais, consulta ao acervo físico e digital, orientação em
-                normalização (ABNT) e um espaço acolhedor para estudo.
+                A nova plataforma da Biblioteca Fatec ZL transforma a maneira como você estuda. 
+                Integramos o acervo tradicional a uma moderna biblioteca digital, oferecendo acesso instantâneo a livros, TCCs e artigos. 
+                Tenha autonomia para gerenciar seus empréstimos e pesquisar materiais de qualquer lugar.
               </p>
               <ul className={styles.aboutBullets}>
-                <li>Empréstimo e renovação online</li>
-                <li>Consulta ao <strong>acervo</strong> e reservas</li>
-                <li>Guia rápido de normalização ABNT</li>
+                <li><strong>Acervo Híbrido</strong>: Consulte livros físicos e baixe materiais digitais.</li>
+                <li><strong>Autoatendimento:</strong>Renove e reserve títulos sem filas.</li>
               </ul>
-              <div className={styles.aboutActions}>
-                <a href="/sobre" className={styles.ghostBtn}>Conheça o espaço</a>
-                <a href="/regulamento" className={styles.primaryBtn}>Regulamento</a>
-              </div>
             </div>
 
+            {/* 3. ESTATÍSTICAS DINÂMICAS */}
             <div className={styles.aboutRight}>
-              <div className={styles.stat}><div className={styles.statNumber}>12k+</div><div className={styles.statLabel}>títulos cadastrados</div></div>
-              <div className={styles.stat}><div className={styles.statNumber}>25k+</div><div className={styles.statLabel}>exemplares</div></div>
-              <div className={styles.stat}><div className={styles.statNumber}>ABNT</div><div className={styles.statLabel}>apoio à normalização</div></div>
+              
+              {/* Total de Títulos */}
+              <div className={styles.stat}>
+                <div className={styles.statNumber}>
+                  {stats.totalTitulos > 0 ? stats.totalTitulos : '...'}
+                </div>
+                <div className={styles.statLabel}>Total de itens</div>
+              </div>
+
+              {/* Itens Digitais */}
+              <div className={styles.stat}>
+                <div className={styles.statNumber}>
+                  {stats.itensDigitais > 0 ? stats.itensDigitais : '...'}
+                </div>
+                <div className={styles.statLabel}>Itens digitais</div>
+              </div>
+
+              {/* Livros Físicos */}
+              <div className={styles.stat}>
+                <div className={styles.statNumber}>
+                  {stats.livrosFisicos > 0 ? stats.livrosFisicos : '...'}
+                </div>
+                <div className={styles.statLabel}>Livros físicos</div>
+              </div>
+
             </div>
           </section>
 
@@ -189,37 +215,30 @@ export default function SiteFatecPage() {
               <li><a className={styles.quickItem} href="/consulta"><span className={styles.qText}>Consultar Acervo</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/uploadForm"><span className={styles.qText}>Solicitar Material</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/login"><span className={styles.qText}>Login</span><span className={styles.qGo} aria-hidden>›</span></a></li>
-              <li><a className={styles.quickItem} href="/noticias"><span className={styles.qText}>Notícias da Biblioteca</span><span className={styles.qGo} aria-hidden>›</span></a></li>
-              <li><a className={styles.quickItem} href="/tutorial"><span className={styles.qText}>Guias e Tutoriais</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/duvidas-frequentes"><span className={styles.qText}>Dúvidas Frequentes</span><span className={styles.qGo} aria-hidden>›</span></a></li>
-              <li><a className={styles.quickItem} href="/regulamento"><span className={styles.qText}>Regulamento</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/contato"><span className={styles.qText}>Fale com a Biblioteca</span><span className={styles.qGo} aria-hidden>›</span></a></li>
               <li><a className={styles.quickItem} href="/sobre"><span className={styles.qText}>Sobre a Biblioteca</span><span className={styles.qGo} aria-hidden>›</span></a></li>
             </ul>
           </section>
-
-          <NoticiasCPS />
         </main>
       </Container>
 
       {/* Rodapé institucional */}
       <footer className={styles.govFooter}>
-    <div className={styles.govFooterInner}>
-      <div className={styles.govLeft}>
-        <div className={styles.govAccessibility}>
-          <span className={styles.govFilterLabel}>FILTRO DE DALTONISMO</span>
-          
-          {/* 2. ADICIONE A PROP 'value' AO SELECT */}
-          <select 
-            className={styles.govSelect} 
-            onChange={handleChangeColorFilter}
-            value={currentFilter} /* <-- ESTA É A CORREÇÃO */
-          >
-            <option value="normal">Cores Padrão</option>
-            <option value="deuteranopia">Deuteranopia</option>
-            <option value="protanopia">Protanopia</option>
-            <option value="tritanopia">Tritanopia</option>
-          </select>
+        <div className={styles.govFooterInner}>
+          <div className={styles.govLeft}>
+            <div className={styles.govAccessibility}>
+              <span className={styles.govFilterLabel}>FILTRO DE DALTONISMO</span>
+              <select 
+                className={styles.govSelect} 
+                onChange={handleChangeColorFilter}
+                value={currentFilter}
+              >
+                <option value="normal">Cores Padrão</option>
+                <option value="deuteranopia">Deuteranopia</option>
+                <option value="protanopia">Protanopia</option>
+                <option value="tritanopia">Tritanopia</option>
+              </select>
             </div>
           </div>
           <div className={styles.govCenter}>
@@ -235,14 +254,9 @@ export default function SiteFatecPage() {
             >
               ↑
             </button>
-            <button className={styles.govBtnColor} aria-label="Acessibilidade" title="Acessibilidade">◎</button>
           </div>
         </div>
       </footer>
     </>
   );
 }
-
-
-
-

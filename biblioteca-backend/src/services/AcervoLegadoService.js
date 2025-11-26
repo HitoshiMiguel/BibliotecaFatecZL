@@ -169,6 +169,34 @@ async buscarPorListaIds(listaIds) {
       return [];
     }
   }
+
+  async contarTotais() {
+    try {
+      // 1. Total de Títulos (Tabela 'biblio' = cadastro bibliográfico)
+      const [rowsTitulos] = await poolOpenBiblio.execute('SELECT COUNT(*) as total FROM biblio');
+      const totalTitulos = rowsTitulos[0].total;
+
+      // 2. Total de Livros Físicos (Tabela 'biblio_copy' = exemplares na estante)
+      const [rowsFisicos] = await poolOpenBiblio.execute('SELECT COUNT(*) as total FROM biblio_copy');
+      const livrosFisicos = rowsFisicos[0].total;
+
+      // 3. Itens Digitais
+      // O OpenBiblio nativo geralmente não gerencia arquivos digitais.
+      // Se você tiver PDFs cadastrados no banco novo, teremos que somar aqui depois.
+      // Por enquanto, retorna 0 para o legado.
+      const itensDigitais = 0; 
+
+      return {
+        totalTitulos,
+        itensDigitais,
+        livrosFisicos
+      };
+    } catch (error) {
+      console.error("Erro ao contar totais do acervo:", error);
+      // Retorna zerado em caso de erro para não quebrar o site
+      return { totalTitulos: 0, itensDigitais: 0, livrosFisicos: 0 };
+    }
+  }
 }
 
 module.exports = new AcervoLegadoService();

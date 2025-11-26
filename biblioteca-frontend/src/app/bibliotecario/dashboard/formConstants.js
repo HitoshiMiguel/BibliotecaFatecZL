@@ -1,7 +1,7 @@
 export const TIPOS = [
-  { value: 'tcc', label: 'TCC' },
-  { value: 'artigo', label: 'Artigo' },
-  { value: 'livro', label: 'Livro' },
+  { label: 'TCC', value: 'tcc' },
+  { label: 'Artigo', value: 'artigo' },
+  { label: 'Livro', value: 'livro' },
 ];
 
 export const FIELDS_BY_TYPE = {
@@ -11,21 +11,23 @@ export const FIELDS_BY_TYPE = {
     { name: 'orientador', label: 'Orientador', type: 'text' },
     { name: 'curso', label: 'Curso', type: 'text' },
     { name: 'instituicao', label: 'Instituição', type: 'text' },
-    { name: 'ano_defesa', label: 'Ano de Defesa', type: 'number' },
+    { name: 'ano_defesa', label: 'Ano de Defesa', type: 'number', required: true },
     { name: 'descricao', label: 'Descrição', type: 'textarea' },
   ],
   artigo: [
-    { name: 'titulo_proposto', label: 'Título', type: 'text', required: true },
+    { name: 'titulo', label: 'Título', type: 'text', required: true },
     { name: 'autor', label: 'Autor', type: 'text', required: true },
+    { name: 'instituicao', label: 'Instituição', type: 'text' }, // ADICIONADO
     { name: 'conferencia', label: 'Conferência', type: 'text' },
-    // ... (resto dos campos de artigo) ...
+    { name: 'periodico', label: 'Periódico', type: 'text' },     // ADICIONADO
+    { name: 'ano_publicacao', label: 'Ano de Publicação', type: 'number', required: true },
     { name: 'descricao', label: 'Descrição', type: 'textarea' },
   ],
   livro: [
-    { name: 'titulo_proposto', label: 'Título', type: 'text', required: true },
+    { name: 'titulo', label: 'Título', type: 'text', required: true },
     { name: 'autor', label: 'Autor', type: 'text', required: true },
     { name: 'editora', label: 'Editora', type: 'text' },
-    // ... (resto dos campos de livro) ...
+    { name: 'ano_publicacao', label: 'Ano de Publicação', type: 'number', required: true },
     { name: 'descricao', label: 'Descrição', type: 'textarea' },
   ],
 };

@@ -55,7 +55,7 @@ const rejeitarSolicitacao = async (req, res) => {
 // --- 2. FUNÇÃO PARA APROVAÇÃO (CRIAÇÃO VIA BUILDER E CONFIRMAÇÃO) ---
 
 /**
- * Aprova uma solicitação (Professor), cria o utilizador com senha ORIGINAL e envia email de CONFIRMAÇÃO.
+ * Aprova uma solicitação (Professor), cria o usuário com senha ORIGINAL e envia email de CONFIRMAÇÃO.
  */
 const aprovarSolicitacao = async (req, res) => {
     // Garante que 'id' é extraído corretamente de req.params
@@ -83,7 +83,7 @@ const aprovarSolicitacao = async (req, res) => {
         if (existingUser) {
              console.log(`Aprovação falhou: Email ${solicitacao.email} já existe na tabela dg_usuarios.`);
              await SolicitacaoModel.updateStatus(id, 'rejeitado'); // Usa o id aqui
-             return res.status(409).json({ message: `Email (${solicitacao.email}) já cadastrado na base de utilizadores principal.` });
+             return res.status(409).json({ message: `Email (${solicitacao.email}) já cadastrado na base de usuários principal.` });
         }
 
         const confirmationToken = generateUniqueToken();
@@ -129,13 +129,13 @@ const listAllUsers = async (req, res) => {
         // Remove senha_hash e tokens por segurança antes de enviar (getAllUsers já faz isso)
         res.status(200).json(users);
     } catch (error) {
-        console.error('Erro ao listar utilizadores:', error);
-        res.status(500).json({ message: 'Erro interno ao buscar utilizadores.' });
+        console.error('Erro ao listar usuários:', error);
+        res.status(500).json({ message: 'Erro interno ao buscar usuários.' });
     }
 };
 
 /**
- * Obtém detalhes de um utilizador específico pelo ID (Read One).
+ * Obtém detalhes de um usuário específico pelo ID (Read One).
  */
 const getUserById = async (req, res) => {
     const { id } = req.params;
@@ -143,7 +143,7 @@ const getUserById = async (req, res) => {
     try {
         const user = await UserModel.findById(id);
         if (!user) {
-            return res.status(404).json({ message: 'Utilizador não encontrado.' });
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
         }
         // Remove dados sensíveis antes de enviar
         delete user.senha_hash;
@@ -152,13 +152,13 @@ const getUserById = async (req, res) => {
         delete user.reset_token_expira;
         res.status(200).json(user);
     } catch (error) {
-        console.error(`Erro ao buscar utilizador ${id}:`, error);
-        res.status(500).json({ message: 'Erro interno ao buscar detalhes do utilizador.' });
+        console.error(`Erro ao buscar Usuário ${id}:`, error);
+        res.status(500).json({ message: 'Erro interno ao buscar detalhes do Usuário.' });
     }
 };
 
 /**
- * Atualiza os dados de um utilizador (Update).
+ * Atualiza os dados de um usuário (Update).
  */
 const updateUser = async (req, res) => {
     const { id } = req.params;
@@ -177,10 +177,10 @@ const updateUser = async (req, res) => {
     }
 
     try {
-        // Busca o utilizador atual para verificações
+        // Busca o usuário atual para verificações
         const currentUser = await UserModel.findById(id);
         if (!currentUser) {
-            return res.status(404).json({ message: 'Utilizador não encontrado para atualização.' });
+            return res.status(404).json({ message: 'Usuário não encontrado para atualização.' });
         }
 
         // --- VALIDAÇÃO 2: REGRA DO RA PARA PERFIL 'COMUM' ---
@@ -194,7 +194,7 @@ const updateUser = async (req, res) => {
         if (finalProfile === 'comum') {
             // Se o perfil final é 'comum', o RA é obrigatório e deve ter 13 dígitos numéricos
             if (!effectiveRa) {
-                return res.status(400).json({ message: 'O campo RA é obrigatório para utilizadores do tipo Comum (Aluno).' });
+                return res.status(400).json({ message: 'O campo RA é obrigatório para Usuários do tipo Comum (Aluno).' });
             }
             if (effectiveRa.length !== 13 || !/^\d+$/.test(effectiveRa)) {
                  return res.status(400).json({ message: 'O RA deve conter exatamente 13 dígitos numéricos para o perfil Comum.' });
@@ -241,19 +241,19 @@ const updateUser = async (req, res) => {
             return res.status(200).json({ message: 'Nenhuma alteração detetada.' });
         }
 
-        res.status(200).json({ message: 'Utilizador atualizado com sucesso.' });
+        res.status(200).json({ message: 'Usuário atualizado com sucesso.' });
 
     } catch (error) {
-        console.error(`Erro ao atualizar utilizador ${id}:`, error);
+        console.error(`Erro ao atualizar usuário ${id}:`, error);
          if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
-             return res.status(409).json({ message: 'Erro: Email ou RA já está em uso por outro utilizador.' });
+             return res.status(409).json({ message: 'Erro: Email ou RA já está em uso por outro usuário.' });
          }
-        res.status(500).json({ message: 'Erro interno ao atualizar utilizador.' });
+        res.status(500).json({ message: 'Erro interno ao atualizar usuário.' });
     }
 }
 
 /**
- * Exclui um utilizador (Delete).
+ * Exclui um usuário (Delete).
  */
 const deleteUser = async (req, res) => {
     const { id } = req.params;
@@ -269,14 +269,14 @@ const deleteUser = async (req, res) => {
     let userEmail = null; // Variável para guardar o email antes de excluir
 
     try {
-        // 1. Busca o utilizador para obter o email ANTES de excluir
+        // 1. Busca o usuário para obter o email ANTES de excluir
         const userToDelete = await UserModel.findById(id);
         if (!userToDelete) {
-            return res.status(404).json({ message: 'Utilizador não encontrado para exclusão.' });
+            return res.status(404).json({ message: 'Usuário não encontrado para exclusão.' });
         }
         userEmail = userToDelete.email; // Guarda o email
 
-        // 2. Exclui o utilizador principal da tabela dg_usuarios
+        // 2. Exclui o usuário principal da tabela dg_usuarios
         const affectedRowsUser = await UserModel.deleteUserById(id);
 
         if (affectedRowsUser === 0) {
@@ -284,7 +284,7 @@ const deleteUser = async (req, res) => {
              console.log(`deleteUser: Nenhuma linha excluída em dg_usuarios para ID: ${id}. Inesperado.`);
              // Ainda assim, tenta limpar a solicitação por segurança
         } else {
-             console.log(`deleteUser: Utilizador ID ${id} excluído de dg_usuarios.`);
+             console.log(`deleteUser: Usuário ID ${id} excluído de dg_usuarios.`);
         }
 
         // --- NOVA ETAPA: Excluir solicitação correspondente ---
@@ -383,7 +383,7 @@ const createUsuarioDireto = async (req, res) => {
             console.log("createUsuarioDireto: Enviando e-mail de ativação para:", email);
             await sendActivationEmail(email, activationLink); // Envia email de ATIVAÇÃO
              return res.status(201).json({
-                message: `Utilizador Professor criado. E-mail de ativação enviado para ${email}.`,
+                message: `Usuário Professor criado. E-mail de ativação enviado para ${email}.`,
                 usuario: novoUsuario.email
             });
         }
@@ -391,12 +391,12 @@ const createUsuarioDireto = async (req, res) => {
 
         // Resposta para outros perfis (Aluno, Admin, Biblio)
         return res.status(201).json({
-            message: `Utilizador ${perfil} criado com sucesso.`,
+            message: `Usuário ${perfil} criado com sucesso.`,
             usuario: novoUsuario.email
         });
 
     } catch (error) {
-         console.error("Erro CRÍTICO na criação direta de utilizador:", error);
+         console.error("Erro CRÍTICO na criação direta de usuário:", error);
          if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
              return res.status(409).json({ message: 'Email ou RA já cadastrado (erro DB).' });
          }
@@ -404,7 +404,7 @@ const createUsuarioDireto = async (req, res) => {
          if (error.message && (error.message.includes('obrigatório') || error.message.includes('Token') || error.message.includes('Senha'))) {
              return res.status(400).json({ message: error.message });
          }
-        return res.status(500).json({ message: 'Erro interno no servidor ao criar utilizador.' });
+        return res.status(500).json({ message: 'Erro interno no servidor ao criar usuário.' });
     }
 };
 

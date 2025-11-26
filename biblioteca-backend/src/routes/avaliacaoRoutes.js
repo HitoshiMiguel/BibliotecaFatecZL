@@ -9,15 +9,18 @@ router.use((req, res, next) => {
   next();
 });
 
-// GET avaliações de um item (público)
-router.get('/:id/avaliacoes', (req, res, next) => {
-  console.log('[AvaliacaoRoutes] GET /:id/avaliacoes - chamado');
+// GET avaliações de um item
+// MUDANÇA AQUI: Adicionei o 'isAuthenticated' para o backend saber QUEM está logado
+// Se o usuário mandar o token, o controller vai saber quem é e devolver a nota dele (amarelinha).
+// Se não mandar token, vai dar 401 e o frontend trata mostrando só a média.
+router.get('/:id/avaliacoes', isAuthenticated, (req, res, next) => {
+  console.log('[AvaliacaoRoutes] GET /:id/avaliacoes - autenticado');
   AvaliacaoController.getAvaliacoes(req, res, next);
 });
 
 // POST/UPDATE avaliação (requer autenticação)
 router.post('/:id/avaliar', isAuthenticated, (req, res, next) => {
-  console.log('[AvaliacaoRoutes] POST /:id/avaliar - passou no middleware isAuthenticated');
+  console.log('[AvaliacaoRoutes] POST /:id/avaliar - autenticado');
   AvaliacaoController.salvarAvaliacao(req, res, next);
 });
 

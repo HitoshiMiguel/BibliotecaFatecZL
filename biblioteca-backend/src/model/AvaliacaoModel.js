@@ -1,15 +1,38 @@
-// src/model/AvaliacaoModel.js
 const { poolSistemaNovo: pool } = require('../infra/db/mysql/connection');
+
+/**
+ * Helper para limpar o ID (remove 'LEGACY_' se existir)
+ */
+function cleanId(id) {
+  if (!id) return null;
+  // Transforma em string, remove 'LEGACY_' e converte para número
+  const cleanString = String(id).replace('LEGACY_', '');
+  const number = parseInt(cleanString, 10);
+  return isNaN(number) ? null : number;
+}
+
+/**
+ * Helper para definir qual coluna usar baseado no tipo
+ */
+function getColunas(tipo) {
+  if (tipo === 'fisico') {
+    return { idCol: 'biblio_id', tipoVal: 'fisico' };
+  }
+  return { idCol: 'item_id', tipoVal: 'digital' };
+}
 
 /**
  * Busca todas as avaliações de um item/publicação
  */
-async function getAvaliacoesByItem(itemId) {
-  if (!itemId) return { rows: [], average: 0, count: 0 };
+async function getAvaliacoesByItem(rawId, tipo = 'digital') {
+  const id = cleanId(rawId);
+  if (!id) return { rows: [], average: 0, count: 0 };
   
+  const { idCol, tipoVal } = getColunas(tipo);
+
   const [rows] = await pool.query(
-    'SELECT * FROM dg_avaliacoes WHERE item_id = ? ORDER BY data_avaliacao DESC',
-    [itemId]
+    `SELECT * FROM dg_avaliacoes WHERE ${idCol} = ? AND tipo_item = ? ORDER BY data_avaliacao DESC`,
+    [id, tipoVal]
   );
   
   if (rows.length === 0) return { rows: [], average: 0, count: 0 };
@@ -23,12 +46,15 @@ async function getAvaliacoesByItem(itemId) {
 /**
  * Busca a avaliação de um usuário para um item
  */
-async function getAvaliacaoByUserAndItem(usuarioId, itemId) {
-  if (!usuarioId || !itemId) return null;
+async function getAvaliacaoByUserAndItem(usuarioId, rawId, tipo = 'digital') {
+  const id = cleanId(rawId);
+  if (!usuarioId || !id) return null;
+
+  const { idCol, tipoVal } = getColunas(tipo);
   
   const [rows] = await pool.query(
-    'SELECT * FROM dg_avaliacoes WHERE usuario_id = ? AND item_id = ? LIMIT 1',
-    [usuarioId, itemId]
+    `SELECT * FROM dg_avaliacoes WHERE usuario_id = ? AND ${idCol} = ? AND tipo_item = ? LIMIT 1`,
+    [usuarioId, id, tipoVal]
   );
   
   return rows[0] || null;
@@ -37,22 +63,43 @@ async function getAvaliacaoByUserAndItem(usuarioId, itemId) {
 /**
  * Cria ou atualiza uma avaliação
  */
-async function saveAvaliacao(usuarioId, itemId, nota) {
-  if (!usuarioId || !itemId || !nota) {
-    throw new Error('usuarioId, itemId e nota são obrigatórios');
+async function saveAvaliacao(usuarioId, rawId, nota, tipo = 'digital') {
+  const id = cleanId(rawId);
+  
+  if (!usuarioId || !id || !nota) {
+    throw new Error('usuarioId, id e nota são obrigatórios');
   }
   
   if (nota < 1 || nota > 5) {
     throw new Error('nota deve estar entre 1 e 5');
   }
-  
-  // Tenta atualizar; se não encontrar linhas, faz INSERT
-  const [result] = await pool.query(
-    `INSERT INTO dg_avaliacoes (usuario_id, item_id, nota) 
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE nota = VALUES(nota), data_avaliacao = NOW()`,
-    [usuarioId, itemId, nota]
-  );
+
+  const { idCol, tipoVal } = getColunas(tipo);
+
+  // 1. Verifica se já existe avaliação deste usuário para este item
+  const existing = await getAvaliacaoByUserAndItem(usuarioId, id, tipo);
+
+  let result;
+
+  if (existing) {
+    // UPDATE
+    [result] = await pool.query(
+      `UPDATE dg_avaliacoes SET nota = ?, data_avaliacao = NOW() 
+       WHERE usuario_id = ? AND ${idCol} = ? AND tipo_item = ?`,
+      [nota, usuarioId, id, tipoVal]
+    );
+  } else {
+    // INSERT
+    // Define qual campo recebe o ID e qual recebe NULL
+    const campoDigital = tipo === 'digital' ? id : null;
+    const campoFisico  = tipo === 'fisico'  ? id : null;
+
+    [result] = await pool.query(
+      `INSERT INTO dg_avaliacoes (usuario_id, item_id, biblio_id, tipo_item, nota, data_avaliacao) 
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [usuarioId, campoDigital, campoFisico, tipoVal, nota]
+    );
+  }
   
   return result;
 }
@@ -60,12 +107,15 @@ async function saveAvaliacao(usuarioId, itemId, nota) {
 /**
  * Deleta uma avaliação
  */
-async function deleteAvaliacao(usuarioId, itemId) {
-  if (!usuarioId || !itemId) return 0;
+async function deleteAvaliacao(usuarioId, rawId, tipo = 'digital') {
+  const id = cleanId(rawId);
+  if (!usuarioId || !id) return 0;
+
+  const { idCol, tipoVal } = getColunas(tipo);
   
   const [result] = await pool.query(
-    'DELETE FROM dg_avaliacoes WHERE usuario_id = ? AND item_id = ?',
-    [usuarioId, itemId]
+    `DELETE FROM dg_avaliacoes WHERE usuario_id = ? AND ${idCol} = ? AND tipo_item = ?`,
+    [usuarioId, id, tipoVal]
   );
   
   return result.affectedRows;

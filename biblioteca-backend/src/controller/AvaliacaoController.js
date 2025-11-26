@@ -2,23 +2,27 @@
 const AvaliacaoModel = require('../model/AvaliacaoModel');
 
 /**
- * GET /api/publicacoes/:id/avaliacoes
+ * GET /api/publicacoes/:id/avaliacoes?tipo=digital|fisico
  * Retorna avaliações + média + contagem + avaliação do usuário logado
  */
 async function getAvaliacoes(req, res, next) {
   try {
-    const { id: itemId } = req.params;
-    const usuarioId = req.user?.id; // Do middleware de autenticação (req.user.id, não usuario_id)
+    const { id } = req.params;
+    const { tipo } = req.query; // Lê da query string (?tipo=fisico)
+    const usuarioId = req.user?.id; // Do middleware de autenticação
 
-    if (!itemId) {
-      return res.status(400).json({ ok: false, error: 'itemId obrigatório' });
+    // Define padrão como 'digital' se não vier nada
+    const tipoItem = tipo === 'fisico' ? 'fisico' : 'digital';
+
+    if (!id) {
+      return res.status(400).json({ ok: false, error: 'ID do item é obrigatório' });
     }
 
-    const { rows, average, count } = await AvaliacaoModel.getAvaliacoesByItem(itemId);
+    const { average, count } = await AvaliacaoModel.getAvaliacoesByItem(id, tipoItem);
     
     let userRating = null;
     if (usuarioId) {
-      const userAvaliacao = await AvaliacaoModel.getAvaliacaoByUserAndItem(usuarioId, itemId);
+      const userAvaliacao = await AvaliacaoModel.getAvaliacaoByUserAndItem(usuarioId, id, tipoItem);
       userRating = userAvaliacao?.nota || null;
     }
 
@@ -28,7 +32,8 @@ async function getAvaliacoes(req, res, next) {
         average,
         count,
         userRating,
-        itemId
+        itemId: id,
+        tipo: tipoItem
       }
     });
   } catch (err) {
@@ -38,41 +43,48 @@ async function getAvaliacoes(req, res, next) {
 
 /**
  * POST /api/publicacoes/:id/avaliar
- * Cria/atualiza uma avaliação (requer autenticação)
- * Body: { nota: 1-5 }
+ * Body: { nota: 1-5, tipo: 'digital' | 'fisico' }
+ * Query: ?tipo=fisico (Opcional, mas recomendado para segurança)
  */
 async function salvarAvaliacao(req, res, next) {
   try {
-    const { id: itemId } = req.params;
-    const { nota } = req.body;
-    const usuarioId = req.user?.id; // Do middleware de autenticação (req.user.id)
+    const { id } = req.params;
+    const { nota } = req.body; 
+    
+    // MELHORIA DE SEGURANÇA:
+    // Tenta pegar o tipo do corpo (body) OU da URL (query).
+    // Isso resolve o problema se o JSON não estiver sendo lido corretamente.
+    const tipoRecebido = req.body.tipo || req.query.tipo;
+    
+    const usuarioId = req.user?.id;
 
-    console.log('[AvaliacaoController] POST /api/publicacoes/:id/avaliar');
-    console.log('  itemId:', itemId);
-    console.log('  nota:', nota);
-    console.log('  usuarioId:', usuarioId);
-    console.log('  req.user:', req.user);
+    // Garante que é 'fisico' ou 'digital'
+    const tipoItem = tipoRecebido === 'fisico' ? 'fisico' : 'digital';
+
+    console.log(`[AvaliacaoController] POST /avaliar`);
+    console.log(` - ID: ${id}`);
+    console.log(` - Nota: ${nota}`);
+    console.log(` - Tipo Recebido: ${tipoRecebido}`);
+    console.log(` - Tipo Final: ${tipoItem}`);
 
     if (!usuarioId) {
-      console.log('  ❌ Usuário não autenticado');
       return res.status(401).json({ ok: false, error: 'Usuário não autenticado' });
     }
 
-    if (!itemId) {
-      console.log('  ❌ itemId obrigatório');
-      return res.status(400).json({ ok: false, error: 'itemId obrigatório' });
+    if (!id) {
+      return res.status(400).json({ ok: false, error: 'ID obrigatório' });
     }
 
     if (!nota || nota < 1 || nota > 5) {
-      console.log('  ❌ nota inválida:', nota);
-      return res.status(400).json({ ok: false, error: 'nota deve estar entre 1 e 5' });
+      return res.status(400).json({ ok: false, error: 'Nota deve estar entre 1 e 5' });
     }
 
-    await AvaliacaoModel.saveAvaliacao(usuarioId, itemId, nota);
-    console.log('  ✅ Avaliação salva com sucesso');
+    // Chama o Model (que já limpa o ID se tiver LEGACY_)
+    await AvaliacaoModel.saveAvaliacao(usuarioId, id, nota, tipoItem);
+    console.log(' ✅ Avaliação salva com sucesso');
 
-    // Retorna dados atualizados
-    const { rows, average, count } = await AvaliacaoModel.getAvaliacoesByItem(itemId);
+    // Retorna os dados atualizados (nova média)
+    const { average, count } = await AvaliacaoModel.getAvaliacoesByItem(id, tipoItem);
 
     res.json({
       ok: true,
@@ -81,33 +93,36 @@ async function salvarAvaliacao(req, res, next) {
         average,
         count,
         userRating: nota,
-        itemId
+        itemId: id,
+        tipo: tipoItem
       }
     });
   } catch (err) {
-    console.log('  ❌ Erro:', err.message);
+    console.log(' ❌ Erro no Controller:', err.message);
     next(err);
   }
 }
 
 /**
- * DELETE /api/publicacoes/:id/avaliar
- * Remove a avaliação do usuário logado (requer autenticação)
+ * DELETE /api/publicacoes/:id/avaliar?tipo=digital|fisico
  */
 async function deletarAvaliacao(req, res, next) {
   try {
-    const { id: itemId } = req.params;
-    const usuarioId = req.user?.id; // Do middleware de autenticação (req.user.id)
+    const { id } = req.params;
+    const { tipo } = req.query; // Lê da query (?tipo=fisico)
+    const usuarioId = req.user?.id;
+
+    const tipoItem = tipo === 'fisico' ? 'fisico' : 'digital';
 
     if (!usuarioId) {
       return res.status(401).json({ ok: false, error: 'Usuário não autenticado' });
     }
 
-    if (!itemId) {
-      return res.status(400).json({ ok: false, error: 'itemId obrigatório' });
+    if (!id) {
+      return res.status(400).json({ ok: false, error: 'ID obrigatório' });
     }
 
-    await AvaliacaoModel.deleteAvaliacao(usuarioId, itemId);
+    await AvaliacaoModel.deleteAvaliacao(usuarioId, id, tipoItem);
 
     res.json({
       ok: true,

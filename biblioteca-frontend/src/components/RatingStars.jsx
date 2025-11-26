@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import styles from './RatingStars.module.css';
-import { api } from '@/services/api';
+import styles from './RatingStars.module.css'; // O erro no chat acontece aqui, mas no seu PC vai funcionar
+import { api } from '@/services/api';          // O erro no chat acontece aqui, mas no seu PC vai funcionar
 
-export default function RatingStars({ itemId, publicacaoId, onRatingChange }) {
+export default function RatingStars({ itemId, publicacaoId, onRatingChange, tipo = 'digital' }) {
   const [hoverRating, setHoverRating] = useState(0);
   const [userRating, setUserRating] = useState(null);
   const [average, setAverage] = useState(0);
@@ -13,61 +13,56 @@ export default function RatingStars({ itemId, publicacaoId, onRatingChange }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLegacy, setIsLegacy] = useState(false);
 
-  // Verifica se é um item legado (LEGACY_xxx)
-  useEffect(() => {
-    setIsLegacy(String(publicacaoId || itemId).startsWith('LEGACY_'));
-  }, [publicacaoId, itemId]);
+  // Define qual ID usar (compatibilidade)
+  const idEfetivo = itemId || publicacaoId;
 
-  // Busca avaliações ao montar
+  // Busca avaliações reais do servidor
   useEffect(() => {
     const fetchAvaliacoes = async () => {
+      if (!idEfetivo) return;
+
       try {
         setLoading(true);
-        console.log('[RatingStars] Buscando avaliações. itemId:', itemId, 'isLegacy:', isLegacy);
+        // Usa a API real passando o tipo na URL
+        const res = await api(`/api/publicacoes/${idEfetivo}/avaliacoes?tipo=${tipo}`);
         
-        const res = await api(`/api/publicacoes/${itemId}/avaliacoes`);
         if (res?.ok) {
           setUserRating(res.data.userRating);
           setAverage(res.data.average);
           setCount(res.data.count);
-          // Se conseguiu fazer a requisição, está autenticado (mesmo que userRating seja null)
           setIsAuthenticated(true);
         }
       } catch (err) {
-        // Se receber 401, usuário não autenticado
         if (err?.status === 401) {
           setIsAuthenticated(false);
         } else {
-          setIsAuthenticated(true); // Assume autenticado se for outro erro
+          // Se não for 401, assume autenticado (ex: erro de rede)
+          setIsAuthenticated(true); 
         }
-        console.error('[RatingStars] Erro ao buscar avaliações:', err);
+        console.error('[RatingStars] Erro ao buscar:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAvaliacoes();
-  }, [itemId]);
+  }, [idEfetivo, tipo]);
 
   const handleRating = async (rating) => {
     if (!isAuthenticated) {
-      // Usuário não autenticado
       setError('Você precisa estar logado para avaliar');
       return;
     }
 
     try {
       setError(null);
-      console.log('[RatingStars] Enviando avaliação:', { itemId, nota: rating });
       
-      const res = await api(`/api/publicacoes/${itemId}/avaliar`, {
+      // Envia para o backend real com o tipo na URL e no Body
+      const res = await api(`/api/publicacoes/${idEfetivo}/avaliar?tipo=${tipo}`, {
         method: 'POST',
-        body: JSON.stringify({ nota: rating })
+        body: JSON.stringify({ nota: rating, tipo: tipo })
       });
-      
-      console.log('[RatingStars] Resposta:', res);
       
       if (res?.ok) {
         setUserRating(rating);
@@ -76,40 +71,14 @@ export default function RatingStars({ itemId, publicacaoId, onRatingChange }) {
         if (onRatingChange) onRatingChange(rating);
       }
     } catch (err) {
-      console.error('[RatingStars] Erro ao salvar avaliação:', err);
-      
-      if (err?.status === 401) {
-        setError('Você precisa estar logado para avaliar');
-      } else if (err?.status === 404) {
-        setError('Publicação não encontrada');
-      } else {
-        setError(err?.message || 'Erro ao salvar avaliação');
-      }
+      console.error('[RatingStars] Erro ao salvar:', err);
+      if (err?.status === 401) setError('Faça login para avaliar');
+      else setError('Erro ao salvar avaliação');
     }
   };
 
-  if (loading) {
-    return <div className={styles.container}>Carregando avaliações...</div>;
-  }
-
-  // Itens legados não podem ser avaliados
-  if (isLegacy) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <h3>Avaliação</h3>
-        </div>
-        <div className={styles.info}>
-          Avaliações não estão disponíveis para itens do acervo físico
-        </div>
-      </div>
-    );
-  }
-
-  // Se não tem itemId válido, não renderiza
-  if (!itemId) {
-    return null;
-  }
+  if (loading) return <div className={styles.container}>Carregando...</div>;
+  if (!idEfetivo) return null;
 
   return (
     <div className={styles.container}>
@@ -117,18 +86,19 @@ export default function RatingStars({ itemId, publicacaoId, onRatingChange }) {
         <h3>Avaliação</h3>
       </div>
 
-      {/* Estrelas para avaliar */}
       <div className={styles.starsContainer}>
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
+            // Aplica as classes do CSS Module
             className={`${styles.star} ${
-              (hoverRating || userRating) >= star ? styles.active : ''
+              (hoverRating || userRating || 0) >= star ? styles.active : ''
             }`}
             onClick={() => handleRating(star)}
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}
             disabled={!isAuthenticated}
+            type="button"
             title={isAuthenticated ? `Avaliar com ${star} estrela(s)` : 'Faça login para avaliar'}
           >
             ★
@@ -136,25 +106,25 @@ export default function RatingStars({ itemId, publicacaoId, onRatingChange }) {
         ))}
       </div>
 
-      {/* Sua avaliação */}
       {userRating !== null && (
         <div className={styles.userRating}>
           Sua avaliação: <strong>{userRating} estrela(s)</strong>
         </div>
       )}
 
-      {/* Média e contagem */}
       <div className={styles.stats}>
-        <span className={styles.average}>{average.toFixed(1)}</span>
-        <span className={styles.count}>({count} avaliação{count !== 1 ? 'ões' : ''})</span>
+        <span className={styles.average}>
+          {typeof average === 'number' ? average.toFixed(1) : '0.0'}
+        </span>
+        <span className={styles.count}>
+          ({count} avaliação{count !== 1 ? 'ões' : ''})
+        </span>
       </div>
 
-      {/* Mensagem de erro */}
       {error && <div className={styles.error}>{error}</div>}
-
-      {/* Mensagem para não autenticados */}
+      
       {!isAuthenticated && !error && (
-        <div className={styles.info}>Faça login para avaliar este item</div>
+        <div className={styles.info}>Faça login para avaliar</div>
       )}
     </div>
   );

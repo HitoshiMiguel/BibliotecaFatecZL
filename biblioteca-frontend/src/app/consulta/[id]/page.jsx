@@ -261,9 +261,16 @@ export default function PublicacaoPage({ params }) {
             </button>
           )}
 
-          {/* Componente de Avaliação */}
+          {/* Componente de Avaliação CORRIGIDO */}
           <div style={{ marginTop: '30px' }}>
-            <RatingStars itemId={data.item_id || id} publicacaoId={id} />
+            <RatingStars 
+              itemId={data.item_id || id} 
+              publicacaoId={id} 
+              // Corrigimos o tipo
+              tipo={data.tipo === 'fisico' ? 'fisico' : 'digital'}
+              // Corrigimos o erro passando uma função vazia
+              onRatingChange={() => {}}
+            />
           </div>
         </article>
       </section>
@@ -512,34 +519,34 @@ export default function PublicacaoPage({ params }) {
 
                         setReservaModalAberto(false);
                         setCriandoReserva(false);
-                    Swal.fire({
-                        title: 'Reserva Confirmada!',
-                        html: `
-                          <div style="text-align: left; font-size: 0.95rem;">
-                            <p>Sua reserva foi realizada com sucesso.</p>
-                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
-                            <p><strong>📘 Livro:</strong> ${data.titulo_proposto}</p>
-                            <p><strong>📅 Data de retirada:</strong> ${formatarDataBR(dataRetirada)}</p>
-                            ${dataDevolucaoFormatada 
-                              ? `<p><strong>🔄 Devolução prevista:</strong> ${dataDevolucaoFormatada}</p>` 
-                              : ''
-                            }
-                            <br/>
-                            <p style="color: #555; font-size: 0.85rem;">
-                              Apresente-se à biblioteca nesta data para concluir o empréstimo.
-                            </p>
-                          </div>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: 'Entendi, obrigado!',
-                        confirmButtonColor: '#28a745', // Verde igual ao seu botão
-                        allowOutsideClick: false,
-                      }).then((result) => {
-                        // Só recarrega a página depois que o usuário clicar em "Entendi"
-                        if (result.isConfirmed) {
-                          window.location.reload();
-                        }
-                      });
+                        Swal.fire({
+                          title: 'Reserva Confirmada!',
+                          html: `
+                            <div style="text-align: left; font-size: 0.95rem;">
+                              <p>Sua reserva foi realizada com sucesso.</p>
+                              <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                              <p><strong>📘 Livro:</strong> ${data.titulo_proposto}</p>
+                              <p><strong>📅 Data de retirada:</strong> ${formatarDataBR(dataRetirada)}</p>
+                              ${dataDevolucaoFormatada 
+                                ? `<p><strong>🔄 Devolução prevista:</strong> ${dataDevolucaoFormatada}</p>` 
+                                : ''
+                              }
+                              <br/>
+                              <p style="color: #555; font-size: 0.85rem;">
+                                Apresente-se à biblioteca nesta data para concluir o empréstimo.
+                              </p>
+                            </div>
+                          `,
+                          icon: 'success',
+                          confirmButtonText: 'Entendi, obrigado!',
+                          confirmButtonColor: '#28a745', // Verde igual ao seu botão
+                          allowOutsideClick: false,
+                        }).then((result) => {
+                          // Só recarrega a página depois que o usuário clicar em "Entendi"
+                          if (result.isConfirmed) {
+                            window.location.reload();
+                          }
+                        });
                       } finally {
                         setCriandoReserva(false);
                       }

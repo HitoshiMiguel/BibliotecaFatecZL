@@ -64,26 +64,6 @@ export default function PublicacaoPage({ params }) {
     fetchData();
   }, [id]);
 
-  const handleOpenFile = () => {
-    if (!data?.caminho_anexo) {
-      // Alerta nativo para não precisar instalar libs extras
-      window.alert(
-        'Arquivo indisponível: Esta publicação não possui arquivo anexado.'
-      );
-      return;
-    }
-
-    const raw = String(data.caminho_anexo).trim();
-
-    // Se já for uma URL completa, usa direto
-    const isFullUrl = /^https?:\/\//i.test(raw);
-    const url = isFullUrl
-      ? raw
-      : `https://drive.google.com/file/d/${raw}/view?usp=sharing`;
-
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
   if (loading) {
     return (
       <main className={styles.wrap}>
@@ -96,9 +76,7 @@ export default function PublicacaoPage({ params }) {
     return (
       <main className={styles.wrap}>
         <h1 className={styles.title}>Publicação</h1>
-        <p style={{ color: '#b20000', marginTop: '16px' }}>
-          {erro || 'Publicação não encontrada.'}
-        </p>
+        <p style={{ color: '#b20000', marginTop: '16px' }}>{erro || 'Publicação não encontrada.'}</p>
       </main>
     );
   }
@@ -136,6 +114,8 @@ export default function PublicacaoPage({ params }) {
       dataDevolucaoFormatada = devolucao.toLocaleDateString('pt-BR');
     }
   }
+
+  const LINK_DOWNLOAD = `${API_BASE}/api/publicacoes/acessar/${id}`;
 
   return (
     <main className={styles.wrap}>
@@ -235,16 +215,24 @@ export default function PublicacaoPage({ params }) {
 
           {/* Botão de Download (Só aparece se tiver arquivo) */}
           {temArquivo && (
-            <button
-              type="button"
-              className={styles.downloadBtn}
-              onClick={handleOpenFile}
+            <a
+              href={LINK_DOWNLOAD} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={styles.downloadBtn} // Reusando sua classe CSS
+              // Adicionamos estilos extras para garantir que o link pareça um botão (centralizado e sem sublinhado)
+              style={{ 
+                textDecoration: 'none', 
+                display: 'inline-block', 
+                textAlign: 'center',
+                cursor: 'pointer' 
+              }} 
             >
               Visualizar / Download
-            </button>
+            </a>
           )}
 
-          {/* Botão de Reserva (Só aparece se for físico e disponível) */}
+          {/* Botão de Reserva (Físico) - INALTERADO */}
           {!temArquivo && data.tipo === 'fisico' && isPositivo && (
             <button
               type="button"
@@ -261,7 +249,6 @@ export default function PublicacaoPage({ params }) {
             </button>
           )}
 
-          {/* Componente de Avaliação CORRIGIDO */}
           <div style={{ marginTop: '30px' }}>
             <RatingStars 
               itemId={data.item_id || id} 

@@ -133,8 +133,40 @@ async function deletarAvaliacao(req, res, next) {
   }
 }
 
+async function getMinhasEstatisticas(req, res, next) {
+  try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      return res.status(401).json({ ok: false, error: 'Usuário não autenticado' });
+    }
+
+    // 1. Dados do Gráfico
+    const estatisticas = await AvaliacaoModel.getEstatisticasPorAutor(usuarioId);
+    
+    // 2. Contagem dos Status (Aprovado, Pendente, Rejeitado)
+    const counts = await AvaliacaoModel.getContagemStatus(usuarioId);
+
+    const totalDownloads = await AvaliacaoModel.getTotalDownloadsUsuario(usuarioId);
+
+    res.json({
+      ok: true,
+      data: estatisticas,
+      meta: {
+        totalAprovados: counts.aprovado,
+        totalPendentes: counts.pendente,
+        totalRejeitados: counts.rejeitado,
+        totalDownloads: totalDownloads
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getAvaliacoes,
   salvarAvaliacao,
-  deletarAvaliacao
+  deletarAvaliacao,
+  getMinhasEstatisticas
 };

@@ -41,8 +41,8 @@
   height: var(--nav-h);
   display: flex;
   align-items: center;
-  background: linear-gradient(180deg, #a40000 0%, #8b0000 100%);
-  border-bottom: 2px solid #6e0000;
+  background: linear-gradient(180deg, #b20000 100%);
+  border-bottom: 2px solid #b20000;
 }
 
 /* 1. Contêiner principal da barra (AGORA É UM GRID) */

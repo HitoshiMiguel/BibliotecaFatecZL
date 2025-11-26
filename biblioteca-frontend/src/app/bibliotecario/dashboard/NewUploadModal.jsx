@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './MyEditModal.module.css';
 import { TIPOS, FIELDS_BY_TYPE } from './formConstants.js';
-import { FaPaperclip, FaTimes, FaCalendarAlt, FaClock } from 'react-icons/fa'; // NOVO: Ícones
+import { FaPaperclip, FaTimes, FaCalendarAlt, FaClock } from 'react-icons/fa';
 
 const API_URL = 'http://localhost:4000';
 
@@ -31,12 +31,10 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ALTERADO: Função de seleção de arquivo
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0] || null;
 
     if (selectedFile) {
-      // Validação extra para garantir que é PDF
       if (selectedFile.type !== 'application/pdf') {
         Swal.fire({
           icon: 'error',
@@ -44,14 +42,13 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
           text: 'Por favor, selecione apenas arquivos no formato PDF.',
           confirmButtonColor: '#b20000',
         });
-        e.target.value = null; // Limpa o seletor
+        e.target.value = null; 
         setFile(null);
         return;
       }
       
       setFile(selectedFile);
 
-      // NOVO: Alerta "toast" de sucesso ao anexar
       Swal.fire({
         toast: true,
         position: 'top-end',
@@ -66,10 +63,8 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
     }
   };
 
-  // NOVO: Função para remover o arquivo selecionado
   const handleRemoveFile = () => {
     setFile(null);
-    // Limpa o valor do input escondido
     const fileInput = document.getElementById('arquivo');
     if (fileInput instanceof HTMLInputElement) {
       fileInput.value = null;
@@ -110,16 +105,32 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
       }
     }
 
+    // --- CORREÇÃO DO ERRO DE TYPESCRIPT AQUI ---
+    // Usamos colchetes ['chave'] para evitar o erro "Property does not exist on type {}"
+    const anoValue = formData['ano'] || formData['ano_publicacao'] || formData['ano_defesa'];
+    if (anoValue) {
+        // Usamos .set para GARANTIR que só vá um valor único, sobreescrevendo se o loop já tiver adicionado
+        uploadData.set('ano', anoValue);
+        uploadData.set('ano_publicacao', anoValue);
+        uploadData.set('ano_defesa', anoValue);
+    }
+    // -------------------------------------------
+
+    // --- NOVA CORREÇÃO: TÍTULO ---
+    // Pega o valor, seja ele 'titulo' ou 'titulo_proposto'
+    // TRATAMENTO DE TÍTULO
+    const tituloValue = formData['titulo'] || formData['titulo_proposto'];
+    if (tituloValue) {
+        uploadData.set('titulo_proposto', tituloValue);
+        uploadData.set('titulo', tituloValue);
+    }
+
+    // ... resto do código de agendamento ...
     if (isScheduled) {
-      uploadData.append('status', 'agendado');
-      
-      // ⚠️ CORREÇÃO: Envie a string direta do input (ex: "2025-11-22T14:43")
-      // NÃO use new Date() aqui.
-      uploadData.append('data_publicacao', scheduleDate); 
+      uploadData.set('status', 'agendado'); // Use set aqui também por segurança
+      uploadData.set('data_publicacao', scheduleDate); 
     } else {
-      uploadData.append('status', 'publicado');
-      // Se for publicado agora, o backend pode usar NOW(), 
-      // ou você pode enviar a data atual aqui: new Date().toISOString()
+      uploadData.set('status', 'publicado');
     }
 
     const UPLOAD_URL = `${API_URL}/api/admin/publicar-direto`;
@@ -134,12 +145,11 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Falha no upload');
 
-      // Este é o alerta de SUCESSO NO UPLOAD (diferente do de anexar)
       Swal.fire({
         icon: 'success',
         title: 'Sucesso!',
         text: 'Arquivo publicado diretamente.',
-        confirmButtonColor: '#b20000',
+        confirmButtonColor: '#10b981',
       });
       onUploadComplete(result);
       onClose();
@@ -175,13 +185,9 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
           </div>
 
           <div className={styles.body}>
-            {/* ======================================================= */}
-            {/* ÁREA DO INPUT DE ARQUIVO TOTALMENTE MODIFICADA         */}
-            {/* ======================================================= */}
             <div className={styles.formGroup}>
               <label htmlFor="arquivo">Arquivo (PDF) *</label>
 
-              {/* Input de arquivo real, agora escondido */}
               <input
                 type="file"
                 id="arquivo"
@@ -189,20 +195,17 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
                 onChange={handleFileChange}
                 required
                 disabled={isUploading}
-                className={styles.hiddenFileInput} // <--- Classe para esconder
-                accept="application/pdf" // <--- Boa prática
+                className={styles.hiddenFileInput} 
+                accept="application/pdf" 
               />
 
               {!file ? (
-                // 1. Botão customizado (antes de selecionar)
                 <label htmlFor="arquivo" className={styles.fileInputLabel}>
                   <FaPaperclip color="#555" />
                   Clique para selecionar um arquivo...
                 </label>
               ) : (
-                // 2. Box de arquivo selecionado (depois de selecionar)
                 <div className={styles.fileSelectedBox}>
-                  {/* Trunca nomes de arquivo muito longos */}
                   <span title={file.name}>{file.name}</span> 
                   <button
                     type="button"
@@ -216,9 +219,6 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
                 </div>
               )}
             </div>
-            {/* ======================================================= */}
-            {/* FIM DA ÁREA MODIFICADA                                 */}
-            {/* ======================================================= */}
 
             {fields.map((f) => (
               <div className={styles.formGroup} key={`${tipo}-${f.name}`}>
@@ -247,16 +247,12 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
               </div>
             ))}
 
-          {/* ======================================================= */}
-            {/* NOVA ÁREA: AGENDAMENTO DA PUBLICAÇÃO                   */}
-            {/* ======================================================= */}
             <div className={styles.formGroup} style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: 'bold' }}>
               Opções de Publicação
             </label>
             
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-              {/* Adicionei className={styles.radioLabel} aqui */}
               <label className={styles.radioLabel}>
                 <input
                   type="radio"
@@ -268,7 +264,6 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
                 <FaClock /> Publicar Agora
               </label>
 
-              {/* Adicionei className={styles.radioLabel} aqui */}
               <label className={styles.radioLabel}>
                 <input
                   type="radio"
@@ -286,7 +281,6 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
                 <label htmlFor="scheduleDate" style={{ fontSize: '0.9rem', color: '#666' }}>
                   Escolha a data e hora:
                 </label>
-                {/* Removi o style inline gigante e deixei só a classe */}
                 <input
                   type="datetime-local"
                   id="scheduleDate"
@@ -299,9 +293,6 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
               </div>
             )}
           </div>
-            {/* ======================================================= */}
-            {/* FIM DA NOVA ÁREA                                       */}
-            {/* ======================================================= */}
 
           </div>
 
@@ -316,8 +307,8 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
             </button>
             <button
               type="submit"
-              className={styles.btnAprovarModal} // Você pode querer renomear esta classe
-              disabled={isUploading || !file} // Desabilita se não tiver arquivo
+              className={styles.btnAprovarModal}
+              disabled={isUploading || !file}
             >
               {isUploading ? 'Enviando...' : 'Publicar'}
             </button>

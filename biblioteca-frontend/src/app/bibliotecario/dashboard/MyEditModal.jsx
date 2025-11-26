@@ -6,16 +6,15 @@ import { FIELDS_BY_TYPE, TIPOS } from './formConstants.js';
 
 const API_URL = 'http://localhost:4000';
 
-// 🔴 CORREÇÃO: Adicionamos '= null' para tornar as props opcionais e sumir com o erro TS(2741)
 export function MyEditModal({ 
   item, 
   onClose, 
-  onSaved = null,           // Tornado opcional
-  onUpdateOnly = null,      // Tornado opcional
+  onSaved = null, 
+  onUpdateOnly = null, 
   mode = 'gerenciar', 
-  onSaveAndApprove = null,  // Tornado opcional
-  onReprove = null,         // Tornado opcional
-  onDeleteApproved = null   // Tornado opcional
+  onSaveAndApprove = null, 
+  onReprove = null, 
+  onDeleteApproved = null 
 }) {
   const isPendentes = mode === 'pendente';
 
@@ -54,15 +53,14 @@ export function MyEditModal({
     setFormData(prev => ({ ...prev, tipo: novoTipo }));
   };
 
-  // --- FUNÇÃO DE SALVAR (UPDATE REAL) ---
+  // --- FUNÇÃO DE SALVAR (APENAS SALVAR) ---
   const handleSaveClick = async (e) => {
     if (e) e.preventDefault();
     setIsSaving(true);
 
     try {
       const endpoint = `${API_URL}/api/admin/submissoes/${item.submissao_id}`;
-      console.log("🚀 Enviando PUT para:", endpoint);
-
+      
       const res = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -72,21 +70,13 @@ export function MyEditModal({
 
       const textResponse = await res.text();
       let jsonResponse;
-      try {
-        jsonResponse = JSON.parse(textResponse);
-      } catch (err) {
-        throw new Error(`Resposta inválida do servidor.`);
-      }
+      try { jsonResponse = JSON.parse(textResponse); } catch (err) { throw new Error(`Resposta inválida.`); }
 
-      if (!res.ok) {
-        throw new Error(jsonResponse.message || 'Falha ao atualizar.');
-      }
+      if (!res.ok) throw new Error(jsonResponse.message || 'Falha ao atualizar.');
 
       window.alert('Publicação atualizada com sucesso!');
       
       const updatedItem = { ...item, ...formData };
-
-      // Chama a função que estiver disponível (suporta tanto a versão nova quanto a antiga)
       if (onUpdateOnly) onUpdateOnly(updatedItem);
       if (onSaved) onSaved(updatedItem);
       
@@ -100,9 +90,38 @@ export function MyEditModal({
     }
   };
 
-  const handleApproveClick = (e) => {
+  // --- FUNÇÃO DE APROVAR (SALVA E APROVA) ---
+  const handleApproveClick = async (e) => {
     e.preventDefault();
-    if (onSaveAndApprove) onSaveAndApprove(item.submissao_id);
+    setIsSaving(true);
+
+    try {
+      const endpoint = `${API_URL}/api/admin/submissoes/${item.submissao_id}`;
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        const textResponse = await res.text();
+        let jsonResponse;
+        try { jsonResponse = JSON.parse(textResponse); } catch(e) {}
+        throw new Error(jsonResponse?.message || 'Falha ao salvar antes de aprovar.');
+      }
+
+      if (onSaveAndApprove) {
+        await onSaveAndApprove(item.submissao_id, { ...item, ...formData });
+      }
+      onClose();
+
+    } catch (err) {
+      console.error("❌ Erro ao aprovar:", err);
+      window.alert(`ERRO: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleReproveClick = (e) => {
@@ -121,11 +140,15 @@ export function MyEditModal({
   }, []);
 
   return (
-    <div className={styles.backdrop || styles.overlay} onClick={onClose}>
-      <div className={styles.modal || styles.modalBox} onClick={(e) => e.stopPropagation()}>
+    // MUDANÇA: 'backdrop' virou 'overlay'
+    <div className={styles.overlay} onClick={onClose}>
+      
+      {/* MUDANÇA: 'modal' virou 'modalBox' */}
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        
         <header className={styles.header}>
           <h2>
-            {isPendentes ? 'Analisar Submissão' : `Editar Publicação (ID: ${item.submissao_id})`}
+            {isPendentes ? 'Analisar Submissão' : `Editar Publicação`}
           </h2>
           
           {!isPendentes && (
@@ -143,32 +166,29 @@ export function MyEditModal({
                 ))}
             </div>
           )}
-
-          <button type="button" className={styles.closeButton} onClick={onClose}>
-            &times;
-          </button>
         </header>
 
+        {/* O Form agora é o 'body' para permitir scroll apenas nele */}
         <form className={styles.body}>
           {fields.map((f) => (
-            <div className={styles.group || styles.formGroup} key={`${formData.tipo}-${f.name}`}>
-              <label className={styles.label}>
-                {f.label} {f.required && ' *'}
+            // MUDANÇA: 'group' virou 'formGroup'
+            <div className={styles.formGroup} key={`${formData.tipo}-${f.name}`}>
+              <label htmlFor={f.name}>
+                {f.label} {f.required && <span style={{color:'red'}}>*</span>}
               </label>
 
               {f.type === 'textarea' ? (
                 <textarea
-                  className={styles.input}
                   id={f.name}
                   name={f.name}
                   value={formData[f.name] || ''}
                   onChange={handleChange}
                   rows={4}
                   disabled={isSaving}
+                  placeholder={`Digite ${f.label.toLowerCase()}...`}
                 />
               ) : (
                 <input
-                  className={styles.input}
                   id={f.name}
                   name={f.name}
                   type={f.type}
@@ -176,6 +196,7 @@ export function MyEditModal({
                   onChange={handleChange}
                   required={f.required}
                   disabled={isSaving}
+                  placeholder={`Digite ${f.label.toLowerCase()}...`}
                 />
               )}
             </div>
@@ -183,9 +204,10 @@ export function MyEditModal({
         </form>
 
         <footer className={styles.footer}>
+          {/* MUDANÇA: Classes atualizadas para btnGhost */}
           <button
             type="button"
-            className={styles.btnCancelar || styles.btnGhost}
+            className={styles.btnGhost}
             onClick={onClose}
             disabled={isSaving}
           >
@@ -194,26 +216,27 @@ export function MyEditModal({
 
           {isPendentes ? (
             <>
+              {/* MUDANÇA: Classes atualizadas para btnReprovarModal e btnAprovarModal */}
               <button
                 type="button"
-                className={styles.btnReprovar}
+                className={styles.btnReprovarModal}
                 onClick={handleReproveClick}
               >
                 Reprovar
               </button>
               <button
                 type="button"
-                className={styles.btnAprovar}
+                className={styles.btnAprovarModal}
                 onClick={handleApproveClick}
               >
-                Aprovar
+                {isSaving ? 'Processando...' : 'Aprovar'}
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
-                className={styles.btnAprovar || styles.btnAprovarModal}
+                className={styles.btnAprovarModal}
                 onClick={handleSaveClick}
                 disabled={isSaving}
               >
@@ -221,14 +244,13 @@ export function MyEditModal({
               </button>
 
               {onDeleteApproved && (
-                 <button
+                  <button
                     type="button"
-                    className={styles.btnReprovar}
-                    style={{ marginLeft: '10px', backgroundColor: '#d9534f' }}
+                    className={styles.btnReprovarModal}
                     onClick={handleDeleteClick}
-                 >
+                  >
                     Excluir
-                 </button>
+                  </button>
               )}
             </>
           )}

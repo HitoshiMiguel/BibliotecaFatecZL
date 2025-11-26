@@ -251,58 +251,54 @@ export function NewUploadModal({ onClose, onUploadComplete }) {
             {/* NOVA ÁREA: AGENDAMENTO DA PUBLICAÇÃO                   */}
             {/* ======================================================= */}
             <div className={styles.formGroup} style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                Opções de Publicação
+            <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: 'bold' }}>
+              Opções de Publicação
+            </label>
+            
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+              {/* Adicionei className={styles.radioLabel} aqui */}
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="agendamento"
+                  checked={!isScheduled}
+                  onChange={() => setIsScheduled(false)}
+                  disabled={isUploading}
+                />
+                <FaClock /> Publicar Agora
               </label>
-              
-              <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="agendamento"
-                    checked={!isScheduled}
-                    onChange={() => setIsScheduled(false)}
-                    disabled={isUploading}
-                  />
-                  <FaClock /> Publicar Agora
-                </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="agendamento"
-                    checked={isScheduled}
-                    onChange={() => setIsScheduled(true)}
-                    disabled={isUploading}
-                  />
-                  <FaCalendarAlt /> Agendar
-                </label>
-              </div>
-
-              {isScheduled && (
-                <div className={styles.fadeIn}> {/* Assumindo que você possa ter uma classe de animação, senão pode remover */}
-                  <label htmlFor="scheduleDate" style={{ fontSize: '0.9rem', color: '#666' }}>
-                    Escolha a data e hora da publicação:
-                  </label>
-                  <input
-                    type="datetime-local"
-                    id="scheduleDate"
-                    className={styles.inputDate} // Caso não tenha estilo específico, ele usará o padrão do navegador
-                    value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    disabled={isUploading}
-                    required={isScheduled}
-                    style={{ 
-                      width: '100%', 
-                      padding: '8px', 
-                      marginTop: '5px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px'
-                    }}
-                  />
-                </div>
-              )}
+              {/* Adicionei className={styles.radioLabel} aqui */}
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="agendamento"
+                  checked={isScheduled}
+                  onChange={() => setIsScheduled(true)}
+                  disabled={isUploading}
+                />
+                <FaCalendarAlt /> Agendar
+              </label>
             </div>
+
+            {isScheduled && (
+              <div className={styles.fadeIn}>
+                <label htmlFor="scheduleDate" style={{ fontSize: '0.9rem', color: '#666' }}>
+                  Escolha a data e hora:
+                </label>
+                {/* Removi o style inline gigante e deixei só a classe */}
+                <input
+                  type="datetime-local"
+                  id="scheduleDate"
+                  className={styles.inputDate}
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  disabled={isUploading}
+                  required={isScheduled}
+                />
+              </div>
+            )}
+          </div>
             {/* ======================================================= */}
             {/* FIM DA NOVA ÁREA                                       */}
             {/* ======================================================= */}

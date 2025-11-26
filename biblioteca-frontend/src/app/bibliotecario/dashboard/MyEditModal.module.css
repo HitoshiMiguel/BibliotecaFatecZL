@@ -1,4 +1,6 @@
-/* Fundo escuro do modal ocupando 100% da tela */
+/* ========================================= */
+/* ESTRUTURA DO MODAL (Overlay e Box)        */
+/* ========================================= */
 .overlay {
   position: fixed;
   top: 0;
@@ -9,41 +11,42 @@
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.65);
   z-index: 1000;
-
   display: flex;
   justify-content: center;
-  align-items: center;      /* centraliza verticalmente */
-  padding: 24px 16px;       /* respiro nas bordas */
+  align-items: center;
+  padding: 24px 16px;
   box-sizing: border-box;
-
-  overflow-y: auto;         /* se o modal ficar grande, a overlay rola */
 }
 
-/* Card branco do modal */
-/* Procure a classe .modalBox e ATUALIZE para isso: */
 .modalBox {
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid #555;
   width: 100%;
-  max-width: 980px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-
-  /* CORREÇÃO CRÍTICA AQUI: */
-  display: flex;            /* Faz com que o Header, Body e Footer se comportem como blocos flexíveis */
-  flex-direction: column;   /* Um embaixo do outro */
-  max-height: 90vh;         /* Limita a altura a 90% da tela (antes estava calc complexo) */
-  height: auto;             /* Altura automática, mas respeitando o max-height */
-  overflow: hidden;         /* Garante que o scroll seja interno, não externo */
+  max-width: 800px; /* Um pouco mais estreito que o de edição para focar no upload */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  height: auto;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
 }
 
-/* Cabeçalho do modal */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================= */
+/* CABEÇALHO                                 */
+/* ========================================= */
 .header {
-  padding: 16px 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid #eee;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  background-color: #fff;
 }
 
 .header h2 {
@@ -53,56 +56,67 @@
   color: #111827;
 }
 
-/* Toggle de tipo (TCC / Artigo / Livro) */
+/* ========================================= */
+/* TOGGLE DE TIPO (TCC / Artigo / Livro)     */
+/* ========================================= */
 .tipoToggle {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  background-color: #f3f4f6; /* Fundo cinza do grupo */
   border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #ccc;
+  padding: 4px;
+  gap: 4px;
 }
 
 .tipoToggle button {
-  padding: 10px 12px;
+  flex: 1;
+  padding: 8px 12px;
   border: none;
-  background-color: #f3f4f6;
+  background-color: transparent;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
-  transition: background-color 0.2s, color 0.2s;
+  font-weight: 500;
+  color: #6b7280; /* Texto cinza quando inativo */
+  transition: all 0.2s ease-in-out;
 }
 
-.tipoToggle button + button {
-  border-left: 1px solid #e5e7eb;
-}
-
+/* HOVER: Ao passar o mouse (nos inativos), fica Branco com texto Vermelho */
 .tipoToggle button:hover:not(:disabled) {
-  background-color: #e5e7eb;
+  background-color: #ffffff;
+  color: #b20000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+/* ATIVO: O botão selecionado fica Vermelho Sólido com texto Branco */
 .tipoToggle button.active {
   background-color: #b20000;
   color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(178, 0, 0, 0.3); /* Sombra suave avermelhada */
 }
 
-/* Corpo do modal: rola por dentro do card */
+/* Ajuste fino: Hover no botão que JÁ está ativo (mantém vermelho, escurece um pouco) */
+.tipoToggle button.active:hover {
+  background-color: #990000;
+  color: #ffffff;
+}
+
+/* ========================================= */
+/* CORPO DO FORMULÁRIO                       */
+/* ========================================= */
 .body {
-  padding: 20px 24px;
-  
-  /* CORREÇÃO CRÍTICA AQUI: */
-  overflow-y: auto;         /* Cria o scroll SE necessário */
-  flex: 1;                  /* Ocupa todo o espaço disponível entre Header e Footer */
-  
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
-/* Grupo de campo */
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .formGroup label {
@@ -111,204 +125,259 @@
   font-weight: 600;
 }
 
-.formGroup input,
-.formGroup textarea {
+/* Inputs Gerais (Texto, Data, TextArea) */
+.formGroup input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+.formGroup textarea,
+.inputDate {
   width: 100%;
-  border: 1px solid #ccc;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
   color: #111827;
   box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.formGroup textarea {
-  min-height: 120px;
-  resize: vertical;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
 .formGroup input:focus,
-.formGroup textarea:focus {
+.formGroup textarea:focus,
+.inputDate:focus {
   outline: none;
   border-color: #b20000;
-  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.2);
+  box-shadow: 0 0 0 3px rgba(178, 0, 0, 0.1);
 }
 
-/* Rodapé do modal */
-.footer {
-  padding: 16px 24px;
-  border-top: 1px solid #eee;
-  background-color: #f9fafb;
-  border-radius: 0 0 8px 8px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.formGroup textarea {
+  min-height: 100px;
+  resize: vertical;
 }
 
-/* Botões */
-.btnGhost,
-.btnReprovarModal,
-.btnAprovarModal {
-  padding: 10px 18px;
-  border-radius: 8px; /* pílula, como upload */
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-}
-
-.btnGhost {
-  background: transparent;
-  color: #b20000;
-  border-color: #b20000;
-}
-
-.btnGhost:hover:not(:disabled) {
-  background-color: #b20000;
-  color: #ffffff;
-}
-
-.btnReprovarModal {
-  background-color: #dc3545;
-  color: #ffffff;
-  border-color: #dc3545;
-}
-
-.btnReprovarModal:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-.btnAprovarModal {
-  background-color: #28a745;
-  color: #ffffff;
-  border-color: #28a745;
-}
-
-.btnAprovarModal:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.btnGhost:disabled,
-.btnReprovarModal:disabled,
-.btnAprovarModal:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Adicione isso no final do seu CSS */
-.modalBox > form {
-  display: flex;
-  flex-direction: column;
-  height: 100%;       /* Ocupa 100% da altura do card */
-  overflow: hidden;   /* Previne scroll duplo */
-}
-
-/* Responsivo */
-@media (max-width: 640px) {
-  .modalBox {
-    max-width: 100%;
-    max-height: calc(100vh - 32px);
-  }
-
-  .header {
-    padding: 12px 16px;
-  }
-
-  .body {
-    padding: 16px;
-  }
-
-  .footer {
-    padding: 12px 16px;
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-
-  .btnGhost,
-  .btnReprovarModal,
-  .btnAprovarModal {
-    width: 100%;
-  }
-}
-
-/* ======================================================= */
-/* NOVOS ESTILOS PARA O INPUT DE ARQUIVO CUSTOMIZADO     */
-/* ======================================================= */
-
-/* Esconde o input de arquivo padrão */
+/* ========================================= */
+/* INPUT DE ARQUIVO CUSTOMIZADO              */
+/* ========================================= */
 .hiddenFileInput {
   display: none;
 }
 
-/* 1. Botão customizado "Clique para selecionar..." (antes de selecionar) */
+/* Estado 1: Botão para selecionar */
 .fileInputLabel {
   display: flex;
   align-items: center;
-  gap: 10px; /* Espaço para o ícone de clipe */
-  padding: 10px 14px;
-  border: 1px solid #ccc; /* Borda tracejada para indicar "dropzone" */
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  border: 2px dashed #d1d5db;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #555; /* Cor de placeholder */
+  color: #6b7280;
   background-color: #f9fafb;
   transition: all 0.2s;
 }
 
 .fileInputLabel:hover {
   border-color: #b20000;
-  box-shadow: 0 0 0 2px rgba(178, 0, 0, 0.1);
-  background-color: #fff;
+  background-color: #fff5f5;
+  color: #b20000;
 }
 
-/* 2. Box que aparece DEPOIS que o arquivo foi selecionado */
+/* Estado 2: Arquivo Selecionado */
 .fileSelectedBox {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border: 1px solid #555; /* Borda verde sucesso */
+  padding: 12px 16px;
+  border: 1px solid #10b981; /* Verde Sucesso */
   border-radius: 8px;
-  background-color: white; /* Fundo verde claro */
-}
-
-.fileSelectedBox span {
-  font-size: 14px;
-  font-weight: 500;
-  
-  /* Evita que o nome do arquivo quebre o layout */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 10px;
+  background-color: #ecfdf5;
+  color: #065f46;
 }
 
 .fileRemoveBtn {
   background: transparent;
   border: none;
-  color: #dc3545; /* Vermelho perigo */
+  color: #ef4444;
   cursor: pointer;
-  padding: 0;
-  margin: 0;
-  font-size: 18px; /* Tamanho do ícone 'X' */
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.fileRemoveBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================= */
+/* ÁREA DE AGENDAMENTO                       */
+/* ========================================= */
+.fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Labels dos Radios (Publicar vs Agendar) */
+/* Dica: Adicione className={styles.radioLabel} no seu JSX nas tags <label> dos radios */
+.radioLabel { 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.radioLabel:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* ========================================= */
+/* RODAPÉ E BOTÕES                           */
+/* ========================================= */
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+  background-color: #f9fafb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Botão Cancelar com estilo Vermelho */
+.btnGhost {
+  padding: 10px 20px;
+  background: transparent;
+  color: #b20000;             /* Texto Vermelho */
+  border: 1px solid #b20000;  /* Borda Vermelha */
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Efeito ao passar o mouse: Fica vermelho sólido */
+.btnGhost:hover {
+  background-color: #b20000;
+  color: #ffffff;
+}
+
+/* Estado desabilitado */
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #ccc;
+  background-color: transparent;
+}
+
+.btnAprovarModal {
+  padding: 10px 24px;
+  background-color: #0fd819; /* Verde Esmeralda (Sucesso) */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
+  gap: 8px;
+  transition: background-color 0.2s;
 }
 
-.fileRemoveBtn:hover:not(:disabled) {
-  color: #b20000; /* Vermelho mais escuro no hover */
+.btnAprovarModal:hover:not(:disabled) {
+  background-color: #1b7005; /* Verde mais escuro no hover */
 }
 
-.fileRemoveBtn:disabled {
-  opacity: 0.5;
+.btnAprovarModal:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
   cursor: not-allowed;
+}
+
+/* Botão de Ação Negativa/Perigo (Excluir / Reprovar) - Vermelho Vivo */
+.btnReprovarModal {
+  padding: 10px 24px;
+  background-color: #dc2626; /* Vermelho vivo para indicar perigo */
+  color: white;
+  border: none; /* Remove a borda padrão que estava bugando */
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.btnReprovarModal:hover:not(:disabled) {
+  background-color: #b91c1c; /* Vermelho mais escuro no hover */
+}
+
+/* ========================================= */
+/* BARRA DE ROLAGEM CUSTOMIZADA (SCROLLBAR)  */
+/* ========================================= */
+
+/* ========================================= */
+/* SCROLLBAR (Modo Mouse Quebrado / Opera)   */
+/* ========================================= */
+
+/* ========================================================== */
+/* CORREÇÃO CRÍTICA DE LAYOUT E SCROLL (MOUSE SEM RODINHA)   */
+/* ========================================================== */
+
+/* 1. Garante que o FORM ocupe 100% do Modal e não vaze */
+.modalBox > form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;        /* Ocupa a altura toda do modal */
+  max-height: 100%;    /* Não deixa passar do limite */
+  overflow: hidden;    /* O form em si não rola, quem rola é o body */
+}
+
+/* ========================================================== */
+/* SCROLLBAR DISCRETA E ELEGANTE (ESTILO IOS/MODERNO)        */
+/* ========================================================== */
+
+/* Garante que o corpo tenha o comportamento de rolagem correto */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #bdbdbd transparent;
+}
+
+/* Chrome, Edge, Safari e OPERA */
+.body::-webkit-scrollbar {
+  width: 10px; /* Largura suficiente para clicar, mas discreta */
+}
+
+/* O "trilho" por onde a barra corre fica transparente */
+.body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* A "pílula" que você arrasta */
+.body::-webkit-scrollbar-thumb {
+  background-color: #bdbdbd; /* Cinza médio discreto */
+  border-radius: 10px;       /* Bordas bem arredondadas */
+  border: 3px solid transparent; /* Truque para criar uma margem branca em volta da barra */
+  background-clip: content-box;  /* Faz a cor de fundo respeitar a borda transparente */
+}
+
+/* Quando passa o mouse, ela fica um pouco mais escura para indicar que é clicável */
+.body::-webkit-scrollbar-thumb:hover {
+  background-color: #a0a0a0;
 }

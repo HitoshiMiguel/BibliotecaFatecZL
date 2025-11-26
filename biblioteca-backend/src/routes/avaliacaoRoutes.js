@@ -2,6 +2,9 @@
 const router = require('express').Router();
 const { isAuthenticated } = require('../middlewares/authMiddleware');
 const AvaliacaoController = require('../controller/AvaliacaoController');
+const AcessoController = require('../controller/AcessoController');
+
+
 
 // Middleware para logar todas as requisições nessa rota
 router.use((req, res, next) => {
@@ -9,6 +12,9 @@ router.use((req, res, next) => {
   next();
 });
 
+router.get('/acessar/:id', AcessoController.registrarAcesso);
+
+router.get('/minhas-estatisticas', isAuthenticated, AvaliacaoController.getMinhasEstatisticas);
 // GET avaliações de um item
 // MUDANÇA AQUI: Adicionei o 'isAuthenticated' para o backend saber QUEM está logado
 // Se o usuário mandar o token, o controller vai saber quem é e devolver a nota dele (amarelinha).

@@ -96,9 +96,81 @@ async function deleteAvaliacao(usuarioId, rawId, tipo = 'digital') {
   return result.affectedRows;
 }
 
+async function getEstatisticasPorAutor(usuarioId) {
+  if (!usuarioId) return [];
+
+  // CORREÇÃO: Usando 'submissao_id' conforme sua imagem
+  const query = `
+    SELECT 
+      i.titulo,
+      i.item_id,
+      COUNT(a.nota) as total_avaliacoes,
+      COALESCE(AVG(a.nota), 0) as media_nota
+    FROM dg_itens_digitais i
+    INNER JOIN dg_submissoes s ON i.submissao_id = s.submissao_id
+    LEFT JOIN dg_avaliacoes a ON i.item_id = a.item_id
+    WHERE s.usuario_id = ?
+    GROUP BY i.item_id, i.titulo
+    HAVING total_avaliacoes > 0
+    ORDER BY media_nota DESC
+  `;
+
+  const [rows] = await pool.query(query, [usuarioId]);
+  
+  // Formata a média para ter apenas 1 casa decimal (ex: 4.5)
+  return rows.map(row => ({
+    ...row,
+    media_nota: parseFloat(row.media_nota).toFixed(1)
+  }));
+}
+
+async function getContagemStatus(usuarioId) {
+  if (!usuarioId) return { aprovado: 0, pendente: 0, rejeitado: 0 };
+  
+  // O GROUP BY faz a mágica: conta quantos tem em cada status de uma só vez
+  const [rows] = await pool.query(
+    `SELECT status, COUNT(*) as total 
+     FROM dg_submissoes 
+     WHERE usuario_id = ? 
+     GROUP BY status`,
+    [usuarioId]
+  );
+  
+  // Prepara o objeto de retorno padrão (caso o usuário tenha 0 de algum tipo)
+  const stats = { aprovado: 0, pendente: 0, rejeitado: 0 };
+
+  // Preenche com o que veio do banco
+  rows.forEach(row => {
+    // row.status pode vir como 'aprovado', 'pendente', etc.
+    if (stats[row.status] !== undefined) {
+      stats[row.status] = row.total;
+    }
+  });
+  
+  return stats;
+}
+
+async function getTotalDownloadsUsuario(usuarioId) {
+  if (!usuarioId) return 0;
+  
+  const query = `
+    SELECT SUM(i.total_downloads) as total
+    FROM dg_itens_digitais i
+    INNER JOIN dg_submissoes s ON i.submissao_id = s.submissao_id
+    WHERE s.usuario_id = ?
+  `;
+  
+  const [rows] = await pool.query(query, [usuarioId]);
+  // Se for null (nenhum download), retorna 0
+  return rows[0].total ? parseInt(rows[0].total) : 0;
+}
+
 module.exports = {
   getAvaliacoesByItem,
   getAvaliacaoByUserAndItem,
   saveAvaliacao,
-  deleteAvaliacao
+  deleteAvaliacao,
+  getEstatisticasPorAutor,
+  getContagemStatus,
+  getTotalDownloadsUsuario
 };

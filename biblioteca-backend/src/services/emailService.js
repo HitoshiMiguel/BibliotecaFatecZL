@@ -3,26 +3,39 @@
 const nodemailer = require('nodemailer');
 
 const APP_NAME = 'Biblioteca Fatec ZL';
-const FROM = process.env.EMAIL_USER; // Ex: bibliotecafatecoriginal@gmail.com
+// Garante que não há espaços extras nas variáveis de ambiente
+const FROM = (process.env.EMAIL_USER || '').trim();
+const PASS = (process.env.EMAIL_PASS || '').trim();
+
+console.log(`[EmailService] Iniciando serviço com usuário: ${FROM}`);
 
 // Configuração do transporte SMTP (Gmail)
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: FROM,
-        pass: process.env.EMAIL_PASS, // Certifique-se que esta variável está no .env
+        pass: PASS,
     },
+    // Adiciona timeout para evitar travamentos
+    connectionTimeout: 10000, 
+    greetingTimeout: 10000,
+    socketTimeout: 10000
+});
+
+// Verifica a conexão ao iniciar
+transporter.verify(function (error, success) {
+    if (error) {
+        console.error('[EmailService] ❌ Erro na conexão SMTP:', error);
+    } else {
+        console.log('[EmailService] ✅ Servidor SMTP pronto para enviar mensagens');
+    }
 });
 
 /**
  * Envia um e-mail para redefinição de senha.
- * @param {string} to - Email do destinatário.
- * @param {string} link - URL completa para redefinição.
  */
 const sendResetPasswordEmail = async (to, link) => {
     const subject = `Redefinição de senha — ${APP_NAME}`;
-
-    // Apenas o conteúdo HTML - mais robusto para a maioria dos clientes
     const html = `
 <!doctype html>
 <html>
@@ -57,25 +70,22 @@ const sendResetPasswordEmail = async (to, link) => {
  </body>
 </html>`;
 
-    // Envio do e-mail (sem o campo 'text' para forçar HTML)
     try {
         await transporter.sendMail({
-            from: `"${APP_NAME}" <${FROM}>`, // Formato recomendado para o 'from'
+            from: `"${APP_NAME}" <${FROM}>`,
             to,
             subject,
-            html, // Apenas HTML
+            html,
         });
         console.log(`E-mail de redefinição enviado para ${to}`);
     } catch (error) {
         console.error(`Falha ao enviar e-mail de redefinição para ${to}:`, error);
-        // Lançar o erro permite que o controller saiba que falhou
         throw new Error('Falha no serviço de envio de e-mail.'); 
     }
 };
 
 const sendConfirmationEmail = async (to, confirmationLink) => {
     const subject = `Confirme sua conta - ${APP_NAME}`;
-    // HTML Ultra Simplificado e Limpo
     const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h2 style="color: #b71c1c; margin-top: 0;">Confirmação de Conta</h2>
@@ -99,7 +109,7 @@ const sendConfirmationEmail = async (to, confirmationLink) => {
              from: `"${APP_NAME}" <${FROM}>`,
              to,
              subject,
-             html // Apenas HTML limpo
+             html
         });
         console.log(`E-mail de confirmação enviado para ${to}`);
     } catch (error) {
@@ -108,12 +118,8 @@ const sendConfirmationEmail = async (to, confirmationLink) => {
     }
 }
 
-/**
- * Envia e-mail para ATIVAÇÃO (Professor define a senha).
- */
 const sendActivationEmail = async (to, activationLink) => {
     const subject = `Ative sua conta - ${APP_NAME}`;
-    // HTML Corrigido e Simplificado
     const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h2 style="color: #b71c1c; margin-top: 0;">Ativação de Conta</h2>
@@ -138,7 +144,7 @@ const sendActivationEmail = async (to, activationLink) => {
             from: `"${APP_NAME}" <${FROM}>`,
             to,
             subject,
-            html // Envia o HTML correto
+            html 
         });
         console.log(`E-mail de ATIVAÇÃO enviado para ${to}`);
     } catch (error) {
@@ -147,10 +153,7 @@ const sendActivationEmail = async (to, activationLink) => {
     }
 };
 
-// adiciona isso em emailService.js (junto com as outras exports)
 const sendBookAvailableEmail = async (to, payload = {}) => {
-  const APP_NAME = 'Biblioteca Fatec ZL';
-  const FROM = process.env.EMAIL_USER;
   const titulo = payload.titulo ?? 'Livro disponível';
   const usuarioNome = payload.usuario_nome ?? 'usuário';
   const linkConsulta = payload.linkConsulta ?? (process.env.FRONTEND_URL || 'http://localhost:3000');
@@ -232,11 +235,6 @@ const sendBookAvailableEmail = async (to, payload = {}) => {
     throw err;
   }
 };
-
-module.exports.sendBookAvailableEmail = sendBookAvailableEmail;
-
-// src/services/emailService.js
-// (coloque isto onde suas outras funções de email estão, antes do `module.exports`)
 
 const sendDueReminderEmail = async (to, { titulo, usuario_nome, linkConsulta, codigo_barras }) => {
   const subject = `Lembrete: seu empréstimo vence hoje — Biblioteca Fatec ZL`;
@@ -343,6 +341,59 @@ const sendGenericEmail = async (to, subject, html) => {
     }
 };
 
+/**
+ * Envia notificação de Reserva Realizada (Físico)
+ */
+async function enviarEmailReservaRealizada(email, nomeAluno, tituloLivro, dataRetirada) {
+  const assunto = `📚 Reserva Confirmada: ${tituloLivro}`;
+  
+  // Formata a data se ela vier como AAAA-MM-DD
+  let dataFormatada = dataRetirada;
+  if (dataRetirada.includes('-')) {
+    dataFormatada = dataRetirada.split('-').reverse().join('/');
+  }
+
+  const htmlTemplate = `
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+      <!-- MUDANÇA AQUI: background-color de verde (#28a745) para vermelho (#b20000) -->
+      <div style="background-color: #b20000; padding: 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Reserva Realizada!</h1>
+      </div>
+      <div style="padding: 30px;">
+        <p style="font-size: 16px;">Olá, <strong>${nomeAluno}</strong>!</p>
+        <p style="font-size: 16px; line-height: 1.5;">
+          Sua reserva foi registrada com sucesso no sistema. O item será separado para você.
+        </p>
+        <!-- MUDANÇA AQUI: border-left de verde (#28a745) para vermelho (#b20000) -->
+        <div style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #b20000; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>📘 Livro:</strong> ${tituloLivro}</p>
+          <p style="margin: 5px 0;"><strong>📅 Retirada Prevista:</strong> ${dataFormatada}</p>
+          <p style="margin: 5px 0;"><strong>📍 Local:</strong> Balcão da Biblioteca</p>
+        </div>
+        <p style="font-size: 14px; color: #666;">
+          *Não esqueça de levar sua carteirinha ou documento com foto.
+        </p>
+      </div>
+      <div style="background-color: #f1f1f1; padding: 15px; text-align: center; font-size: 12px; color: #888;">
+        <p style="margin: 0;">Biblioteca Fatec - Sistema Automático</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    // Usa o transporter que JÁ EXISTE nesse arquivo
+    await transporter.sendMail({
+      from: `"Biblioteca Fatec ZL" <${FROM}>`,
+      to: email,
+      subject: assunto,
+      html: htmlTemplate,
+    });
+    console.log(`[EmailService] Confirmação de reserva enviada para ${email}`);
+  } catch (error) {
+    console.error('[EmailService] Erro ao enviar email:', error);
+  }
+}
+
 module.exports = {
    sendResetPasswordEmail,
    sendConfirmationEmail,
@@ -350,5 +401,6 @@ module.exports = {
    sendGenericEmail,
    sendBookAvailableEmail,
    sendDueReminderEmail,
-    sendOverdueEmail
+   sendOverdueEmail,
+   enviarEmailReservaRealizada // Função exportada!
 };

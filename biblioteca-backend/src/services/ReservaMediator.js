@@ -4,6 +4,9 @@ const UserModel = require('../model/UserModel');
 const acervoLegadoService = require('./AcervoLegadoService');
 const { isUserBlocked } = require('./userBlockService');
 
+// [NOVO] Importando serviço de email
+const emailService = require('./emailService');
+
 /**
  * ReservaMediator
  *
@@ -163,7 +166,24 @@ class ReservaMediator {
       console.warn('ReservaMediator: falha ao atualizar OpenBiblio (não crítico):', err.message);
     }
 
-    // 8) Retornar DTO da reserva criada
+    // =====================================================
+    // [NOVO] 8. Enviar e-mail de notificação
+    // =====================================================
+    try {
+      console.log(`[ReservaMediator] Disparando e-mail para: ${usuario.email}`);
+      emailService.enviarEmailReservaRealizada(
+        usuario.email,
+        usuario.nome,
+        livro.titulo,
+        dataRetirada
+      ).then(() => console.log('[ReservaMediator] E-mail enviado com sucesso'))
+       .catch(err => console.error('[ReservaMediator] Erro ao enviar e-mail:', err));
+    } catch (emailErr) {
+      console.warn('[ReservaMediator] Falha ao tentar enviar e-mail:', emailErr);
+    }
+    // =====================================================
+
+    // 9) Retornar DTO da reserva criada
     return {
       reserva_id: result.insertId,
       usuario_id: usuarioId,

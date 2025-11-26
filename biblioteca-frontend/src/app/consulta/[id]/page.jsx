@@ -263,7 +263,12 @@ export default function PublicacaoPage({ params }) {
 
           {/* Componente de Avaliação CORRIGIDO */}
           <div style={{ marginTop: '30px' }}>
-            <RatingStars itemId={data.item_id || id} publicacaoId={id} />
+            <RatingStars 
+              itemId={data.item_id || id} 
+              publicacaoId={id} 
+              tipo={data.tipo === 'fisico' ? 'fisico' : 'digital'}
+              onRatingChange={() => {}} 
+            />
           </div>
         </article>
       </section>
@@ -492,8 +497,8 @@ export default function PublicacaoPage({ params }) {
                             'Content-Type': 'application/json',
                           },
                           body: JSON.stringify({
-                            submissaoId: id, // ex: "LEGACY_123"
-                            dataRetirada: dataRetirada, // "AAAA-MM-DD"
+                            submissaoId: id,
+                            dataRetirada: dataRetirada,
                           }),
                         });
 
@@ -532,10 +537,9 @@ export default function PublicacaoPage({ params }) {
                           `,
                           icon: 'success',
                           confirmButtonText: 'Entendi, obrigado!',
-                          confirmButtonColor: '#28a745', // Verde igual ao seu botão
+                          confirmButtonColor: '#28a745',
                           allowOutsideClick: false,
                         }).then((result) => {
-                          // Só recarrega a página depois que o usuário clicar em "Entendi"
                           if (result.isConfirmed) {
                             window.location.reload();
                           }

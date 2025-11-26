@@ -28,6 +28,12 @@ export default function DashboardPage() {
     }
   };
 
+  const [submissoes, setSubmissoes] = useState([]);
+  const [isLoadingSubmissoes, setIsLoadingSubmissoes] = useState(false);
+
+
+
+
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionStatus, setActionStatus] = useState({ message: '', type: '' });
@@ -61,6 +67,7 @@ export default function DashboardPage() {
   const FAVORITOS_URL  = `${API_URL}/api/favoritos`;
   const MINHAS_RESERVAS_URL = `${API_URL}/api/reservas/minhas`;
   const FAVORITOS_API = `${API_URL}/api/favoritos`;
+  const MINHAS_SUBMISSOES_URL = `${API_URL}/api/submissoes/minhas`;
 
   // ---- LOGOUT DO MENU LATERAL
   const { logout } = useGlobalMenu();
@@ -155,6 +162,39 @@ export default function DashboardPage() {
     checkAuthAndFetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, AUTH_CHECK_URL, FAVORITOS_URL]);
+
+  // ----------------- Submissões: carregar -----------------
+  const carregarSubmissoes = async () => {
+    setIsLoadingSubmissoes(true);
+    try {
+      const res = await fetch(MINHAS_SUBMISSOES_URL, {
+        method: 'GET',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        console.warn('Falha ao obter submissões:', res.status);
+        setSubmissoes([]);
+        return;
+      }
+      const data = await res.json();
+      // converte datas
+      const normalized = (data || []).map(s => ({
+        ...s,
+        data_submissao: parseDateOnly(s.data_submissao),
+        itens: (s.itens || []).map(it => ({
+          ...it,
+          data_publicacao: parseDateOnly(it.data_publicacao)
+        }))
+      }));
+      setSubmissoes(normalized);
+    } catch (err) {
+      console.error('Erro ao carregar submissões:', err);
+      setSubmissoes([]);
+    } finally {
+      setIsLoadingSubmissoes(false);
+    }
+  };
 
   // Fetch das reservas do usuário
   const carregarReservas = async () => {
@@ -587,6 +627,7 @@ const fetchFavoritosDetalhados = async () => {
               <button className={`${styles.button} ${activeTab === 'dados' ? styles.editButton : ''}`} onClick={() => setActiveTab('dados')}>Dados</button>
               <button className={`${styles.button} ${activeTab === 'favoritos' ? styles.editButton : ''}`} onClick={() => setActiveTab('favoritos')}>Favoritos</button>
               <button className={`${styles.button} ${activeTab === 'reservas' ? styles.editButton : ''}`} onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}>Reservas</button>
+              <button className={`${styles.button} ${activeTab === 'submissoes' ? styles.editButton : ''}`} onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}>Submissões</button>
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
@@ -706,6 +747,69 @@ const fetchFavoritosDetalhados = async () => {
     )}
   </div>
 )}
+
+{/* --- SUBMISSÕES (APENAS NA ABA 'submissoes') --- */}
+            {activeTab === 'submissoes' && (
+              <div style={{ marginBottom: 20 }}>
+                <h3>Minhas Submissões</h3>
+
+                {isLoadingSubmissoes ? (
+                  <p>Carregando submissões...</p>
+                ) : submissoes.length === 0 ? (
+                  <p>Você não possui submissões.</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {submissoes.map((s) => (
+                      <div key={s.submissao_id} style={{ border: '1px solid #eee', padding: 12, borderRadius: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong>{s.titulo_proposto || `Submissão #${s.submissao_id}`}</strong>
+                            <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                              {s.autor ? `${s.autor} • ` : ''}{s.editora ? `${s.editora} • ` : ''}{formatDate(s.data_submissao)}
+                            </div>
+                          </div>
+                          <div style={{ textTransform: 'capitalize', color: s.status === 'aprovado' ? '#0b6' : s.status === 'rejeitado' ? '#b20000' : '#666' }}>
+                            {s.status}
+                          </div>
+                        </div>
+
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ margin: 0 }}>{s.titulo_proposto ? null : <em>Sem título</em>}</p>
+                          {/* iténs associados (se houver) */}
+                          {s.itens && s.itens.length > 0 ? (
+                            <div style={{ marginTop: 8 }}>
+                              <strong>Itens publicados a partir desta submissão:</strong>
+                              <ul>
+                                {s.itens.map(it => (
+                                  <li key={it.item_id}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                      <div>
+                                        <div><strong>{it.titulo}</strong> {it.ano ? <span>({it.ano})</span> : null}</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#666' }}>{it.autor}</div>
+                                      </div>
+                                      <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.85rem', color: '#666' }}>{it.status}</div>
+                                        {it.caminho_arquivo && (
+                                          <a href={it.caminho_arquivo} target="_blank" rel="noopener noreferrer" className={styles.button} style={{ marginTop: 6 }}>Ver Arquivo</a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : (
+                            <div style={{ marginTop: 8, fontSize: '0.9rem', color: '#666' }}>
+                              Nenhum item publicado a partir desta submissão.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* --- RESERVAS (APENAS NA ABA 'reservas') --- */}
             {activeTab === 'reservas' && (

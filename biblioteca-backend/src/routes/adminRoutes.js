@@ -96,12 +96,8 @@ router.post(
 );
 
 // --- ROTA PARA BUSCAR LINK DE VISUALIZAÇÃO DO ARQUIVO ---
-router.get(
-  '/submissoes/:id/link', // Alterado 'view-link' para 'link' para ser mais sucinto
-  isAuthenticated,
-  isAdminOrBibliotecario,
-  AdminController.getSubmissionFileLink
-);
+// Rota para obter o link do arquivo para visualização
+router.get('/submissoes/:id/view-link', AdminController.getSubmissionFileLink);
 
 // 2. EXPORTAÇÃO ÚNICA
 module.exports = router;

@@ -7,6 +7,8 @@ import styles from './dashboard-bibliotecario.module.css';
 
 import { MyEditModal } from './MyEditModal.jsx';
 import { NewUploadModal } from './NewUploadModal';
+import { useRouter } from 'next/navigation';
+import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
 
 const API_URL = 'http://localhost:4000';
 
@@ -27,10 +29,15 @@ function formatDateISOToBR(value) {
   return `${dia}/${mes}/${ano}`;
 }
 
+
+
 // ====================================================================
 // = DASHBOARD DO BIBLIOTECÁRIO
 // ====================================================================
 export default function DashboardBibliotecarioPage() {
+  const { user, isAuthed, isLoading } = useGlobalMenu();
+  const router = useRouter();
+
   // Aba ativa: 'pendentes' | 'gerenciar' | 'reservas'
   const [abaAtiva, setAbaAtiva] = useState('pendentes');
 
@@ -58,30 +65,58 @@ export default function DashboardBibliotecarioPage() {
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
+  // --- 1. EFEITO DE PROTEÇÃO E REDIRECIONAMENTO ---
+ useEffect(() => {
+    // Se ainda está verificando o token, NÃO FAZ NADA. Espera.
+    if (isLoading) return;
+
+    // Só agora, que o loading acabou, verificamos a permissão
+    if (!isAuthed) {
+      router.push('/login');
+      return;
+    }
+
+    if (user?.role !== 'bibliotecario' && user?.role !== 'admin') {
+      router.push('/dashboard');
+    }
+  }, [isAuthed, user, router, isLoading]);
+
   // -----------------------------------------------------------
   // Função para carregar publicações aprovadas (reutilizável)
   // -----------------------------------------------------------
   const getPublicacoesAprovadas = async () => {
-    setLoadingGerenciar(true);
-    setErroGerenciar('');
-    try {
-      // Usa a rota pública de publicações (apenas aprovadas)
-      const res = await fetch(`${API_URL}/api/publicacoes`, {
-        cache: 'no-store',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Falha ao carregar publicações.');
+    setLoadingGerenciar(true);
+    setErroGerenciar('');
+    try {
+      const res = await fetch(`${API_URL}/api/publicacoes`, {
+        cache: 'no-store',
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        console.warn('Não autorizado. Redirecionando...');
+        
+        // ADICIONE ESTA LINHA:
+        router.push('/login'); 
+        
+        return; 
       }
-      setPublicacoes(data.items || []);
-    } catch (err) {
-      console.error(err);
-      setErroGerenciar(err.message || 'Erro ao carregar publicações.');
-    } finally {
-      setLoadingGerenciar(false);
-    }
-  };
+        // ---------------------------
+        const data = await res.json();
+        throw new Error(data?.error || 'Falha ao carregar publicações.');
+      }
+
+      const data = await res.json();
+      setPublicacoes(data.items || []);
+
+    } catch (err) {
+      console.error(err);
+      setErroGerenciar(err.message || 'Erro ao carregar publicações.');
+    } finally {
+      setLoadingGerenciar(false);
+    }
+  };
 
   const handleUploadComplete = (novoItemAprovado) => {
     console.log('Novo item publicado:', novoItemAprovado);
@@ -103,11 +138,18 @@ export default function DashboardBibliotecarioPage() {
           credentials: 'include',
         });
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            setErroPendentes('Não autorizado. Faça login novamente.');
-          } else {
+      if (res.status === 401 || res.status === 403) {
+        console.warn('Não autorizado. Redirecionando...');
+        
+        // ADICIONE ESTA LINHA:
+        router.push('/login'); 
+        
+        return; 
+       // <--- PARE AQUI. Não lance erro. O Provider vai redirecionar.
+      } else {
             setErroPendentes('Falha ao buscar dados do servidor.');
-          }
+      return; // <--- Apenas retorne, não use 'throw new Error' se não quiser que a tela quebre
+    }
           throw new Error('Falha na requisição');
         }
 
@@ -141,28 +183,37 @@ export default function DashboardBibliotecarioPage() {
   // = BUSCAR RESERVAS (aba 3 - "reservas")
   // ==========================================
   const getReservas = async () => {
-    setLoadingReservas(true);
-    setErroReservas('');
-    try {
-      const res = await fetch(`${API_URL}/api/admin/reservas`, {
-        cache: 'no-store',
-        credentials: 'include',
-      });
+    setLoadingReservas(true);
+    setErroReservas('');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/reservas`, {
+        cache: 'no-store',
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        // --- PROTEÇÃO ADICIONADA ---
+        if (res.status === 401 || res.status === 403) {
+           console.warn('Sessão expirada ao buscar reservas. Aguardando redirect...');
+           router.push('/login');
+           return; 
+        }
+        // ---------------------------
+        const data = await res.json();
+        throw new Error(data?.message || 'Falha ao carregar reservas.');
+      }
+      
       const data = await res.json();
+      setReservas(data || []);
 
-      if (!res.ok) {
-        throw new Error(data?.message || 'Falha ao carregar reservas.');
-      }
-
-      setReservas(data || []);
-    } catch (err) {
-      console.error(err);
-      setErroReservas(err.message || 'Erro ao carregar reservas.');
-      setReservas([]);
-    } finally {
-      setLoadingReservas(false);
-    }
-  };
+    } catch (err) {
+      console.error(err);
+      setErroReservas(err.message || 'Erro ao carregar reservas.');
+      setReservas([]);
+    } finally {
+      setLoadingReservas(false);
+    }
+  };
 
   useEffect(() => {
     if (abaAtiva !== 'reservas') return;
@@ -849,6 +900,15 @@ export default function DashboardBibliotecarioPage() {
       </div>
     );
   };
+
+  if (isLoading) {
+      return null; // ou <p>Carregando permissões...</p>
+  }
+
+  // Se terminou de carregar e não tem permissão, retorna null (o useEffect acima vai redirecionar)
+  if (!isAuthed || (user?.role !== 'bibliotecario' && user?.role !== 'admin')) {
+      return null;
+  }
 
   // ==========================================
   // = RENDER PRINCIPAL

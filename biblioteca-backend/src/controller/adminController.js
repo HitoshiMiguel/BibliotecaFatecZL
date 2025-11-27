@@ -758,50 +758,38 @@ const reprovarSubmissao = async (req, res, next) => {
  * DELETE (via POST) /api/admin/submissoes/:id/deletar-aprovada
  * Deleta um item do Acervo (e do Drive) que foi APROVADO previamente.
  */
-const deletarPublicacaoAprovada = async (req, res, next) => {
-  const { id: submissaoId } = req.params;
+const deletarPublicacaoAprovada = async (req, res) => {
+    const { id } = req.params; // Esse é o submissao_id
 
-  try {
-    // 1. Pega o anexo para deletar do Drive
-    const sqlFind = `SELECT caminho_anexo FROM dg_submissoes WHERE submissao_id = ? AND status = 'aprovado'`;
-    const [rows] = await pool.execute(sqlFind, [submissaoId]);
+    try {
+        // PASSO 1: Descobrir qual é o item_id baseado no submissao_id
+        const [itens] = await pool.query(
+            'SELECT item_id FROM dg_itens_digitais WHERE submissao_id = ?', 
+            [id]
+        );
 
-    if (rows.length === 0) return res.status(404).json({ message: 'Publicação aprovada não encontrada.' });
+        if (itens.length > 0) {
+            const itemId = itens[0].item_id;
 
-    const googleFileId = rows[0].caminho_anexo;
+            // PASSO 2: Deletar as avaliações desse item PRIMEIRO
+            // Isso remove a "trava" do banco de dados
+            await pool.query('DELETE FROM dg_avaliacoes WHERE item_id = ?', [itemId]);
+            
+            // Se tiver outras tabelas vinculadas (ex: favoritos, downloads), delete aqui também
+        }
 
-    if (googleFileId) {
-      const drive = getDriveWithOAuth();
-      // Tenta deletar. Usa catch para ignorar se o arquivo já foi apagado manualmente no Drive.
-      await drive.files.delete({ fileId: googleFileId }).catch(err => console.log("Arquivo já inexistente no Drive, ignorando...", err.message));
+        // PASSO 3: Agora sim, deletar o item digital (O comando que estava dando erro)
+        await pool.query('DELETE FROM dg_itens_digitais WHERE submissao_id = ?', [id]);
+        
+        // PASSO 4: Se precisar deletar a submissão original também
+        await pool.query('DELETE FROM dg_submissoes WHERE submissao_id = ?', [id]);
+
+        return res.status(200).json({ message: 'Publicação e registros vinculados excluídos com sucesso.' });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Erro ao deletar publicação.' });
     }
-
-    // --- 🔴 FIX: LIMPEZA DE FAVORITOS (NOVO) ---
-    // Primeiro, descobrimos qual é o ID do item na tabela dg_itens_digitais
-    const [itens] = await pool.execute("SELECT item_id FROM dg_itens_digitais WHERE submissao_id = ?", [submissaoId]);
-    
-    if (itens.length > 0) {
-        const itemId = itens[0].item_id;
-        // Agora apagamos todos os favoritos ligados a esse item
-        await pool.execute("DELETE FROM dg_favoritos WHERE item_id = ?", [itemId]);
-    }
-    // -------------------------------------------
-
-    // 2. Remove o item final da tabela de itens digitais
-    await pool.execute("DELETE FROM dg_itens_digitais WHERE submissao_id = ?", [submissaoId]);
-
-    // 3. Remove a submissão aprovada
-    await pool.execute("DELETE FROM dg_submissoes WHERE submissao_id = ?", [submissaoId]);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Publicação aprovada, arquivo e favoritos associados foram excluídos com sucesso.',
-    });
-
-  } catch (error) {
-    console.error('Erro ao deletar publicação aprovada:', error);
-    next(error);
-  }
 };
 
 /**

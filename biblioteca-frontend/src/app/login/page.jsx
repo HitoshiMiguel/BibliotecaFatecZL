@@ -1,5 +1,3 @@
-// src/app/login/page.jsx
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -10,16 +8,15 @@ import { BsBoxArrowInRight, BsEye, BsEyeSlash } from 'react-icons/bs';
 import Alert from '@/components/Alert';
 import '@/styles/feedback.css';
 
-// ✅ PASSO 3 (LINHA 1): Importar o hook do menu global
-// (Ajuste o caminho se o seu 'globalMenu.tsx' estiver em outro lugar)
+// Hook do menu global
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
 
 export default function LoginPage() {
-  // ✅ PASSO 3 (LINHA 2): Chamar o hook para pegar a função 'setUserData'
   const { setUserData } = useGlobalMenu();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false); 
   const [showPassword, setShowPassword] = useState(false);
 
   const [ui, setUi] = useState({
@@ -49,13 +46,11 @@ export default function LoginPage() {
     e.preventDefault();
     setUi({ status: 'loading', message: '', kind: 'error', fieldErrors: {} });
     
-    console.log('--- TESTE DE LOGIN INICIADO ---');
-
     try {
       const response = await fetch('http://localhost:4000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, rememberMe }),
         credentials: 'include',
       });
 
@@ -65,53 +60,47 @@ export default function LoginPage() {
       } catch {}
 
       if (response.ok) {
-        
-        // ✅ PASSO 3 (LINHA 3): Informar o menu global sobre o usuário
-        // 1. Adaptamos o objeto 'data' (com 'perfil') para o formato 'User' (com 'role')
+        // --- 🔴 CORREÇÃO CRÍTICA AQUI ---
+        // Se NÃO marcou lembrar, cria o crachá da aba.
+        // Sem isso, o Provider vai achar que a aba foi fechada e vai fazer logout.
+        if (!rememberMe) {
+            sessionStorage.setItem('auth_tab_valid', 'true');
+        } else {
+            // Se marcou, remove por precaução (usa cookie persistente)
+            sessionStorage.removeItem('auth_tab_valid');
+        }
+        // ---------------------------------
+
+        // Atualiza Menu Global
         const userDataForMenu = { ...data, role: data.perfil };
-        // 2. Informa o menu global que o usuário está logado
         setUserData(userDataForMenu);
-        // ----------------------------------------------------
 
         setUi({ status: 'success', message: 'Login realizado com sucesso.', kind: 'success', fieldErrors: {} });
         
-        // O resto do seu código de redirecionamento já está perfeito
         const perfil = data.perfil;
-        
-        console.log('--- LOGIN BEM-SUCEDIDO ---');
-        console.log('Perfil do usuário:', perfil);
-
         const currentUrl = new URL(window.location.href);
         const redirectUrl = currentUrl.searchParams.get('redirect');
         
-        console.log('URL atual:', currentUrl.href);
-        console.log('Parâmetro "redirect" encontrado:', redirectUrl);
-
+        // Lógica de Redirecionamento
         if (redirectUrl) {
-          console.log('DECISÃO: Redirecionando para "redirectUrl":', redirectUrl);
           router.push(redirectUrl);
         } else if (perfil === 'admin') {
-          console.log('DECISÃO: Sem redirect. Redirecionando para /admin/dashboard');
           router.push('/admin/dashboard');
         } else if (perfil === 'bibliotecario') {
-          console.log('DECISÃO: Sem redirect. Redirecionando para /bibliotecario/dashboard');
           router.push('/bibliotecario/dashboard');
         } else {
-          console.log('DECISÃO: Sem redirect. Redirecionando para /dashboard (perfil comum)');
           router.push('/dashboard');
         }
-        
-        return; // Para a execução aqui
+        return;
 
-      } else { // Tratamento de erros
-        console.log('--- LOGIN FALHOU ---', response.status);
+      } else { // Erros
         if (response.status === 401 || response.status === 403) {
           setUi({
             status: 'error', kind: 'error',
             message: data?.message || 'Login ou senha inválidos.',
             fieldErrors: { identifier: '', password: '' },
           });
-        } else { // Erro 500 ou outros
+        } else {
           setUi({
             status: 'error', kind: 'error',
             message: data?.message || 'Serviço indisponível.',
@@ -120,7 +109,7 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      console.error("Erro na chamada da API de login:", error);
+      console.error("Erro API login:", error);
       setUi({
         status: 'error', kind: 'error',
         message: 'Falha de conexão. Verifique sua internet.',
@@ -129,7 +118,6 @@ export default function LoginPage() {
     }
   };
 
-  // --- JSX do Formulário (não precisa de alteração) ---
   return (
     <>
       <section className="title-section">
@@ -142,7 +130,6 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} noValidate aria-describedby="form-alert">
           <Alert id="form-alert" kind={ui.kind} message={ui.message} />
 
-          {/* Input E-mail ou RA */}
           <div className={styles.inputGroup}>
             <label htmlFor="identifier">E-mail ou RA</label>
             <input
@@ -153,7 +140,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Input Senha */}
           <div className={styles.inputGroup}>
             <label htmlFor="password">Senha</label>
             <div className={styles.passwordWrapper}>
@@ -169,13 +155,24 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Botão Submit */}
+          <div className={styles.inputGroup} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', marginTop: '-10px', marginBottom: '15px' }}>
+            <input 
+              type="checkbox" 
+              id="rememberMe" 
+              checked={rememberMe} 
+              onChange={(e) => setRememberMe(e.target.checked)} 
+              style={{ width: 'auto', cursor: 'pointer', accentColor: 'var(--primary-color, #007bff)' }}
+            />
+            <label htmlFor="rememberMe" style={{ cursor: 'pointer', margin: 0, fontWeight: 'normal', fontSize: '0.9rem', color: '#555' }}>
+              Lembrar de mim
+            </label>
+          </div>
+
           <button type="submit" className={styles.submitButton} disabled={ui.status === 'loading'}>
             <BsBoxArrowInRight size={22} />
             {ui.status === 'loading' ? 'Entrando...' : 'Entrar'}
           </button>
 
-          {/* Links */}
           <p className={styles.redirectLink} style={{ marginTop: 12 }}>
             Esqueceu a senha? <Link href="/redefinir-senha">Redefinir senha</Link>
           </p>

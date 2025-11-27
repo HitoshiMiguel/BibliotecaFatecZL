@@ -6,18 +6,114 @@ const UserModel = require('../model/UserModel');
 const SolicitacaoModel = require('../model/SolicitacaoModel');
 const UsuarioBuilder = require('../services/UserBuilder');
 const { generateUniqueToken } = require('../services/UserService');
+// Ajuste de importação de pools
 const { poolSistemaNovo, poolOpenBiblio } = require('../infra/db/mysql/connection');
-const pool = poolSistemaNovo;
+const pool = poolSistemaNovo; // Pool principal (Novo Sistema: dg_*)
+const poolLegado = poolOpenBiblio; // Pool do OpenBiblio (Legado)
+
 const { getDriveWithOAuth } = require('../lib/googleOAuth');
 const { Readable } = require('stream');
 
 // --- CORREÇÃO DA IMPORTAÇÃO ---
-// Importa a função correta do emailService
 const { sendConfirmationEmail, sendActivationEmail } = require('../services/emailService');
-const { get } = require('../routes/adminRoutes');
+// Removido 'const { get } = require('../routes/adminRoutes');' que era um erro.
 // -----------------------------
 
-// --- 1. FUNÇÕES PARA VISUALIZAR SOLICITAÇÕES ---
+
+// ===============================================
+// 🎯 0. FUNÇÕES DE ESTATÍSTICAS (INJETADAS)
+// ===============================================
+
+/**
+ * GET /api/admin/acervo/stats
+ * Busca estatísticas de Acervo Digital/Físico (para Home/Dashboard).
+ */
+const getAcervoStats = async (req, res) => {
+    try {
+        // Assume que 'dg_itens_digitais' é o digital e 'biblio' (OpenBiblio) é o físico
+        const [results] = await pool.execute(`
+            SELECT 
+                (SELECT COUNT(*) FROM dg_itens_digitais) AS itensDigitais,
+                (SELECT COUNT(*) FROM biblio) AS livrosFisicos, 
+                ((SELECT COUNT(*) FROM dg_itens_digitais) + (SELECT COUNT(*) FROM biblio)) AS totalTitulos;
+        `);
+
+        const stats = results[0] || {};
+        return res.json({
+            itensDigitais: stats.itensDigitais || 0,
+            livrosFisicos: stats.livrosFisicos || 0,
+            totalTitulos: stats.totalTitulos || 0,
+        });
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de acervo:", error);
+        res.status(500).json({ message: "Erro interno ao buscar estatísticas de acervo." });
+    }
+};
+
+/**
+ * GET /api/admin/stats/usuarios
+ * Busca estatísticas de usuários (Ativos, Pendentes, Inativos, Bloqueados).
+ */
+const getStatsUsuarios = async (req, res) => {
+    try {
+        const [results] = await pool.execute(`
+            SELECT 
+                SUM(CASE WHEN status_conta = 'ativa' THEN 1 ELSE 0 END) AS ativos,
+                SUM(CASE WHEN status_conta = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
+                SUM(CASE WHEN status_conta = 'inativa' THEN 1 ELSE 0 END) AS inativos,
+                
+                -- >> CORREÇÃO: Busca o valor 'bloqueado' dentro do ENUM status_conta
+                SUM(CASE WHEN status_conta = 'bloqueado' THEN 1 ELSE 0 END) AS bloqueados,
+                
+                COUNT(*) AS total
+            FROM dg_usuarios;
+        `);
+
+        return res.json(results[0] || { total: 0, ativos: 0, pendentes: 0, inativos: 0, bloqueados: 0 });
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de usuários:", error);
+        res.status(200).json({ 
+            message: "Erro no DB, estatísticas de usuários zeradas.",
+            total: 0, ativos: 0, pendentes: 0, inativos: 0, bloqueados: 0 
+        });
+    }
+};
+
+/**
+ * GET /api/admin/stats/reservas
+ * Busca estatísticas de Reservas (ativa, pendente, concluida, cancelada/expirada).
+ * Nota: Assume a tabela 'reserve' do poolOpenBiblio (Legado).
+ */
+const getStatsReservas = async (req, res) => {
+    try {
+        // Assume que os status na tabela dg_reservas são: 'ativa', 'pendente', 'concluida', 'cancelada', 'expirada'
+        const [results] = await pool.execute(`
+            SELECT 
+                SUM(CASE WHEN status = 'ativa' THEN 1 ELSE 0 END) AS ativas,
+                SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
+                SUM(CASE WHEN status = 'concluida' THEN 1 ELSE 0 END) AS concluidas,
+                SUM(CASE WHEN status = 'cancelada' OR status = 'expirada' THEN 1 ELSE 0 END) AS canceladas,
+                COUNT(*) AS total
+            FROM dg_reservas;
+        `);
+        
+        // Retorna os dados do DB (ou zero se a tabela estiver vazia)
+        return res.json(results[0] || { total: 0, ativas: 0, pendentes: 0, concluidas: 0, canceladas: 0 });
+
+    } catch (error) {
+        console.error("Erro ao buscar estatísticas de reservas (tabela 'dg_reservas'):", error);
+        // Retorna 200 com zeros em caso de erro (para não quebrar o frontend)
+        res.status(200).json({ 
+            message: "Erro no DB, estatísticas de reservas zeradas. (Verifique se a tabela 'dg_reservas' existe).",
+            total: 0, ativas: 0, pendentes: 0, concluidas: 0, canceladas: 0 
+        });
+    }
+};
+
+
+// ===============================================
+// 1. FUNÇÕES PARA VISUALIZAR SOLICITAÇÕES
+// ===============================================
 
 /**
  * Lista todas as solicitações de cadastro com status 'pendente'.
@@ -52,7 +148,9 @@ const rejeitarSolicitacao = async (req, res) => {
     }
 };
 
-// --- 2. FUNÇÃO PARA APROVAÇÃO (CRIAÇÃO VIA BUILDER E CONFIRMAÇÃO) ---
+// ===============================================
+// 2. FUNÇÃO PARA APROVAÇÃO (CRIAÇÃO VIA BUILDER E CONFIRMAÇÃO)
+// ===============================================
 
 /**
  * Aprova uma solicitação (Professor), cria o usuário com senha ORIGINAL e envia email de CONFIRMAÇÃO.
@@ -99,7 +197,7 @@ const aprovarSolicitacao = async (req, res) => {
 
         // Log antes de atualizar o status para confirmar que 'id' está definido
         console.log(`DEBUG APROVAÇÃO: Atualizando status da Solicitação ID ${id} para 'aprovado'.`); 
-        await SolicitacaoModel.updateStatus(id, 'aprovado'); // Usa o id aqui (linha ~73-76)
+        await SolicitacaoModel.updateStatus(id, 'aprovado'); // Usa o id aqui 
 
         const confirmationLink = `${process.env.FRONTEND_URL}/confirmar-conta?token=${confirmationToken}`;
         await sendConfirmationEmail(novoProfessor.email, confirmationLink);
@@ -121,6 +219,10 @@ const aprovarSolicitacao = async (req, res) => {
         return res.status(500).json({ message: 'Erro interno no servidor durante a aprovação.' });
     }
 };
+
+// ===============================================
+// 3. GESTÃO DE USUÁRIOS (CRUD)
+// ===============================================
 
 const listAllUsers = async (req, res) => {
     console.log("-> listAllUsers acionado"); // Log de entrada
@@ -307,7 +409,9 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// --- 3. CRIAÇÃO DIRETA (ADMINISTRATIVA) - Professor usa fluxo de ATIVAÇÃO ---
+// ===============================================
+// 4. CRIAÇÃO DIRETA (ADMINISTRATIVA)
+// ===============================================
 
 const createUsuarioDireto = async (req, res) => {
     // Para professor, a senha do form será IGNORADA.
@@ -408,9 +512,10 @@ const createUsuarioDireto = async (req, res) => {
     }
 };
 
-// [COMECE A SUBSTITUIÇÃO AQUI (da linha 408 em diante)]
+// ===============================================
+// 5. GESTÃO DE SUBMISSÕES E PUBLICAÇÕES
+// ===============================================
 
-// --- NOVO MÉTODO PARA SUBMISSÕES ---
 
 // GET /api/admin/submissoes/pendentes
 const getSubmissoesPendentes = async (req, res, next) => {
@@ -478,11 +583,7 @@ const updateSubmissao = async (req, res, next) => {
       try {
           // Atualiza Tabela Principal (biblio)
           const sqlBiblio = `UPDATE biblio SET title = ?, author = ? WHERE bibid = ?`;
-          await poolOpenBiblio.execute(sqlBiblio, [titulo, autor, legacyId]);
-
-          // Atualiza/Insere Campos MARC (Editora e Ano) - Simplificado
-          // (Para fazer direito precisaria verificar se existe, mas vamos tentar update direto)
-          // Nota: Isso é complexo no legado, mas vamos focar no título/autor primeiro
+          await poolLegado.execute(sqlBiblio, [titulo, autor, legacyId]);
           
           console.log("✅ [DEBUG] Legado atualizado (Título/Autor).");
           return res.status(200).json({ success: true, message: 'Item físico atualizado.' });
@@ -495,7 +596,7 @@ const updateSubmissao = async (req, res, next) => {
   // CASO 2: É ITEM DIGITAL (SISTEMA NOVO)
   try {
     const sqlFind = "SELECT submissao_id FROM dg_submissoes WHERE submissao_id = ?";
-    const [rows] = await poolSistemaNovo.execute(sqlFind, [idParam]);
+    const [rows] = await pool.execute(sqlFind, [idParam]);
 
     if (rows.length === 0) {
       console.log("❌ [DEBUG] ID não encontrado no banco novo.");
@@ -518,7 +619,7 @@ const updateSubmissao = async (req, res, next) => {
       idParam
     ];
 
-    const [result] = await poolSistemaNovo.execute(sqlUpdate, values);
+    const [result] = await pool.execute(sqlUpdate, values);
     console.log("✅ [DEBUG] Update Digital OK. Linhas afetadas:", result.affectedRows);
 
     if (result.affectedRows === 0) {
@@ -555,7 +656,6 @@ const aprovarSubmissao = async (req, res, next) => {
 
   try {
     // 1. Encontrar a submissão pendente no DB
-    // (Atualizado para buscar todos os dados necessários para o 'dg_itens_digitais')
     const sqlFind = `
       SELECT * FROM dg_submissoes 
       WHERE submissao_id = ? AND status = 'pendente'
@@ -584,8 +684,8 @@ const aprovarSubmissao = async (req, res, next) => {
       WHERE submissao_id = ?
     `;
     await pool.execute(sqlUpdate, [revisorId, submissaoId]);
+
     // 4. Criar o item final na tabela 'dg_itens_digitais'
-    // (Agora usa todos os dados editados pelo bibliotecário)
     const sqlInsertItem = `
       INSERT INTO dg_itens_digitais 
         (titulo, autor, ano, descricao, caminho_arquivo, data_publicacao, submissao_id) 
@@ -654,8 +754,10 @@ const reprovarSubmissao = async (req, res, next) => {
   }
 }; // <-- FIM DA FUNÇÃO reprovarSubmissao
 
-// src/controller/adminController.js
-
+/**
+ * DELETE (via POST) /api/admin/submissoes/:id/deletar-aprovada
+ * Deleta um item do Acervo (e do Drive) que foi APROVADO previamente.
+ */
 const deletarPublicacaoAprovada = async (req, res, next) => {
   const { id: submissaoId } = req.params;
 
@@ -670,7 +772,8 @@ const deletarPublicacaoAprovada = async (req, res, next) => {
 
     if (googleFileId) {
       const drive = getDriveWithOAuth();
-      await drive.files.delete({ fileId: googleFileId }).catch(err => console.log("Arquivo já inexistente no Drive, ignorando..."));
+      // Tenta deletar. Usa catch para ignorar se o arquivo já foi apagado manualmente no Drive.
+      await drive.files.delete({ fileId: googleFileId }).catch(err => console.log("Arquivo já inexistente no Drive, ignorando...", err.message));
     }
 
     // --- 🔴 FIX: LIMPEZA DE FAVORITOS (NOVO) ---
@@ -701,6 +804,10 @@ const deletarPublicacaoAprovada = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/admin/publicar-direto
+ * Publicação Direta (upload e inserção no Acervo, sem passar por 'pendente').
+ */
 const publicarDireto = async (req, res, next) => {
   try {
     // 1. VERIFICAÇÕES (Arquivo e Usuário)
@@ -712,35 +819,37 @@ const publicarDireto = async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Sessão inválida.' });
     }
 
-    // 2. LÓGICA DO GOOGLE DRIVE (COM A PASTA ALTERADA)
+    // 2. LÓGICA DO GOOGLE DRIVE 
     // -------------------------------------------------------------------
     const { tipo, status, data_publicacao, ...meta } = req.body; 
     const buffer = req.file.buffer;
     const filename = req.file.originalname;
     const mimeType = req.file.mimetype;
+    const usuarioId = req.user.id; // ID do Admin que está publicando
 
     const drive = getDriveWithOAuth();
     const stream = Readable.from(buffer);
 
-    // <-- MUDANÇA 1: Usando a variável de ambiente dos APROVADOS
+    // Usando a variável de ambiente dos APROVADOS
     const aprovadosId = process.env.GOOGLE_DRIVE_APROVADOS_ID; 
     if (!aprovadosId) {
       throw new Error('ID da pasta "Aprovados" não configurado no .env');
     }
 
     const { data: file } = await drive.files.create({
-      requestBody: { name: filename, parents: [aprovadosId] }, // <-- MUDANÇA 1
+      requestBody: { name: filename, parents: [aprovadosId] }, 
       media: { mimeType, body: stream },
       fields: 'id, name',
     });
 
-    // 3. LÓGICA DO BANCO DE DADOS (COM O STATUS ALTERADO)
-    // -------------------------------------------------------------------
     const googleFileId = file.id;
-    const usuarioId = req.user.id; // ID do Admin que está publicando
 
+    // 3. LÓGICA DO BANCO DE DADOS (COM O STATUS E DATA)
+    // -------------------------------------------------------------------
+    
     let statusFinal = 'publicado';
-    let dataFinal = new Date().toLocaleString('sv-SE').replace(' ', 'T');
+    let dataFinal; // Variável para a data final formatada (YYYY-MM-DD HH:MM:SS)
+
     // Se o front mandou 'agendado' e tem uma data válida
     if (status === 'agendado' && data_publicacao) {
         statusFinal = 'agendado';
@@ -758,11 +867,10 @@ const publicarDireto = async (req, res, next) => {
             dataString += ':00';
         }
 
-        dataFinal = dataString.trim();
+        dataFinal = dataString.trim(); // Data agendada formatada
     } else {
-        // Se for publicar agora, formata a data atual para MySQL também
+        // Se for publicar agora, usa a data atual localmente
         const agora = new Date();
-        // Truque para pegar YYYY-MM-DD HH:MM:SS localmente em JS
         const offset = agora.getTimezoneOffset() * 60000;
         const dataLocal = new Date(agora.getTime() - offset).toISOString();
         dataFinal = dataLocal.slice(0, 19).replace('T', ' ');
@@ -784,6 +892,7 @@ const publicarDireto = async (req, res, next) => {
     } = meta;
 
     // --- PASSO 3.1: INSERIR NA TABELA DE SUBMISSÕES (CORRIGIDO) ---
+    // Cria um registro 'aprovado' para fins de histórico e moderação.
     const sqlSubmissao = `
       INSERT INTO dg_submissoes (
         usuario_id, titulo_proposto, descricao, caminho_anexo, 
@@ -803,6 +912,7 @@ const publicarDireto = async (req, res, next) => {
     const [resultSubmissao] = await pool.execute(sqlSubmissao, valuesSubmissao);
     const submissaoId = resultSubmissao.insertId;
 
+    // --- PASSO 3.2: INSERIR NA TABELA DE ITENS DIGITAIS ---
     const sqlItem = `
         INSERT INTO dg_itens_digitais (
             titulo, autor, ano, descricao, 
@@ -813,15 +923,8 @@ const publicarDireto = async (req, res, next) => {
 
     const anoParaItem = ano_publicacao || new Date().getFullYear();
 
-    // GARANTIA FINAL DE FORMATAÇÃO PARA O MYSQL
-    // Se dataFinal ainda for objeto Date (caso Publicar Agora), converte.
-    // Se for String (caso Agendado tratado acima), mantém.
-    let dataParaMySQL;
-    if (typeof dataFinal === 'object') {
-        dataParaMySQL = dataFinal.toISOString().slice(0, 19).replace('T', ' ');
-    } else {
-        dataParaMySQL = dataFinal;
-    }
+    // dataFinal já está como string formatada para MySQL (YYYY-MM-DD HH:MM:SS)
+    const dataParaMySQL = dataFinal;
 
     const valuesItem = [
         titulo_proposto, 
@@ -829,9 +932,9 @@ const publicarDireto = async (req, res, next) => {
         anoParaItem,
         descricao,
         googleFileId,
-        dataFinal, // <--- Agora vai salvar "2025-11-22 14:34:00"
-        submissaoId,   
-        statusFinal,   
+        dataParaMySQL, // Salva a data agendada ou a data atual
+        submissaoId,   
+        statusFinal,   
         tipo
     ];
 
@@ -842,8 +945,8 @@ const publicarDireto = async (req, res, next) => {
     const novaPublicacao = {
       id: submissaoId,
       googleFileId,
-      status: 'aprovado',
-      data_publicacao: dataFinal,
+      status: statusFinal,
+      data_publicacao: dataParaMySQL,
       ...meta
     };
     
@@ -857,11 +960,6 @@ const publicarDireto = async (req, res, next) => {
     next(err); 
   }
 };
-
-// ... (no topo, junto com as outras importações)
-// (Você já deve ter 'connection', 'getDriveWithOAuth')
-
-// ... (todos os seus outros métodos, como 'publicarDireto') ...
 
 
 // ==========================================================
@@ -888,7 +986,8 @@ const getSubmissionFileLink = async (req, res, next) => {
     const drive = getDriveWithOAuth();
     const fileMeta = await drive.files.get({
       fileId: googleFileId,
-      fields: 'webViewLink, webContentLink, name', // Pedimos o link de visualização
+      // Pedimos o link de visualização e o link de conteúdo (download/iframe)
+      fields: 'webViewLink, webContentLink, name', 
     });
 
     // 3. Enviar os links para o frontend
@@ -900,21 +999,34 @@ const getSubmissionFileLink = async (req, res, next) => {
   }
 };
 
-// --- EXPORTAÇÕES ---
+
+// ==========================================================
+// --- EXPORTAÇÕES FINAIS ---
+// ==========================================================
 module.exports = {
-  getAllSolicitacoes,
-  aprovarSolicitacao,
-  rejeitarSolicitacao,
-  createUsuarioDireto,
-  listAllUsers,
-  getUserById,
-  updateUser,
-  deleteUser,
-  getSubmissoesPendentes,
-  aprovarSubmissao,
-  reprovarSubmissao,
-  updateSubmissao,
-  publicarDireto,
-  getSubmissionFileLink,
-  deletarPublicacaoAprovada, // 👈 NOVO
+    // Estatísticas
+    getAcervoStats,
+    getStatsUsuarios,
+    getStatsReservas, 
+
+    // Solicitações
+    getAllSolicitacoes,
+    aprovarSolicitacao,
+    rejeitarSolicitacao,
+
+    // Usuários CRUD/Criação Direta
+    createUsuarioDireto,
+    listAllUsers,
+    getUserById,
+    updateUser,
+    deleteUser,
+
+    // Submissões/Publicação
+    getSubmissoesPendentes,
+    aprovarSubmissao,
+    reprovarSubmissao,
+    updateSubmissao,
+    deletarPublicacaoAprovada,
+    publicarDireto,
+    getSubmissionFileLink, 
 };

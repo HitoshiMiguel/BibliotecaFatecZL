@@ -12,16 +12,46 @@ export function EditApprovedModal({ item, onClose, onSaved }) {
   // Normalização inicial dos dados
   const tipoOriginal = item.tipo ? item.tipo.toLowerCase() : 'tcc';
   const tipoInicial = FIELDS_BY_TYPE[tipoOriginal] ? tipoOriginal : 'tcc';
+  const tituloUnificado = item.titulo || item.titulo_proposto || '';
 
   const [formData, setFormData] = useState({
     ...item,
     tipo: tipoInicial,
-    titulo_proposto: item.titulo_proposto || item.titulo || '',
+    titulo: tituloUnificado,
+    titulo_proposto: tituloUnificado,
     autor: item.autor || '',
     editora: item.editora || '',
     ano_publicacao: item.ano_publicacao || item.ano || '',
     descricao: item.descricao || '',
   });
+
+  useEffect(() => {
+    if (item) {
+      // 1. Descobre qual título usar (do banco novo ou antigo)
+      const tituloCerto = item.titulo || item.titulo_proposto || '';
+      
+      // 2. Normaliza o tipo
+      const tipoOriginal = item.tipo ? item.tipo.toLowerCase() : 'tcc';
+      const tipoCerto = FIELDS_BY_TYPE[tipoOriginal] ? tipoOriginal : 'tcc';
+
+      // 3. Força o formulário a atualizar com os dados do item clicado
+      setFormData(prev => ({
+        ...prev,        // Mantém estrutura
+        ...item,        // Pega todos os dados do item
+        tipo: tipoCerto,
+        
+        // Garante que o input 'titulo' receba valor
+        titulo: tituloCerto,           
+        titulo_proposto: tituloCerto,  
+        
+        // Garante os outros campos
+        autor: item.autor || '',
+        editora: item.editora || '',
+        ano_publicacao: item.ano_publicacao || item.ano || '',
+        descricao: item.descricao || '',
+      }));
+    }
+  }, [item]); // <--- Isso obriga o React a rodar sempre que o 'item' mudar
 
   const [isSaving, setIsSaving] = useState(false);
 

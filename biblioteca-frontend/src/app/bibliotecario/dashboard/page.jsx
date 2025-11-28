@@ -992,16 +992,32 @@ export default function DashboardBibliotecarioPage() {
           onSaveAndApprove={handleAprovar}
           onReprove={handleReprovar}
           onDeleteApproved={handleExcluirPublicacao}
-          onSaved={(updated) => {
+          onSaved={(updatedItem) => {
             if (editMode === 'gerenciar') {
-              setPublicacoes((prev) =>
-                prev.map((p) =>
-                  p.submissao_id === updated.submissao_id
-                    ? { ...p, ...updated }
-                    : p
-                )
+              setPublicacoes((listaAtual) =>
+                listaAtual.map((publicacao) => {
+                  if (publicacao.submissao_id === updatedItem.submissao_id) {
+                    const tituloNovo = updatedItem.titulo || updatedItem.titulo_proposto;
+                    return {
+                      ...publicacao,  
+                      ...updatedItem, 
+                      titulo_proposto: tituloNovo 
+                    };
+                  }
+                  return publicacao;
+                })
               );
             }
+            if (editMode === 'pendente') {
+               setSubmissoesPendentes((listaAtual) => 
+                 listaAtual.map(sub => 
+                   sub.submissao_id === updatedItem.submissao_id 
+                   ? { ...sub, ...updatedItem, titulo_proposto: updatedItem.titulo || updatedItem.titulo_proposto } 
+                   : sub
+                 )
+               );
+            }
+            setEditingItem(null);
           }}
         />
       )}

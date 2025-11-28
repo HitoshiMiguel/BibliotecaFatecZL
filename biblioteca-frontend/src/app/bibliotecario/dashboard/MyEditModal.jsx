@@ -39,6 +39,40 @@ export function MyEditModal({
 
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (item) {
+      // 1. Unifica o título (pega de onde tiver valor)
+      const tituloUnificado = item.titulo || item.titulo_proposto || '';
+      
+      // 2. Normaliza o tipo
+      const tipoOriginal = item.tipo ? item.tipo.toLowerCase() : 'tcc';
+      const tipoCerto = FIELDS_BY_TYPE[tipoOriginal] ? tipoOriginal : 'tcc';
+
+      // 3. Reseta o form com os dados do item clicado
+      setFormData(prev => ({
+        ...prev,
+        ...item,
+        tipo: tipoCerto,
+        
+        // O PULO DO GATO: Preenche as duas variações de nome com o mesmo valor
+        titulo: tituloUnificado,          
+        titulo_proposto: tituloUnificado, 
+        
+        // Garante que os outros campos não venham undefined
+        autor: item.autor || '',
+        editora: item.editora || '',
+        ano_publicacao: item.ano_publicacao || item.ano || '',
+        descricao: item.descricao || '',
+        conferencia: item.conferencia || '',
+        periodico: item.periodico || '',
+        instituicao: item.instituicao || '',
+        orientador: item.orientador || '',
+        curso: item.curso || '',
+        ano_defesa: item.ano_defesa || '',
+      }));
+    }
+  }, [item]);
+
   const fields = useMemo(
     () => FIELDS_BY_TYPE[formData.tipo] || [],
     [formData.tipo]

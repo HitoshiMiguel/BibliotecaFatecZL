@@ -564,24 +564,30 @@ const getSubmissoesPendentes = async (req, res, next) => {
  * PUT /api/admin/submissoes/:id
  * Atualiza os detalhes de uma submissão ANTES de ser aprovada.
  */
+/**
+ * PUT /api/admin/submissoes/:id
+ * Atualiza os detalhes de uma submissão E do item digital vinculado.
+ */
 const updateSubmissao = async (req, res, next) => {
   const idParam = String(req.params.id).trim();
   
   console.log(`\n📢 [DEBUG] Tentando atualizar ID: "${idParam}"`);
   console.log("📦 [DEBUG] Dados recebidos:", req.body);
 
-  // Mapeamento de campos (Frontend -> Backend)
-  const titulo = req.body.titulo_proposto || req.body.titulo;
+  // Mapeamento de campos
+  // Prioriza o 'titulo' (que vem do input editado) ou 'titulo_proposto'
+  const titulo = req.body.titulo || req.body.titulo_proposto; 
   const ano = req.body.ano_publicacao || req.body.ano;
   const { autor, editora, descricao } = req.body;
 
-  // CASO 1: É LIVRO FÍSICO (LEGADO)?
+  // --- CASO 1: É LIVRO FÍSICO (LEGADO)? ---
   if (idParam.startsWith('LEGACY_')) {
       console.log("📚 [DEBUG] Detectado item LEGADO. Atualizando OpenBiblio...");
-      const legacyId = idParam.split('_')[1]; // Remove o prefixo LEGACY_
+      const legacyId = idParam.split('_')[1];
 
       try {
           // Atualiza Tabela Principal (biblio)
+          // Atenção: Aqui mantive sqlBiblio para não confundir
           const sqlBiblio = `UPDATE biblio SET title = ?, author = ? WHERE bibid = ?`;
           await poolLegado.execute(sqlBiblio, [titulo, autor, legacyId]);
           
@@ -593,8 +599,9 @@ const updateSubmissao = async (req, res, next) => {
       }
   }
 
-  // CASO 2: É ITEM DIGITAL (SISTEMA NOVO)
+  // --- CASO 2: É ITEM DIGITAL (SISTEMA NOVO) ---
   try {
+    // 1. Verifica se existe a submissão
     const sqlFind = "SELECT submissao_id FROM dg_submissoes WHERE submissao_id = ?";
     const [rows] = await pool.execute(sqlFind, [idParam]);
 
@@ -603,7 +610,8 @@ const updateSubmissao = async (req, res, next) => {
       return res.status(404).json({ message: 'Submissão não encontrada.' });
     }
 
-    const sqlUpdate = `
+    // 2. ATUALIZA A TABELA DE SUBMISSÕES (Histórico/Base)
+    const sqlUpdateSubmissao = `
       UPDATE dg_submissoes SET
         titulo_proposto = ?, descricao = ?, autor = ?, editora = ?,
         ano_publicacao = ?, conferencia = ?, periodico = ?, instituicao = ?,
@@ -611,7 +619,7 @@ const updateSubmissao = async (req, res, next) => {
       WHERE submissao_id = ?
     `;
     
-    const values = [
+    const valuesSubmissao = [
       titulo || null, descricao || null, autor || null, editora || null,
       ano || null, req.body.conferencia || null, req.body.periodico || null, 
       req.body.instituicao || null, req.body.orientador || null, 
@@ -619,15 +627,35 @@ const updateSubmissao = async (req, res, next) => {
       idParam
     ];
 
-    const [result] = await pool.execute(sqlUpdate, values);
-    console.log("✅ [DEBUG] Update Digital OK. Linhas afetadas:", result.affectedRows);
+    // [CORREÇÃO AQUI]: Usando a variável certa sqlUpdateSubmissao
+    await pool.execute(sqlUpdateSubmissao, valuesSubmissao);
 
-    if (result.affectedRows === 0) {
-        // Se 0, pode ser que os dados eram iguais. Não é erro, mas avisamos.
-        return res.status(200).json({ success: true, message: 'Dados salvos (sem alterações detectadas).' });
-    }
+    // 3. ATUALIZA A TABELA DE ITENS DIGITAIS (O que aparece no site)
+    // Atualiza o 'titulo' baseando-se no 'submissao_id'
+    const sqlUpdateItem = `
+      UPDATE dg_itens_digitais SET
+        titulo = ?, 
+        descricao = ?, 
+        autor = ?, 
+        ano = ?
+      WHERE submissao_id = ?
+    `;
 
-    res.status(200).json({ success: true, message: 'Submissão atualizada com sucesso.' });
+    const valuesItem = [
+        titulo || null,
+        descricao || null,
+        autor || null,
+        ano || null,
+        idParam // O ID da URL é o submissao_id
+    ];
+
+    // [CORREÇÃO AQUI]: Usando a variável certa sqlUpdateItem
+    const [resultItem] = await pool.execute(sqlUpdateItem, valuesItem);
+
+    console.log("✅ [DEBUG] Update Submissão OK.");
+    console.log("✅ [DEBUG] Update Item Digital OK. Linhas afetadas:", resultItem.affectedRows);
+
+    res.status(200).json({ success: true, message: 'Publicação atualizada com sucesso em todas as tabelas.' });
 
   } catch (error) {
     console.error('❌ [DEBUG] Erro Fatal ao atualizar:', error);

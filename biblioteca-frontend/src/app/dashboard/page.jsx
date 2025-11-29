@@ -15,6 +15,8 @@ import EditProfileModal from '@/components/EditProfileModal';
 import FavoritosModal from '@/components/FavoritosModal';
 import DashboardStats from '@/components/DashboardStats';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
+import { generateUserReport } from '@/components/reportGenerator'; // Ajuste o caminho
+import { FaFilePdf } from 'react-icons/fa';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -45,9 +47,11 @@ export default function DashboardPage() {
   const [reservas, setReservas] = useState([]);
   const [isLoadingReservas, setIsLoadingReservas] = useState(false);
   const [reservasFilter, setReservasFilter] = useState('ativas');
+  const [submissoesFilter, setSubmissoesFilter] = useState('todas');
   const [selectedReserva, setSelectedReserva] = useState(null);
   const [isReservaModalOpen, setIsReservaModalOpen] = useState(false);
   const [processingReservaId, setProcessingReservaId] = useState(null);
+  
 
   // --- CORREÇÃO DAS URLS ---
   // Removemos o '/api' do final da base para não duplicar
@@ -357,6 +361,22 @@ export default function DashboardPage() {
     return true;
   });
 
+  const submissoesFiltradas = submissoes.filter(s => {
+  if (submissoesFilter === 'todas') return true;
+  
+  const status = (s.status || '').toLowerCase();
+  
+  if (submissoesFilter === 'aprovado') return status === 'aprovado';
+  if (submissoesFilter === 'rejeitado') return status === 'rejeitado';
+  
+  // Se for "analise", pegamos tudo que não é nem aprovado nem rejeitado (pendente, em análise, etc)
+  if (submissoesFilter === 'analise') {
+    return status !== 'aprovado' && status !== 'rejeitado';
+  }
+  
+  return true;
+});
+
   const isOverdue = (r) => {
     if (!r.data_prevista_devolucao) return false;
     const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -429,7 +449,14 @@ export default function DashboardPage() {
               <button style={navButtonStyle(activeTab === 'submissoes')} onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}>
                 <BsFileEarmarkText size={16} /> <span>Submissões</span>
               </button>
-              <button style={navButtonStyle(activeTab === 'estatisticas')} onClick={() => setActiveTab('estatisticas')}>
+              <button 
+                style={navButtonStyle(activeTab === 'estatisticas')} 
+                onClick={() => { 
+                  setActiveTab('estatisticas'); 
+                  // AQUI é o lugar certo: Se não tiver dados, carrega!
+                  if (submissoes.length === 0) carregarSubmissoes(); 
+                }}
+              >
                 <BsGraphUp size={16} /> <span>Estatísticas</span>
               </button>
             </div>
@@ -509,19 +536,59 @@ export default function DashboardPage() {
             )}
 
             {/* ABA SUBMISSÕES */}
-            {activeTab === 'submissoes' && (
-              <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #eee' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Minhas Submissões</h3>
-                {isLoadingSubmissoes ? <p>Carregando submissões...</p> : submissoes.length === 0 ? <p style={{ color: '#666' }}>Você não possui submissões.</p> : (
+            {/* ABA SUBMISSÕES */}
+{activeTab === 'submissoes' && (
+  <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #eee' }}>
+    
+    {/* Cabeçalho com Filtro */}
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <h3 style={{ margin: 0 }}>Minhas Submissões</h3>
+      
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <label htmlFor="filtro-submissoes" style={{ fontWeight: 600, fontSize: '0.9rem' }}>Status:</label>
+        <select 
+          id="filtro-submissoes" 
+          value={submissoesFilter} 
+          onChange={(e) => setSubmissoesFilter(e.target.value)} 
+          style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid #ccc' }}
+        >
+          <option value="todas">Todas</option>
+          <option value="analise">Pendente</option>
+          <option value="aprovado">Aprovadas</option>
+          <option value="rejeitado">Rejeitadas</option>
+        </select>
+      </div>
+    </div>
+
+                {/* Lista */}
+                {isLoadingSubmissoes ? (
+                  <p>Carregando submissões...</p>
+                ) : submissoes.length === 0 ? (
+                  <p style={{ color: '#666' }}>Você não possui submissões registradas.</p>
+                ) : submissoesFiltradas.length === 0 ? (
+                  <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhuma submissão encontrada com este filtro.</p>
+                ) : (
                   <div style={{ display: 'grid', gap: '12px' }}>
-                    {submissoes.map((s) => (
+                    {submissoesFiltradas.map((s) => (
                       <div key={s.submissao_id} style={{ border: '1px solid #eee', padding: '16px', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <strong style={{ fontSize: '1.05rem' }}>{s.titulo_proposto || `Submissão #${s.submissao_id}`}</strong>
-                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>{s.autor ? `${s.autor} • ` : ''}{formatDate(s.data_submissao)}</div>
+                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>
+                              {s.autor ? `${s.autor} • ` : ''}{formatDate(s.data_submissao)}
+                            </div>
                           </div>
-                          <div style={{ padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, backgroundColor: s.status === 'aprovado' ? '#dcfce7' : s.status === 'rejeitado' ? '#fee2e2' : '#fef9c3', color: s.status === 'aprovado' ? '#166534' : s.status === 'rejeitado' ? '#991b1b' : '#854d0e', textTransform: 'capitalize' }}>{s.status}</div>
+                          <div style={{ 
+                            padding: '4px 10px', 
+                            borderRadius: '4px', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600, 
+                            backgroundColor: s.status === 'aprovado' ? '#dcfce7' : s.status === 'rejeitado' ? '#fee2e2' : '#fef9c3', 
+                            color: s.status === 'aprovado' ? '#166534' : s.status === 'rejeitado' ? '#991b1b' : '#854d0e', 
+                            textTransform: 'capitalize' 
+                          }}>
+                            {s.status}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -587,7 +654,10 @@ export default function DashboardPage() {
             {/* ABA ESTATÍSTICAS */}
             {activeTab === 'estatisticas' && (
               <div style={{ marginBottom: 20 }}>
-                <DashboardStats />
+                <DashboardStats
+                  listaCompleta={submissoes}
+                  user={user}
+                />
               </div>
             )}
           </div>
@@ -614,6 +684,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
     </>
   );
 }

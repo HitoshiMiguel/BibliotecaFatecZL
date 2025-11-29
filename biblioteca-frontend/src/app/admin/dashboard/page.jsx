@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import styles from './dashboard-admin.module.css';
 import { useGlobalMenu } from '@/components/GlobalMenu/GlobalMenuProvider';
+import { FaFilePdf } from 'react-icons/fa';
+import { generateAdminReport } from '@/components/reportGenerator';
 
 /* ============================
    1. HELPER: SVG Pie (donut) component
@@ -65,7 +67,10 @@ function DonutChart({ data = [], colors = [], size = 160, thickness = 18, showLe
 /* ============================
    2. HELPER: DashboardStatsInline
    ============================ */
-function DashboardStatsInline({ apiBaseUrl = 'http://localhost:4000' }) {
+/* ============================
+   2. HELPER: DashboardStatsInline (ATUALIZADO)
+   ============================ */
+function DashboardStatsInline({ apiBaseUrl = 'http://localhost:4000', adminUser }) {
   const [raw, setRaw] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -89,7 +94,12 @@ function DashboardStatsInline({ apiBaseUrl = 'http://localhost:4000' }) {
       ]);
       
       if (mounted) {
-          setRaw({ users, acervo, reservations });
+          // Normaliza os dados para garantir estrutura correta pro PDF
+          const cleanUsers = users || { ativos: 0, inativos: 0, bloqueados: 0 };
+          const cleanAcervo = acervo || { livrosFisicos: 0, itensDigitais: 0 };
+          const cleanReservations = reservations || { ativas: 0, pendentes: 0, concluidas: 0, canceladas: 0 };
+
+          setRaw({ users: cleanUsers, acervo: cleanAcervo, reservations: cleanReservations });
           setLoading(false);
           if (!users && !acervo && !reservations) setErr('Não foi possível carregar nenhuma estatística.');
       }
@@ -98,6 +108,14 @@ function DashboardStatsInline({ apiBaseUrl = 'http://localhost:4000' }) {
     return () => { mounted = false; };
   }, [apiBaseUrl]);
 
+  // Handler do PDF
+  const handleDownload = () => {
+    if (!raw) return;
+    const adminName = adminUser?.nome || 'Admin';
+    generateAdminReport(raw, adminName);
+  };
+
+  // ... (cálculos useMemo mantidos iguais) ...
   const userCounts = useMemo(() => {
     const u = raw?.users || {};
     const ativos = Number(u.ativos ?? u.active ?? 0) || 0;
@@ -127,7 +145,24 @@ function DashboardStatsInline({ apiBaseUrl = 'http://localhost:4000' }) {
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      
+      {/* BOTÃO DE DOWNLOAD (NOVO) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button 
+          onClick={handleDownload}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            backgroundColor: '#dc2626', color: 'white',
+            padding: '8px 16px', border: 'none', borderRadius: '6px',
+            fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
+          }}
+        >
+          <FaFilePdf /> Gerar Relatório Gerencial
+        </button>
+      </div>
+
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+        {/* ... (Seus gráficos continuam iguais aqui) ... */}
         {/* Usuários */}
         {(userCounts.total > 0) && (
           <div style={{ flex: '1 1 340px', minWidth: 280 }}>
@@ -429,7 +464,8 @@ export default function AdminDashboardPage() {
                 <section className={styles.section}>
                     <h2 className={styles.sectionTitle}>Estatísticas do Sistema</h2>
                     <div style={{ background: '#fff', padding: 18, borderRadius: 8, border: '1px solid #eee' }}>
-                        <DashboardStatsInline apiBaseUrl={apiUrl} />
+                        {/* ADICIONE adminUser={user} AQUI */}
+                        <DashboardStatsInline apiBaseUrl={apiUrl} adminUser={user} />
                     </div>
                 </section>
             )}

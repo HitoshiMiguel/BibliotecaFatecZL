@@ -1,4 +1,4 @@
-# 📚 Fatec Library Manager
+# 📚 Projeto de Modernização da Biblioteca Fatec
 
 > **Plataforma de gestão bibliotecária moderna com arquitetura híbrida e integração Cloud.**
 
@@ -9,7 +9,7 @@
 
 ### 📖 Sobre o Projeto
 
-O **Fatec Library Manager** é uma solução *Full Stack* robusta desenvolvida para a Fatec Zona Leste. O sistema resolve um desafio complexo de engenharia de software: **modernizar a gestão acadêmica mantendo a integridade de dados de um sistema legado (OpenBiblio).**
+A **Biblioteca Online da Fatec Zona Leste** é uma solução *Full Stack* robusta desenvolvida para a Fatec Zona Leste. O sistema resolve um desafio complexo de engenharia de software: **modernizar a gestão acadêmica mantendo a integridade de dados de um sistema legado (OpenBiblio).**
 
 Além da gestão do acervo físico, o sistema introduz um **Acervo Digital** integrado à **Google Drive API**, permitindo o upload, streaming e gestão de TCCs e artigos acadêmicos diretamente pela plataforma, com controle de versão e fluxo de aprovação de submissões.
 

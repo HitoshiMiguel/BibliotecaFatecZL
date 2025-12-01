@@ -6,20 +6,28 @@ import { BsCheckCircleFill, BsClockHistory, BsXCircleFill, BsCloudArrowDownFill 
 import { FaFilePdf } from 'react-icons/fa';
 import { generateUserReport } from './reportGenerator'; 
 
-const API_URL = 'http://localhost:4000/api/publicacoes/minhas-estatisticas';
+// Ajuste para pegar a URL do ambiente ou fallback
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = `${BASE_URL}/api/publicacoes/minhas-estatisticas`;
 
-// 👇 AQUI ESTAVA O ERRO! TEM QUE TER { listaCompleta, user } DENTRO DOS PARÊNTESES 👇
 export default function DashboardStats({ listaCompleta = [], user }) {
   
-  const [data, setData] = useState([]);
-  const [counts, setCounts] = useState({ aprovados: 0, pendentes: 0, rejeitados: 0, downloads: 0 });
+  const [chartData, setChartData] = useState([]);
+  const [counts, setCounts] = useState({ 
+    aprovados: 0, 
+    pendentes: 0, 
+    rejeitados: 0, 
+    downloads: 0 
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Agora 'user' existe porque recebemos ele ali em cima 👆
   const userName = user?.nome || "Usuário"; 
 
+  // 1. Fetch de Dados Reais (Notas e Acessos)
   useEffect(() => {
+    // Se não tiver token/user, talvez nem devesse chamar, mas vamos proteger no catch
+    setLoading(true);
     fetch(API_URL, {
       method: 'GET',
       credentials: 'include',
@@ -30,84 +38,139 @@ export default function DashboardStats({ listaCompleta = [], user }) {
         return res.json();
       })
       .then(json => {
-        if (json.ok) {
-          const formattedData = json.data.map(item => ({
-            name: item.titulo,
-            media: Number(item.media_nota),
-            votos: item.total_avaliacoes
-          }));
-          setData(formattedData);
+        if (json.ok || json.success) { // Algumas APIs retornam .ok, outras .success
           
+          // Formata dados para o gráfico
+          const formattedData = (json.data || []).map(item => ({
+            name: item.titulo || 'Sem título',
+            media: Number(item.media_nota || 0),
+            votos: Number(item.total_avaliacoes || 0),
+            // Guarda dados extras se precisar no tooltip
+            fullData: item 
+          }));
+          setChartData(formattedData);
+          
+          // Atualiza contadores (Prioriza dados do backend se existirem, senão calcula da lista)
+          // Nota: O backend sabe o total de Downloads, a lista local não.
+          const totalAprovadosLocal = listaCompleta.filter(s => s.status?.toLowerCase() === 'aprovado').length;
+          const totalPendentesLocal = listaCompleta.filter(s => ['pendente', 'analise'].includes(s.status?.toLowerCase())).length;
+          const totalRejeitadosLocal = listaCompleta.filter(s => s.status?.toLowerCase() === 'rejeitado').length;
+
           setCounts({
-            aprovados: json.meta?.totalAprovados || 0,
-            pendentes: json.meta?.totalPendentes || 0,
-            rejeitados: json.meta?.totalRejeitados || 0,
-            downloads: json.meta?.totalDownloads || 0
+            aprovados: json.meta?.totalAprovados ?? totalAprovadosLocal,
+            pendentes: json.meta?.totalPendentes ?? totalPendentesLocal,
+            rejeitados: json.meta?.totalRejeitados ?? totalRejeitadosLocal,
+            downloads: json.meta?.totalDownloads || 0 // Esse só vem do backend
           });
         } else {
-          setError('Falha ao carregar dados');
+          // Se a API não retornar dados estruturados, usamos o fallback local
+          throw new Error('Formato inesperado');
         }
       })
       .catch(err => {
-        console.error(err);
-        setError('Não foi possível carregar as estatísticas.');
+        console.error("Erro stats:", err);
+        // Fallback: Usa dados da lista local se a API de stats falhar
+        const totalAprovados = listaCompleta.filter(s => s.status?.toLowerCase() === 'aprovado').length;
+        const totalPendentes = listaCompleta.filter(s => ['pendente', 'analise'].includes(s.status?.toLowerCase())).length;
+        const totalRejeitados = listaCompleta.filter(s => s.status?.toLowerCase() === 'rejeitado').length;
+        
+        setCounts({ aprovados: totalAprovados, pendentes: totalPendentes, rejeitados: totalRejeitados, downloads: 0 });
+        setChartData([]); // Sem dados do backend, sem gráfico de notas
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [listaCompleta]); // Recarrega se a lista mudar (ex: usuário atualizou algo)
 
   const handleDownloadPDF = () => {
-    // Debug: Veja no console do navegador (F12) se os dados estão aparecendo agora
-    console.log("Gerando PDF com:", { userName, qtdItens: listaCompleta?.length });
-    
-    generateUserReport(counts, data, listaCompleta, userName);
+    if (typeof generateUserReport === 'function') {
+      generateUserReport(counts, chartData, listaCompleta, userName);
+    } else {
+      alert("Erro: Gerador de relatório não encontrado.");
+    }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '20px' }}>Carregando painel...</div>;
-  if (error) return <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>{error}</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>Carregando estatísticas...</div>;
 
-  // Estilos
-  const containerStyle = { backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' };
-  const titleStyle = { fontSize: '1.25rem', fontWeight: 'bold', color: '#374151', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' };
+  // Estilos inline para o componente (mantendo padrão do seu código)
+  const containerStyle = { 
+    backgroundColor: '#fff', 
+    borderRadius: '8px', 
+    padding: '25px', 
+    border: '1px solid #eee',
+    marginBottom: '20px'
+  };
+  
+  const titleStyle = { 
+    fontSize: '1.2rem', 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: '25px', 
+    borderBottom: '1px solid #f0f0f0', 
+    paddingBottom: '10px' 
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: 'sans-serif', width: '100%' }}>
+    <div style={{ width: '100%', fontFamily: 'sans-serif' }}>
       
-      {/* Botão PDF */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button 
-          onClick={handleDownloadPDF}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#dc2626', color: 'white', padding: '10px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
-        >
-          <FaFilePdf /> Baixar Relatório PDF
-        </button>
-      </div>
-
-      {/* Cards */}
+      {/* 1. CARDS DE RESUMO */}
       <div style={containerStyle}>
         <h2 style={titleStyle}>Minhas Submissões</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-          
-          <CardStat label="Aprovadas" value={counts.aprovados} icon={<BsCheckCircleFill size={36} opacity={0.6}/>} color="#15803d" bg="#f0fdf4" border="#bbf7d0" />
-          <CardStat label="Pendentes" value={counts.pendentes} icon={<BsClockHistory size={36} opacity={0.6}/>} color="#a16207" bg="#fefce8" border="#fde047" />
-          <CardStat label="Rejeitadas" value={counts.rejeitados} icon={<BsXCircleFill size={36} opacity={0.6}/>} color="#b91c1c" bg="#fef2f2" border="#fecaca" />
-          <CardStat label="Acessos Total" value={counts.downloads} icon={<BsCloudArrowDownFill size={36} opacity={0.6}/>} color="#1d4ed8" bg="#eff6ff" border="#bfdbfe" />
-
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: '15px' 
+        }}>
+          <CardStat 
+            label="Aprovadas" 
+            value={counts.aprovados} 
+            icon={<BsCheckCircleFill size={32} opacity={0.8}/>} 
+            color="#166534" bg="#dcfce7" border="#bbf7d0" 
+          />
+          <CardStat 
+            label="Pendentes" 
+            value={counts.pendentes} 
+            icon={<BsClockHistory size={32} opacity={0.8}/>} 
+            color="#854d0e" bg="#fef9c3" border="#fde047" 
+          />
+          <CardStat 
+            label="Rejeitadas" 
+            value={counts.rejeitados} 
+            icon={<BsXCircleFill size={32} opacity={0.8}/>} 
+            color="#991b1b" bg="#fee2e2" border="#fecaca" 
+          />
+          <CardStat 
+            label="Acessos Totais" 
+            value={counts.downloads} 
+            icon={<BsCloudArrowDownFill size={32} opacity={0.8}/>} 
+            color="#1e40af" bg="#dbeafe" border="#bfdbfe" 
+          />
         </div>
       </div>
 
-      {/* Gráfico */}
-      {data.length > 0 ? (
+      {/* 2. GRÁFICO DE AVALIAÇÕES (Recharts Responsivo) */}
+      {chartData.length > 0 ? (
         <div style={containerStyle}>
-          <h2 style={titleStyle}>Avaliações Recebidas</h2>
+          <h2 style={titleStyle}>Média de Avaliações</h2>
+          
+          {/* Wrapper com altura fixa é CRUCIAL para o ResponsiveContainer funcionar */}
           <div style={{ width: '100%', height: 350 }}>
-            <ResponsiveContainer>
-              <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={chartData} 
+                layout="vertical" 
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
                 <XAxis type="number" domain={[0, 5]} hide />
-                <YAxis dataKey="name" type="category" width={150} tick={{fontSize: 13, fill: '#4b5563'}} />
-                <Tooltip cursor={{fill: '#f9fafb'}} content={CustomTooltip} />
-                <Bar dataKey="media" barSize={28} radius={[0, 6, 6, 0]}>
-                  {data.map((entry, index) => (
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  width={120} 
+                  tick={{ fontSize: 12, fill: '#555' }} 
+                  tickFormatter={(val) => val.length > 15 ? `${val.substring(0, 15)}...` : val}
+                />
+                <Tooltip cursor={{fill: '#f9fafb'}} content={<CustomTooltip />} />
+                <Bar dataKey="media" barSize={24} radius={[0, 4, 4, 0]}>
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.media >= 4 ? '#22c55e' : entry.media >= 2.5 ? '#eab308' : '#ef4444'} />
                   ))}
                 </Bar>
@@ -116,33 +179,94 @@ export default function DashboardStats({ listaCompleta = [], user }) {
           </div>
         </div>
       ) : (
-        <div style={{ ...containerStyle, textAlign: 'center', color: '#9ca3af', backgroundColor: '#f9fafb' }}>
-          O gráfico aparecerá quando houver avaliações.
+        <div style={{ ...containerStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
+          <p>Ainda não há avaliações registradas para exibir no gráfico.</p>
         </div>
       )}
+
+      {/* 3. BOTÃO DE DOWNLOAD CENTRALIZADO */}
+      <div style={{ 
+        marginTop: '30px', 
+        textAlign: 'center', 
+        paddingTop: '20px', 
+        borderTop: '1px dashed #ddd' 
+      }}>
+        <button 
+          onClick={handleDownloadPDF}
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            gap: '10px', 
+            backgroundColor: '#b20000', 
+            color: 'white', 
+            padding: '14px 28px', 
+            border: 'none', 
+            borderRadius: '8px', 
+            cursor: 'pointer', 
+            fontWeight: 'bold',
+            fontSize: '1rem',
+            boxShadow: '0 4px 6px rgba(178, 0, 0, 0.2)',
+            transition: 'transform 0.2s',
+            maxWidth: '100%',
+            width: 'auto'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          <FaFilePdf size={18} /> 
+          Baixar Relatório Completo
+        </button>
+        <p style={{ marginTop: '10px', fontSize: '0.85rem', color: '#888' }}>
+          Gera um PDF com estatísticas, histórico e lista de obras.
+        </p>
+      </div>
+
     </div>
   );
 }
 
-// Componentes auxiliares para limpar o código principal
+// Componente Auxiliar: Card de Estatística
 const CardStat = ({ label, value, icon, color, bg, border }) => (
-  <div style={{ borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: `1px solid ${border}`, backgroundColor: bg, color: color }}>
-    <div>
-      <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.8 }}>{label}</div>
-      <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: 1 }}>{value}</div>
+  <div style={{ 
+    borderRadius: '8px', 
+    padding: '20px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    backgroundColor: bg, 
+    color: color,
+    border: `1px solid ${border}`,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+  }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <span style={{ fontSize: '2rem', fontWeight: 'bold', lineHeight: 1 }}>{value}</span>
+      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '700', marginTop: '5px', opacity: 0.9 }}>{label}</span>
     </div>
     {icon}
   </div>
 );
 
-const CustomTooltip = ({ active, payload }) => {
+// Componente Auxiliar: Tooltip Personalizado (com props padrão para evitar erro TS)
+const CustomTooltip = ({ active = false, payload = [], label = '' }) => {
   if (active && payload && payload.length) {
     const d = payload[0].payload;
     return (
-      <div style={{ backgroundColor: '#fff', padding: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderRadius: '8px' }}>
-        <p style={{fontWeight: 'bold', marginBottom: '4px', color: '#1f2937'}}>{d.name}</p>
-        <p style={{color: '#ca8a04', fontWeight: 'bold'}}>★ {d.media.toFixed(1)}</p>
-        <p style={{fontSize: '12px', color: '#6b7280'}}>{d.votos} avaliações</p>
+      <div style={{ 
+        backgroundColor: '#fff', 
+        padding: '12px', 
+        border: '1px solid #ddd', 
+        boxShadow: '0 4px 10px rgba(0,0,0,0.1)', 
+        borderRadius: '8px' 
+      }}>
+        <p style={{fontWeight: 'bold', marginBottom: '5px', color: '#333', fontSize: '0.9rem'}}>{d.name}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+          <span style={{color: '#666'}}>Média:</span>
+          <strong style={{color: d.media >= 4 ? '#166534' : '#ca8a04'}}>★ {d.media.toFixed(1)}</strong>
+        </div>
+        <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '2px' }}>
+          {d.votos} avaliações recebidas
+        </div>
       </div>
     );
   }

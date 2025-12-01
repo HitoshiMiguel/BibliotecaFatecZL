@@ -385,15 +385,83 @@ export default function DashboardPage() {
     return devol < hoje && (String(r.status).toLowerCase() === 'ativa' || String(r.status).toLowerCase() === 'atendida');
   };
 
-  const navButtonStyle = (isActive) => ({
-    display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '6px',
-    border: '1px solid', borderColor: isActive ? '#b20000' : '#e5e7eb',
-    backgroundColor: isActive ? '#b20000' : '#fff', color: isActive ? '#fff' : '#374151',
-    fontSize: '0.95rem', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s ease',
-  });
+  {/* MENU DE NAVEGAÇÃO ATUALIZADO */}
+<div className={styles.dashboardNav}>
+  <button 
+    className={`${styles.navButton} ${activeTab === 'dados' ? styles.navButtonActive : ''}`} 
+    onClick={() => setActiveTab('dados')}
+  >
+    <BsPerson size={20} /> <span>Dados</span>
+  </button>
 
+  <button 
+    className={`${styles.navButton} ${activeTab === 'favoritos' ? styles.navButtonActive : ''}`} 
+    onClick={() => setActiveTab('favoritos')}
+  >
+    <BsHeart size={20} /> <span>Favoritos</span>
+  </button>
+
+  <button 
+    className={`${styles.navButton} ${activeTab === 'reservas' ? styles.navButtonActive : ''}`} 
+    onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}
+  >
+    <BsCalendarCheck size={20} /> <span>Reservas</span>
+  </button>
+
+  <button 
+    className={`${styles.navButton} ${activeTab === 'submissoes' ? styles.navButtonActive : ''}`} 
+    onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}
+  >
+    <BsFileEarmarkText size={20} /> <span>Submissões</span>
+  </button>
+
+  <button 
+    className={`${styles.navButton} ${activeTab === 'estatisticas' ? styles.navButtonActive : ''}`} 
+    onClick={() => { 
+      setActiveTab('estatisticas'); 
+      if (submissoes.length === 0) carregarSubmissoes(); 
+    }}
+  >
+    <BsGraphUp size={20} /> <span>Estatísticas</span>
+  </button>
+
+  <button 
+    onClick={handleLogout} 
+    className={`${styles.navButton} ${styles.logoutButton}`}
+  >
+    <BsBoxArrowRight size={20} /> <span>Sair</span>
+  </button>
+</div>
   // 8. RETURNS (RENDERIZAÇÃO)
 
+  if (globalLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '100px' }}>
+        <p>Verificando credenciais...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthed || globalUser?.role === 'admin' || globalUser?.role === 'bibliotecario') {
+    return null; 
+  }
+
+  if (isLoading) {
+    return <div className={styles.loading}>Carregando dados do perfil...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className={styles.container}>
+        <Alert id="dashboard-error" kind={actionStatus.type || 'error'} message={actionStatus.message || 'Não foi possível carregar os dados do usuário.'} />
+        <button onClick={() => router.replace('/login')} className={styles.button}>Ir para Login</button>
+      </div>
+    );
+  }
+
+ // ... (seu código anterior, useEffects, handlers, etc. mantidos)
+
+  // 8. RETURNS (RENDERIZAÇÃO CORRIGIDA)
   if (globalLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '100px' }}>
@@ -426,49 +494,64 @@ export default function DashboardPage() {
       </section>
 
       <div className={styles.contentWrapper}>
-        <div className={styles.dashboardContainer} style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div className={styles.dashboardContainer}>
           
           {actionStatus.message && (
-            <div className={styles.actionAlert} style={{ marginBottom: 20 }}>
+            <div className={styles.actionAlert}>
               <Alert id="dashboard-status" kind={actionStatus.type} message={actionStatus.message} />
             </div>
           )}
 
-          {/* MENU DE NAVEGAÇÃO */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button style={navButtonStyle(activeTab === 'dados')} onClick={() => setActiveTab('dados')}>
-                <BsPerson size={18} /> <span>Dados</span>
-              </button>
-              <button style={navButtonStyle(activeTab === 'favoritos')} onClick={() => setActiveTab('favoritos')}>
-                <BsHeart size={16} /> <span>Favoritos</span>
-              </button>
-              <button style={navButtonStyle(activeTab === 'reservas')} onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}>
-                <BsCalendarCheck size={16} /> <span>Reservas</span>
-              </button>
-              <button style={navButtonStyle(activeTab === 'submissoes')} onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}>
-                <BsFileEarmarkText size={16} /> <span>Submissões</span>
-              </button>
-              <button 
-                style={navButtonStyle(activeTab === 'estatisticas')} 
-                onClick={() => { 
-                  setActiveTab('estatisticas'); 
-                  // AQUI é o lugar certo: Se não tiver dados, carrega!
-                  if (submissoes.length === 0) carregarSubmissoes(); 
-                }}
-              >
-                <BsGraphUp size={16} /> <span>Estatísticas</span>
-              </button>
-            </div>
+          {/* === MENU DE NAVEGAÇÃO NOVO (CORRIGIDO) === */}
+          {/* Aqui removemos o 'style={navButtonStyle}' e usamos className */}
+          <div className={styles.dashboardNav}>
+            <button 
+              className={`${styles.navButton} ${activeTab === 'dados' ? styles.navButtonActive : ''}`} 
+              onClick={() => setActiveTab('dados')}
+            >
+              <BsPerson size={20} /> <span>Dados</span>
+            </button>
 
-            <div>
-              <button onClick={handleLogout} className={styles.logoutButton} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', height: '100%', backgroundColor: '#b20000', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}>
-                <BsBoxArrowRight size={18} /> <span>Sair</span>
-              </button>
-            </div>
+            <button 
+              className={`${styles.navButton} ${activeTab === 'favoritos' ? styles.navButtonActive : ''}`} 
+              onClick={() => setActiveTab('favoritos')}
+            >
+              <BsHeart size={20} /> <span>Favoritos</span>
+            </button>
+
+            <button 
+              className={`${styles.navButton} ${activeTab === 'reservas' ? styles.navButtonActive : ''}`} 
+              onClick={() => { setActiveTab('reservas'); if (reservas.length === 0) carregarReservas(); }}
+            >
+              <BsCalendarCheck size={20} /> <span>Reservas</span>
+            </button>
+
+            <button 
+              className={`${styles.navButton} ${activeTab === 'submissoes' ? styles.navButtonActive : ''}`} 
+              onClick={() => { setActiveTab('submissoes'); if (submissoes.length === 0) carregarSubmissoes(); }}
+            >
+              <BsFileEarmarkText size={20} /> <span>Submissões</span>
+            </button>
+
+            <button 
+              className={`${styles.navButton} ${activeTab === 'estatisticas' ? styles.navButtonActive : ''}`} 
+              onClick={() => { 
+                setActiveTab('estatisticas'); 
+                if (submissoes.length === 0) carregarSubmissoes(); 
+              }}
+            >
+              <BsGraphUp size={20} /> <span>Estatísticas</span>
+            </button>
+
+            <button 
+              onClick={handleLogout} 
+              className={`${styles.navButton} ${styles.logoutButton}`}
+            >
+              <BsBoxArrowRight size={20} /> <span>Sair</span>
+            </button>
           </div>
 
-          {/* CONTEÚDO */}
+          {/* === ÁREA DE CONTEÚDO === */}
           <div>
             {/* ABA DADOS */}
             {activeTab === 'dados' && (
@@ -479,53 +562,90 @@ export default function DashboardPage() {
                     <BsPencilSquare /> Editar
                   </button>
                 </div>
+                
+                {/* Aqui entra o layout novo dos dados */}
                 <div className={styles.userDetails}>
-                  <div className={styles.detailItem} style={{ marginBottom: '15px' }}>
-                    <span className={styles.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', marginBottom: '4px' }}><BsPerson /> Nome Completo</span>
-                    <span className={styles.detailValue} style={{ fontSize: '1.05rem', fontWeight: 500 }}>{user.nome}</span>
-                  </div>
-                  <div className={styles.detailItem} style={{ marginBottom: '15px' }}>
-                    <span className={styles.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', marginBottom: '4px' }}><BsEnvelope /> Email</span>
-                    <span className={styles.detailValue} style={{ fontSize: '1.05rem', fontWeight: 500 }}>{user.email}</span>
-                  </div>
-                  {user.ra && (
-                    <div className={styles.detailItem} style={{ marginBottom: '15px' }}>
-                      <span className={styles.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', marginBottom: '4px' }}><BsPersonVcard /> RA</span>
-                      <span className={styles.detailValue} style={{ fontSize: '1.05rem', fontWeight: 500 }}>{user.ra}</span>
-                    </div>
-                  )}
-                  <div className={styles.detailItem} style={{ marginBottom: '15px' }}>
-                    <span className={styles.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', marginBottom: '4px' }}><BsBook /> Status da Conta</span>
-                    <span className={styles.detailValue} style={{ fontSize: '1.05rem', fontWeight: 500, color: user.status_conta === 'ativa' ? 'green' : 'red', textTransform: 'capitalize' }}>{user.status_conta || 'ativa'}</span>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsPerson /> Nome Completo</span>
+                    <div className={styles.detailValueReadOnly}>{user.nome}</div>
                   </div>
                   <div className={styles.detailItem}>
-                    <span className={styles.detailLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#666', marginBottom: '4px' }}><BsPersonBadge /> Tipo de Conta</span>
-                    <span className={styles.detailValue} style={{ fontSize: '1.05rem', fontWeight: 500, textTransform: 'capitalize' }}>{user.perfil}</span>
+                    <span className={styles.detailLabel}><BsEnvelope /> Email</span>
+                    <div className={styles.detailValueReadOnly}>{user.email}</div>
+                  </div>
+                  {user.ra && (
+                    <div className={styles.detailItem}>
+                      <span className={styles.detailLabel}><BsPersonVcard /> RA</span>
+                      <div className={styles.detailValueReadOnly}>{user.ra}</div>
+                    </div>
+                  )}
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsBook /> Status da Conta</span>
+                    <div className={styles.detailValueReadOnly} style={{ color: user.status_conta === 'ativa' ? 'green' : 'red', textTransform: 'capitalize' }}>
+                      {user.status_conta || 'ativa'}
+                    </div>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}><BsPersonBadge /> Tipo de Conta</span>
+                    <div className={styles.detailValueReadOnly} style={{ textTransform: 'capitalize' }}>
+                      {user.perfil}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ABA FAVORITOS */}
+            {/* ABA FAVORITOS CORRIGIDA */}
             {activeTab === 'favoritos' && (
               <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #eee' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Meus Favoritos</h3>
-                {isLoadingFavoritos ? <p>Carregando favoritos...</p> : favoritosDetalhados.length === 0 ? <p style={{ color: '#666' }}>Você não possui favoritos ainda.</p> : (
-                  <ul style={{ paddingLeft: 0, listStyle: 'none' }}>
+                
+                {isLoadingFavoritos ? (
+                  <p>Carregando favoritos...</p>
+                ) : favoritosDetalhados.length === 0 ? (
+                  <p style={{ color: '#666' }}>Você não possui favoritos ainda.</p>
+                ) : (
+                  <ul className={styles.favoriteList}>
                     {favoritosDetalhados.map((f, i) => {
                       const alvoParaConsulta = f.submissao_id ?? f.item_id; 
                       const alvoParaRemover = f.item_id ?? f.id_favorito;
+                      
                       if (!alvoParaConsulta) return null;
+                      
                       const fid = f.item_id ?? f.submissao_id ?? f._raw?.id ?? `fav-${i}`;
+                      
                       return (
-                        <li key={fid} style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #eee', borderRadius: '6px' }}>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{fixEncoding(f.titulo_proposto || f.titulo || 'Sem título')}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#666' }}>{f.autor && <span>{fixEncoding(f.autor)} • </span>}<span>{f.origem === 'FISICO' ? 'Acervo Físico' : 'Acervo Digital'}</span></div>
+                        <li key={fid} className={styles.favoriteItem}>
+                          {/* Informações (Texto) */}
+                          <div className={styles.favoriteInfo}>
+                            <div className={styles.favoriteTitle}>
+                              {fixEncoding(f.titulo_proposto || f.titulo || 'Sem título')}
+                            </div>
+                            <div className={styles.favoriteMeta}>
+                              {f.autor && <span>{fixEncoding(f.autor)} • </span>}
+                              <span>{f.origem === 'FISICO' ? 'Acervo Físico' : 'Acervo Digital'}</span>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className={styles.button} onClick={() => router.push(`/consulta/${encodeURIComponent(alvoParaConsulta)}`)}>Ver</button>
-                            <button className={styles.button} style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca' }} onClick={() => handleToggleFavorito(alvoParaRemover)}>Remover</button>
+
+                          {/* Botões (Ver / Remover) */}
+                          <div className={styles.favoriteActions}>
+                            <button 
+                              className={styles.button} 
+                              onClick={() => router.push(`/consulta/${encodeURIComponent(alvoParaConsulta)}`)}
+                            >
+                              Ver
+                            </button>
+                            <button 
+                              className={`${styles.button} ${styles.removeButton}`} // <--- Adicionamos a classe aqui
+                              style={{ 
+                                backgroundColor: '#fee2e2', 
+                                color: '#b91c1c', 
+                                border: '1px solid #fecaca' 
+                              }} 
+                              onClick={() => handleToggleFavorito(alvoParaRemover)}
+                            >
+                              Remover
+                            </button>
                           </div>
                         </li>
                       );
@@ -535,121 +655,199 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* ABA SUBMISSÕES */}
-            {/* ABA SUBMISSÕES */}
+            {/* ABA SUBMISSÕES CORRIGIDA */}
 {activeTab === 'submissoes' && (
   <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #eee' }}>
     
-    {/* Cabeçalho com Filtro */}
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+    {/* Cabeçalho Igual ao de Reservas */}
+    <div className={styles.reservasHeader}>
       <h3 style={{ margin: 0 }}>Minhas Submissões</h3>
       
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <label htmlFor="filtro-submissoes" style={{ fontWeight: 600, fontSize: '0.9rem' }}>Status:</label>
+      <div className={styles.filterWrapper}>
+        <label htmlFor="filtro-submissoes" style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+          Status:
+        </label>
         <select 
           id="filtro-submissoes" 
           value={submissoesFilter} 
           onChange={(e) => setSubmissoesFilter(e.target.value)} 
-          style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid #ccc' }}
+          style={{ 
+            padding: '0 10px',
+            height: '45px', /* Mesma altura padrão */
+            borderRadius: 4, 
+            border: '1px solid #ccc',
+            backgroundColor: '#fff'
+          }}
         >
           <option value="todas">Todas</option>
           <option value="analise">Pendente</option>
           <option value="aprovado">Aprovadas</option>
           <option value="rejeitado">Rejeitadas</option>
         </select>
+        
+        {/* Botão de Refresh opcional (se tiver a função) */}
+        <button 
+          className={styles.refreshButton} 
+          onClick={carregarSubmissoes} 
+          title="Atualizar lista"
+        >
+          ↻
+        </button>
       </div>
     </div>
 
-                {/* Lista */}
-                {isLoadingSubmissoes ? (
-                  <p>Carregando submissões...</p>
-                ) : submissoes.length === 0 ? (
-                  <p style={{ color: '#666' }}>Você não possui submissões registradas.</p>
-                ) : submissoesFiltradas.length === 0 ? (
-                  <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhuma submissão encontrada com este filtro.</p>
-                ) : (
-                  <div style={{ display: 'grid', gap: '12px' }}>
-                    {submissoesFiltradas.map((s) => (
-                      <div key={s.submissao_id} style={{ border: '1px solid #eee', padding: '16px', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <strong style={{ fontSize: '1.05rem' }}>{s.titulo_proposto || `Submissão #${s.submissao_id}`}</strong>
-                            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '4px' }}>
-                              {s.autor ? `${s.autor} • ` : ''}{formatDate(s.data_submissao)}
-                            </div>
-                          </div>
-                          <div style={{ 
-                            padding: '4px 10px', 
-                            borderRadius: '4px', 
-                            fontSize: '0.85rem', 
-                            fontWeight: 600, 
-                            backgroundColor: s.status === 'aprovado' ? '#dcfce7' : s.status === 'rejeitado' ? '#fee2e2' : '#fef9c3', 
-                            color: s.status === 'aprovado' ? '#166534' : s.status === 'rejeitado' ? '#991b1b' : '#854d0e', 
-                            textTransform: 'capitalize' 
-                          }}>
-                            {s.status}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+    {/* Lista de Cards */}
+    {isLoadingSubmissoes ? (
+      <p>Carregando submissões...</p>
+    ) : submissoes.length === 0 ? (
+      <p style={{ color: '#666' }}>Você não possui submissões registradas.</p>
+    ) : submissoesFiltradas.length === 0 ? (
+      <p style={{ color: '#666', fontStyle: 'italic' }}>Nenhuma submissão encontrada com este filtro.</p>
+    ) : (
+      <div className={styles.submissionsGrid}>
+        {submissoesFiltradas.map((s) => {
+          // Normaliza o status para usar na classe CSS (ex: "Em Análise" -> "analise")
+          const statusClass = s.status ? s.status.toLowerCase().replace(' ', '') : 'pendente';
+          
+          return (
+            <div key={s.submissao_id} className={styles.submissionCard}>
+              
+              {/* Topo do Card */}
+              <div className={styles.cardHeader}>
+                <h4 className={styles.cardTitle}>
+                  {s.titulo_proposto || `Submissão #${s.submissao_id}`}
+                </h4>
+                <span className={`${styles.statusBadge} ${styles[statusClass] || styles.pendente}`}>
+                  {s.status || 'Pendente'}
+                </span>
               </div>
-            )}
 
-            {/* ABA RESERVAS */}
-            {activeTab === 'reservas' && (
-              <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', border: '1px solid #eee' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0 }}>Minhas Reservas</h3>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <label htmlFor="filtro-reservas" style={{ fontWeight: 600, fontSize: '0.9rem' }}>Mostrar:</label>
-                    <select id="filtro-reservas" value={reservasFilter} onChange={(e) => setReservasFilter(e.target.value)} style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid #ccc' }}>
-                      <option value="ativas">Ativas</option>
-                      <option value="finalizadas">Histórico</option>
-                      <option value="todas">Todas</option>
-                    </select>
-                    <button className={styles.button} onClick={carregarReservas} style={{ marginLeft: 8 }}>↻</button>
-                  </div>
+              {/* Rodapé do Card */}
+              <div className={styles.cardFooter}>
+                <span title={s.autor}>{s.autor ? (s.autor.length > 20 ? s.autor.substring(0,20)+'...' : s.autor) : 'Autor desconhecido'}</span>
+                <div className={styles.cardDate}>
+                  <BsCalendarCheck size={12} />
+                  {formatDate(s.data_submissao)}
                 </div>
-                {isLoadingReservas ? <p>Carregando reservas...</p> : reservasFiltradas.length === 0 ? <p style={{ color: '#666' }}>Nenhuma reserva encontrada.</p> : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', borderBottom: '2px solid #f3f4f6', color: '#6b7280', fontSize: '0.9rem' }}>
-                          <th style={{ padding: '12px' }}>Título</th>
-                          <th style={{ padding: '12px' }}>Retirada</th>
-                          <th style={{ padding: '12px' }}>Devolução</th>
-                          <th style={{ padding: '12px' }}>Status</th>
-                          <th style={{ padding: '12px' }}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reservasFiltradas.map(r => {
-                          const st = String(r.status || '-').toLowerCase();
-                          const podeRenovar = st === 'atendida';
-                          return (
-                            <tr key={r.reserva_id} style={{ borderBottom: '1px solid #f1f1f1' }}>
-                              <td style={{ padding: '12px', fontWeight: 500 }}>{r.titulo || '-'}</td>
-                              <td style={{ padding: '12px' }}>{formatDate(r.data_prevista_retirada)}</td>
-                              <td style={{ padding: '12px', color: isOverdue(r) ? '#b20000' : undefined }}>{formatDate(r.data_prevista_devolucao)}{isOverdue(r) && <span style={{ marginLeft: 6, fontWeight: 'bold', color: '#b20000' }}>!</span>}</td>
-                              <td style={{ padding: '12px', textTransform: 'capitalize' }}>{String(r.status || '-')}</td>
-                              <td style={{ padding: '12px' }}>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                  <button className={styles.button} onClick={() => openReservaDetalhe(r)}>Ver</button>
-                                  {podeRenovar && <button className={styles.button} onClick={() => handleRenovar(r)} disabled={processingReservaId === r.reserva_id} style={{ backgroundColor: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }}>Renovar</button>}
-                                  {st === 'ativa' && <button className={styles.button} onClick={() => handleCancelar(r)} disabled={processingReservaId === r.reserva_id} style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>Cancelar</button>}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
-            )}
+
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
+
+            {/* ABA RESERVAS CORRIGIDA */}
+              {activeTab === 'reservas' && (
+                <div className={styles.reservasHeader}>
+      <h3 style={{ margin: 0 }}>Minhas Reservas</h3>
+      
+      {/* SE NÃO TIVER ESTA DIV ABAIXO COM ESSA CLASSE, O CSS NÃO FUNCIONA */}
+      <div className={styles.filterWrapper}>
+        <label htmlFor="filtro-reservas" style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+          Mostrar:
+        </label>
+        
+        <select 
+          id="filtro-reservas" 
+          value={reservasFilter} 
+          onChange={(e) => setReservasFilter(e.target.value)} 
+          style={{ 
+            padding: '0 10px',
+            height: '45px', 
+            borderRadius: 4, 
+            border: '1px solid #ccc',
+            backgroundColor: '#fff'
+          }}
+        >
+          <option value="ativas">Ativas</option>
+          <option value="finalizadas">Histórico</option>
+          <option value="todas">Todas</option>
+        </select>
+
+        <button 
+          className={styles.refreshButton} 
+          onClick={carregarReservas} 
+          title="Atualizar"
+        >
+          ↻
+        </button>
+      </div>
+
+                  {/* Conteúdo da Tabela */}
+                  {isLoadingReservas ? (
+                    <p>Carregando reservas...</p>
+                  ) : reservasFiltradas.length === 0 ? (
+                    <p style={{ color: '#666' }}>Nenhuma reserva encontrada.</p>
+                  ) : (
+                    /* Container com Scroll Horizontal */
+                    <div className={styles.tableContainer}>
+                      <table className={styles.reservaTable}>
+                        <thead>
+                          <tr>
+                            <th>Título</th>
+                            <th>Retirada</th>
+                            <th>Devolução</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reservasFiltradas.map(r => {
+                            const st = String(r.status || '-').toLowerCase();
+                            const podeRenovar = st === 'atendida';
+                            return (
+                              <tr key={r.reserva_id}>
+                                <td style={{ fontWeight: 500, whiteSpace: 'normal', minWidth: '200px' }}>
+                                  {/* Título pode quebrar linha se for longo, por isso whiteSpace normal aqui */}
+                                  {r.titulo || '-'}
+                                </td>
+                                <td>{formatDate(r.data_prevista_retirada)}</td>
+                                <td style={{ color: isOverdue(r) ? '#b20000' : undefined }}>
+                                  {formatDate(r.data_prevista_devolucao)}
+                                  {isOverdue(r) && <span style={{ marginLeft: 6, fontWeight: 'bold' }}>!</span>}
+                                </td>
+                                <td style={{ textTransform: 'capitalize' }}>
+                                  {String(r.status || '-')}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button className={styles.button} style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => openReservaDetalhe(r)}>Ver</button>
+                                    
+                                    {podeRenovar && (
+                                      <button 
+                                        className={styles.button} 
+                                        onClick={() => handleRenovar(r)} 
+                                        disabled={processingReservaId === r.reserva_id} 
+                                        style={{ backgroundColor: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '6px 12px', fontSize: '0.85rem' }}
+                                      >
+                                        Renovar
+                                      </button>
+                                    )}
+                                    
+                                    {st === 'ativa' && (
+                                      <button 
+                                        className={styles.button} 
+                                        onClick={() => handleCancelar(r)} 
+                                        disabled={processingReservaId === r.reserva_id} 
+                                        style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 12px', fontSize: '0.85rem' }}
+                                      >
+                                        Cancelar
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
 
             {/* ABA ESTATÍSTICAS */}
             {activeTab === 'estatisticas' && (
@@ -664,8 +862,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* MODAIS */}
       <EditProfileModal user={user} isOpen={isModalOpen} onClose={handleModalClose} setIsEditing={setIsEditing} profileFormData={profileFormData} setProfileFormData={setProfileFormData} handleProfileUpdateSubmit={handleProfileUpdateSubmit} isUpdating={isUpdating} />
       <FavoritosModal isOpen={modalFavoritosAberto} onClose={() => setModalFavoritosAberto(false)} favoritos={favoritosDetalhados} />
+      
       {isReservaModalOpen && selectedReserva && (
         <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', zIndex: 9999 }}>
           <div style={{ background: '#fff', padding: 24, borderRadius: 12, maxWidth: 500, width: '95%', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>

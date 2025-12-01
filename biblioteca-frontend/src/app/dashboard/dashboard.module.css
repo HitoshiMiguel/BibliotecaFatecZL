@@ -1,268 +1,369 @@
+/* =========================================================================
+   ESTILOS GERAIS E DESKTOP (Padrão)
+   ========================================================================= */
+
 .contentWrapper {
   width: 100%;
   display: flex;
   justify-content: center;
   padding: 0 20px;
+  box-sizing: border-box; 
 }
 
 .dashboardContainer {
   width: 100%;
-  max-width: 800px;
+  max-width: 1100px;
   margin-top: 50px;
-  padding: 40px 50px; /* Aumentei o padding lateral */
-  border: 1px solid #555;
+  padding: 40px 30px;
+  border: 1px solid #ddd;
   border-radius: 8px;
   margin-bottom: 60px;
+  background-color: #fff;
+  box-sizing: border-box;
 }
 
-.userDetails {
-  display: flex;
-  flex-direction: column;
-  gap: 30px; /* Aumentei o espaço vertical */
+/* --- NAV MENU --- */
+.dashboardNav {
+  display: flex;            
+  flex-direction: row;      
+  flex-wrap: wrap;          
+  gap: 10px;                
+  margin-bottom: 30px;
+  align-items: center;      
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+  width: 100%;
 }
 
-.detailItem {
-  display: grid;
-  grid-template-columns: 200px 1fr; /* Coluna do rótulo com tamanho fixo e a outra flexível */
-  align-items: center;
-  gap: 25px; /* Aumentei o espaço horizontal */
-}
-
-.detailLabel {
-  font-weight: bold;
-  color: #333;
-  text-align: right; /* 👈 ALINHAMENTO CORRIGIDO */
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end; /* Alinha o conteúdo (ícone + texto) à direita */
-  gap: 10px;
-}
-
-.detailValue {
-  background-color: #D9D9D9;
-  padding: 12px 15px;
-  border-radius: 5px;
-  font-size: 16px;
-  color: #111;
-}
-
-.logoutButtonWrapper {
-  text-align: center;
-  margin-top: 50px; /* Mais espaço acima do botão */
-}
-
-.logoutButton {
-  padding: 10px 40px;
-  
-  /* Estado Normal: Botão Vermelho */
-  background-color: #b20000;
-  color: white;
-  border: 1px solid #b20000;
-
-  /* Estilos que você já tinha (mantidos) */
-  border-radius: 5px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
+.navButton {
+  width: auto;              
+  min-width: auto;          
+  flex-shrink: 0;           
+  display: inline-flex;     
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-
-.logoutButton:hover {
-  /* Estado Hover: Botão Branco */
-  background-color: white;
-  color: #b20000;
-  
-  /* A borda '1px solid #b20000' é herdada,
-     o que cria o efeito de "inversão" */
-}
-
-/* dashboard.module.css (Adicionar/Ajustar) */
-
-/* ... (Estilos anteriores: .contentWrapper, .dashboardContainer, .userDetails, .detailItem, .detailLabel, .detailValue, .logoutButtonWrapper, .logoutButton) ... */
-
-/* Alerta para mensagens de feedback */
-.actionAlert {
-  margin-bottom: 25px; /* Mais espaço abaixo do alerta */
-  text-align: center;
-}
-
-/* Wrapper para o botão Editar */
-.editButtonWrapper {
-  text-align: right;
-  margin-top: 25px;
-  padding-top: 20px;
-  border-top: 1px dashed #ddd; /* Linha opcional */
-}
-
-/* Estilo base para botões (caso ainda não tenha) */
-.button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
+  padding: 10px 16px;       
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #555;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1em;
+  white-space: nowrap;      
+  transition: all 0.2s ease;
+  height: 45px;
+}
+.navButton:hover { border-color: #b20000; color: #b20000; background-color: #fff5f5; transform: translateY(-2px); }
+.navButtonActive { background-color: #b20000 !important; color: white !important; border-color: #b20000 !important; box-shadow: 0 4px 6px rgba(178, 0, 0, 0.2); }
+.navButtonActive:hover { background-color: #8f0000 !important; }
+
+.logoutButton { margin-left: 0; background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.logoutButton:hover { background-color: #b20000; color: white; border-color: #b20000; }
+
+/* --- DADOS DO USUÁRIO --- */
+.userDetails { display: flex; flex-direction: column; gap: 30px; }
+.detailItem { display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 25px; }
+.detailLabel { font-weight: bold; color: #333; text-align: right; font-size: 16px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.detailValueReadOnly { background-color: #f8f9fa; padding: 12px 15px; border-radius: 6px; font-size: 16px; color: #333; border: 1px solid #e9ecef; min-height: 48px; display: flex; align-items: center; width: 100%; box-sizing: border-box; word-break: break-word; }
+
+/* --- GERAL --- */
+.actionAlert { margin-bottom: 25px; text-align: center; }
+.button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: bold; transition: background-color 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.editButton { background-color: #ffc107; color: #212529; border: 1px solid #e0a800; }
+.editButton:hover { background-color: #e0a800; }
+.saveButton { background-color: #28a745; color: white; }
+.saveButton:hover { background-color: #218838; }
+.cancelButton { background-color: #b20000; color: white; }
+.cancelButton:hover { background-color: #940303; }
+.editButtonWrapper { text-align: right; }
+.loading { text-align: center; padding: 50px; color: #555; font-size: 1.2rem; }
+
+/* --- FAVORITOS --- */
+.favoriteList { list-style: none; padding: 0; margin: 0; }
+.favoriteItem { display: flex; justify-content: space-between; align-items: center; padding: 16px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 12px; background-color: #fff; transition: all 0.2s ease; }
+.favoriteItem:hover { border-color: #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.favoriteInfo { flex: 1; margin-right: 15px; min-width: 0; }
+.favoriteTitle { font-weight: 700; font-size: 1rem; color: #333; margin-bottom: 5px; line-height: 1.4; }
+.favoriteMeta { font-size: 0.85rem; color: #666; display: flex; flex-wrap: wrap; gap: 5px; }
+.favoriteActions { display: flex; gap: 10px; flex-shrink: 0; }
+.removeButton { padding: 6px 12px !important; font-size: 0.85rem !important; min-height: 0 !important; height: auto !important; line-height: 1 !important; display: inline-flex; align-items: center; justify-content: center; }
+
+/* --- ABA RESERVAS E CABEÇALHOS (Desktop) --- */
+.reservasHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; flex-wrap: wrap; gap: 15px; }
+
+.tableContainer { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #eee; border-radius: 8px; margin-top: 10px; margin-bottom: 20px; }
+.reservaTable { width: 100%; border-collapse: collapse; min-width: 650px; }
+.reservaTable thead tr { background-color: #f9fafb; border-bottom: 2px solid #e5e7eb; }
+.reservaTable th { padding: 12px 15px; text-align: left; font-size: 0.9rem; color: #555; font-weight: 700; white-space: nowrap; }
+.reservaTable td { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; color: #333; white-space: nowrap; }
+
+/* Wrapper do Filtro */
+.filterWrapper { display: flex; align-items: center; gap: 10px; }
+
+/* --- BOTÃO REFRESH (Estilo Base) --- */
+.refreshButton {
+  background-color: #fff !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px;
+  
+  /* Largura Base Desktop */
+  width: 45px; 
+  min-width: 45px; /* IMPORTANTE: Garante que não encolha */
+  height: 45px;
+  
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #555;
+  cursor: pointer;
+  padding: 0 !important;
+  transition: all 0.2s;
+  margin: 0 !important; 
+  flex-shrink: 0; /* IMPORTANTE: Não deixa o flexbox esmagar */
+}
+.refreshButton:hover { border-color: #b20000 !important; color: #b20000; background-color: #fff5f5 !important; transform: rotate(180deg); }
+
+/* --- ABA SUBMISSÕES (CARDS DESKTOP) --- */
+.submissionsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+.submissionCard { background-color: #fff; border: 1px solid #eee; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; min-height: 140px; box-sizing: border-box; }
+.submissionCard:hover { border-color: #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transform: translateY(-2px); }
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 10px; }
+.cardTitle { font-weight: 700; font-size: 1rem; color: #333; line-height: 1.3; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.statusBadge { padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+.statusBadge.aprovado { background-color: #dcfce7; color: #166534; }
+.statusBadge.rejeitado { background-color: #fee2e2; color: #991b1b; }
+.statusBadge.pendente { background-color: #fef9c3; color: #854d0e; }
+.statusBadge.analise { background-color: #e0f2fe; color: #0369a1; }
+.cardFooter { border-top: 1px solid #f5f5f5; padding-top: 10px; margin-top: 10px; font-size: 0.85rem; color: #666; display: flex; justify-content: space-between; align-items: center; }
+.cardDate { font-size: 0.8rem; color: #888; display: flex; align-items: center; gap: 4px; }
+
+/* =========================================================================
+   ESTATÍSTICAS E GRÁFICOS (NOVO)
+   ========================================================================= */
+
+/* Container geral das estatísticas */
+.statsContainer {
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 25px;
+  margin-bottom: 30px;
+}
+
+.statsHeader {
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 1.2rem;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* Cards de Resumo (Números no topo) */
+.statsSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.statCard {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e9ecef;
+}
+
+.statNumber {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #b20000;
+  margin-bottom: 5px;
+}
+
+.statLabel {
+  font-size: 0.9rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* O GRÁFICO DE BARRAS (HTML/CSS Puro) */
+.chartContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chartRow {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.chartLabel {
+  width: 120px; /* Largura fixa para o texto (ex: titulo) */
+  text-align: right;
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.chartBarWrapper {
+  flex-grow: 1; /* A barra ocupa o resto do espaço */
+  background-color: #f1f1f1;
+  border-radius: 4px;
+  height: 24px;
+  overflow: hidden;
+  position: relative;
+}
+
+.chartBarFill {
+  height: 100%;
+  background-color: #b20000; /* Cor da barra */
+  border-radius: 4px;
+  transition: width 1s ease-in-out; /* Animação suave ao carregar */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: 0.75rem;
+  color: white;
   font-weight: bold;
-  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Cores das Barras baseadas em valor (Opcional) */
+.chartBarFill.high { background-color: #28a745; } /* Verde */
+.chartBarFill.med { background-color: #ffc107; color: #333; } /* Amarelo */
+.chartBarFill.low { background-color: #b20000; } /* Vermelho */
+
+
+/* =========================================================================
+   BOTÃO DE DOWNLOAD (CENTRALIZADO)
+   ========================================================================= */
+.downloadWrapper {
+  margin-top: 40px;
+  text-align: center; /* Isso centraliza o botão */
+  padding-top: 20px;
+  border-top: 1px dashed #ddd;
+}
+
+.downloadButton {
+  background-color: #b20000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 15px 30px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-}
-.button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-
-/* Botão Editar */
-.editButton {
-  background-color: #ffc107; /* Amarelo */
-  color: #212529;
-  border: 1px solid #e0a800;
-}
-.editButton:hover:not(:disabled) { background-color: #e0a800; }
-
-/* Formulário de Edição */
-.editForm {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee; /* Linha separadora */
-}
-.editForm h3 {
-  margin-bottom: 25px;
-  text-align: center;
-}
-
-/* Input editável */
-.editInput {
-  background-color: #fff;
-  padding: 12px 15px;
-  border-radius: 5px;
-  font-size: 16px;
-  color: #111;
-  border: 1px solid #ccc;
-  width: 100%;
-  box-sizing: border-box;
-}
-.editInput:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-/* Valor apenas de leitura */
-.detailValueReadOnly {
-  background-color: #e9ecef;
-  padding: 12px 15px;
-  border-radius: 5px;
-  font-size: 16px;
-  color: #495057;
-  border: 1px solid #ced4da;
-  min-height: 47px; /* Alinha altura com inputs */
-  display: flex;
-  align-items: center;
-  width: 100%; /* Ocupa espaço na grid */
-  box-sizing: border-box;
-}
-
-/* Ações do formulário (Salvar/Cancelar) */
-.formActions {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end; /* Alinha botões à direita */
   gap: 10px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(178, 0, 0, 0.2);
+  
+  /* Garante tamanho bom no mobile */
+  width: 100%;
+  max-width: 350px; 
+  justify-content: center;
 }
 
-.saveButton {
-  background-color: #28a745; /* Verde */
-  color: white;
+.downloadButton:hover {
+  background-color: #8f0000;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(178, 0, 0, 0.3);
 }
-.saveButton:hover:not(:disabled) { background-color: #218838; }
 
-.cancelButton {
-  background-color: #b20000; /* Cinza */
-  color: white;
-  border: 1px solid #6c757d;
-}
-.cancelButton:hover:not(:disabled) { background-color: #940303; }
-
-/* Para a mensagem de loading inicial */
-.loading {
-    text-align: center;
-    padding: 50px;
-    font-size: 1.2em;
-    color: #555;
-}
 
 /* =========================================================================
-    ✅ INÍCIO: BLOCO DE RESPONSIVIDADE MÓVEL (Dashboard)
-    Este bloco será aplicado em telas de 768px ou menores.
-=========================================================================
-*/
+   📱 MEDIA QUERY - MOBILE (Força bruta nos tamanhos)
+   ========================================================================= */
 
 @media (max-width: 768px) {
+  .dashboardContainer { width: 100%; margin: 15px 0; padding: 20px 10px; border: none; border-radius: 0; }
 
-    /* 1. Ajusta o wrapper externo (se estiver neste arquivo)
-       Se .contentWrapper estiver em outro arquivo, pule para o item 2 */
-    .contentWrapper {
-        padding: 0 15px; /* Menos padding lateral */
-    }
+  /* Nav Menu */
+  .dashboardNav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: none; padding-bottom: 0; }
+  .navButton { width: 100%; flex-direction: column; height: auto; padding: 15px 5px; min-height: 80px; white-space: normal; text-align: center; }
+  .logoutButton { margin-left: 0; grid-column: span 2; flex-direction: row; min-height: 50px; }
 
-    /* 2. Reduz o padding e margens do container principal */
-    .dashboardContainer {
-        padding: 25px 20px; /* Padding interno bem menor */
-        margin-top: 30px;
-        margin-bottom: 40px;
-    }
+  /* Dados */
+  .userDetails { gap: 20px; }
+  .detailItem { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .detailLabel { justify-content: flex-start; text-align: left; margin-bottom: 0; }
+  .detailValueReadOnly { width: 100%; padding: 14px; }
+  .editButtonWrapper { margin-bottom: 15px; }
+  .editButton { width: 100%; }
 
-    /* 3. Quebra o grid para UMA COLUNA */
-    .detailItem {
-        grid-template-columns: 1fr; /* Apenas uma coluna */
-        gap: 8px; /* Espaço menor entre rótulo e valor */
-    }
+  /* Favoritos */
+  .favoriteItem { flex-direction: column; align-items: flex-start; gap: 15px; }
+  .favoriteInfo { margin-right: 0; width: 100%; }
+  .favoriteActions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .favoriteActions button { justify-content: center; width: 100%; }
+  .favoriteActions .removeButton { width: auto !important; }
 
-    /* 4. Ajusta os rótulos */
-    .detailLabel {
-        text-align: left; /* Alinha à esquerda */
-        justify-content: flex-start; /* Alinha ícone+texto à esquerda */
-        font-size: 16px;
-        font-weight: 600; /* Um pouco mais de destaque */
-    }
+  /* Reservas & Submissões Header */
+  .reservasHeader { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .reservasHeader h3 { margin-bottom: 5px; width: 100%; }
 
-    /* 5. Ajusta os valores (para modo de leitura ou edição) */
-    .detailValue,
-    .detailValueReadOnly,
-    .editInput {
-        font-size: 15px;
-        padding: 10px 12px
-    }
+  /* Wrapper do Filtro Mobile */
+  .filterWrapper {
+    width: 100%;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between; /* Espalha Select e Botão */
+    align-items: center;
+    gap: 10px; 
+    box-sizing: border-box; 
+  }
+  .filterWrapper label { flex-shrink: 0; }
+  
+  /* Select grande mas controlado */
+  .filterWrapper select { 
+    flex-grow: 1; 
+    height: 50px !important; /* Altura generosa mobile */
+    width: auto; 
+    max-width: 100%;
+    min-width: 0; /* Permite encolher se necessário */
+  }
 
-    /* 6. Ajusta os botões de Ação do Formulário (Salvar/Cancelar) */
-    .formActions {
-        flex-direction: column; /* Empilha os botões */
-        gap: 15px;
-    }
+  /* BOTÃO REFRESH GIGANTE MOBILE */
+  .refreshButton {
+    /* Forçando largura mínima e fixa */
+    width: 50px !important; 
+    min-width: 50px !important; 
+    height: 50px !important;
+    
+    font-size: 24px !important; /* Ícone grande */
+    flex-shrink: 0; /* IMPEDE ESMAGAMENTO */
+    margin-left: 0 !important;
+  }
 
-    /* Faz os botões ocuparem 100% da largura no mobile */
-    .formActions .button,
-    .logoutButton {
-        width: 100%;
-        justify-content: center; /* Centraliza o texto do botão */
-    }
+  /* Cards em Coluna única */
+  .submissionsGrid { display: flex; flex-direction: column; gap: 15px; width: 100%; margin-top: 15px; }
+  .submissionCard { width: 100%; margin: 0; box-sizing: border-box; }
 
-    /* 7. Ajusta o espaçamento do botão de logout */
-    .logoutButtonWrapper {
-        margin-top: 30px;
-    }
+  .chartRow {
+    flex-direction: column; /* Label em cima, Barra embaixo */
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .chartLabel {
+    width: 100%;
+    text-align: left;
+  }
+  .chartBarWrapper {
+    width: 100%;
+  }
 }
-
-/* =========================================================================
-    ✅ FIM: BLOCO DE RESPONSIVIDADE MÓVEL
-=========================================================================
-*/

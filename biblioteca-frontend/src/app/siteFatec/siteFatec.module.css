@@ -638,6 +638,30 @@
   .profileText {
     display: none;
   }
+
+  /* --- NOVO AJUSTE: Botões compactos --- */
+  .profileBtn {
+    /* Define tamanho fixo para ficar um círculo perfeito */
+    width: 38px;
+    height: 38px;
+    padding: 0; /* Remove o padding retangular original */
+    
+    /* Centraliza o ícone dentro do círculo */
+    justify-content: center;
+    
+    /* Garante que o ícone não fique minúsculo ou deslocado */
+    font-size: 1.1rem; 
+  }
+
+  /* Reduz o espaço entre o botão de Perfil e o de Logout */
+  .profileBtn + .profileBtn {
+    margin-left: 8px; /* Era 15px */
+  }
+
+  /* Ajusta o container para economizar espaço lateral */
+  .authArea {
+    padding-left: 8px; /* Era 16px */
+  }
 }
 
 @media (max-width: 600px) {
@@ -750,6 +774,60 @@
   flex-direction: column; /* <-- CORREÇÃO 2: Empilha os botões */
   gap: 12px; /* Adiciona um espaço vertical entre eles */
 }
+}
+
+@media (max-width: 576px) {
+
+  /* ... seus outros códigos do mobile ... */
+
+  /* 1. Ajuste no container das abas para o conteúdo não ficar escondido no final */
+  .tabsContainer {
+    display: flex;
+    justify-content: flex-start;
+    overflow-x: auto;
+    white-space: nowrap;
+    
+    /* IMPORTANTE: Adiciona espaço no final da rolagem 
+       para o último item não ficar embaixo dos botões fixos */
+    padding-right: 110px; 
+    padding-left: 16px; /* Mantém o respiro inicial */
+  }
+
+  /* 2. Área de botões FIXA na direita */
+  .authArea {
+    position: absolute; /* Fixa em relação à barra vermelha (.topRedBar) */
+    right: 0;
+    top: 0;
+    height: 100%; /* Ocupa a altura total da barra (56px) */
+    
+    /* Configuração do Flex para centralizar verticalmente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Padding lateral para os botões não colarem na borda */
+    padding: 0 12px; 
+    
+    /* Cor de fundo IGUAL ao header para esconder o texto que rola por trás */
+    background: #b20000; 
+    
+    z-index: 20; /* Garante que fique acima da lista de abas */
+  }
+
+  /* Mantém a estilização dos botões redondos que fizemos antes */
+  .profileBtn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    font-size: 1.1rem;
+    background: rgba(0, 0, 0, 0.15); /* Fundo um pouco mais escuro para contraste */
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  
+  .profileBtn + .profileBtn {
+    margin-left: 8px;
+  }
 }
 
 @media (max-width: 560px) {

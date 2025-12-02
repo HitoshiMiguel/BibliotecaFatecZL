@@ -68,6 +68,7 @@ export default function PublicacaoPage({ params }) {
   if (loading) {
     return (
       <main className={styles.wrap}>
+        {/* 1. CORREÇÃO: Colocando o banner como primeiro elemento do wrap */}
         <div className={styles.banner}>Carregando...</div>
         <h1 className={styles.title} style={{ padding: 20 }}>Aguarde um momento...</h1>
       </main>
@@ -77,6 +78,7 @@ export default function PublicacaoPage({ params }) {
   if (erro || !data) {
     return (
       <main className={styles.wrap}>
+        {/* 1. CORREÇÃO: Colocando o banner como primeiro elemento do wrap */}
         <div className={styles.banner}>Erro</div>
         <div style={{ padding: 20 }}>
           <h1 className={styles.title}>Publicação</h1>
@@ -103,7 +105,7 @@ export default function PublicacaoPage({ params }) {
 
   const disponibilidadeLower = textoDisponibilidade.toLowerCase();
   const isPositivo = disponibilidadeLower.startsWith('disponível');
-  const corStatus = isPositivo ? 'green' : '#b20000';
+  const corStatus = isPositivo ? 'var(--color-success, #28a745)' : 'var(--color-danger, #b20000)';
 
   // --- DATA PREVISTA DE DEVOLUÇÃO ---
   let dataDevolucaoFormatada = null;
@@ -125,90 +127,80 @@ export default function PublicacaoPage({ params }) {
 
   return (
     <main className={styles.wrap}>
-      {/* HEADER VERMELHO */}
+      {/* 1. CORREÇÃO: GARANTE QUE O BANNER ESTEJA COLADO AO TOPO DO WRAP */}
       <div className={styles.banner}>Publicação</div>
 
+      {/* 2. CORREÇÃO: O content é o GRID principal que coloca THUMB e INFO lado a lado */}
       <section className={styles.content}>
+        
+        {/* COLUNA 1: CAPA/THUMB */}
         <aside className={styles.thumb}>
           {mostrarCapa ? (
             // Capa PDF Dinâmica
-            <div className={styles.coverStub} style={{ padding: 0, overflow: 'hidden', backgroundColor: '#fff', border: '1px solid #ddd' }}>
+            <div className={styles.coverBox}>
+              {/* O CapaLivro deve se encaixar no styles.coverBox que tem width: 200px e height: auto */}
               <CapaLivro publicacaoId={id} />
             </div>
           ) : (
-            // Capa Padrão (Livro Físico)
+            // 3. CORREÇÃO: Usando a classe .coverStub para o placeholder de livro físico ter a altura correta (200x300)
             <div className={styles.coverStub}>
               {data.tipo === 'fisico' ? 'LIVRO' : 'CAPA'}
             </div>
           )}
         </aside>
 
+        {/* COLUNA 2: INFORMAÇÕES/INFO */}
         <article className={styles.info}>
           <h1 className={styles.h1}>{data.titulo_proposto}</h1>
-
-          <ul className={styles.descList}>
             {data.descricao && (
-              <li style={{ marginBottom: '20px', fontStyle: 'italic' }}>
+              <p className={styles.description}>
                 {data.descricao}
-              </li>
+              </p>
             )}
 
-            {data.localizacao && <li><strong>Localização na Estante:</strong> {data.localizacao}</li>}
-            {data.isbn && <li><strong>ISBN:</strong> {data.isbn}</li>}
-            {data.detalhes_fisicos && <li><strong>Detalhes:</strong> {data.detalhes_fisicos}</li>}
-            {data.codigo_barras && <li><strong>Código de Barras:</strong> {data.codigo_barras}</li>}
-            {data.autor && <li><strong>Autor:</strong> {data.autor}</li>}
-            {data.editora && <li><strong>Editora:</strong> {data.editora}</li>}
-            {(data.ano_publicacao || data.ano_defesa) && <li><strong>Ano de publicação:</strong> {data.ano_publicacao || data.ano_defesa}</li>}
-            {data.conferencia && <li><strong>Conferência:</strong> {data.conferencia}</li>}
-            {data.periodico && <li><strong>Periódico:</strong> {data.periodico}</li>}
-            {data.instituicao && <li><strong>Instituição:</strong> {data.instituicao}</li>}
-            {data.orientador && <li><strong>Orientador:</strong> {data.orientador}</li>}
-            {data.curso && <li><strong>Curso:</strong> {data.curso}</li>}
-            {data.tipo && <li><strong>Tipo:</strong> {data.tipo === 'fisico' ? 'Livro Físico' : data.tipo}</li>}
+            {/* METADADOS ESSENCIAIS E COMPACTOS */}
+            <ul className={styles.metadataList}>
+              {data.autor && <li><span className={styles.icon}>✍️</span> <strong>Autor:</strong> {data.autor}</li>}
+              {data.editora && <li><span className={styles.icon}>🏢</span> <strong>Editora:</strong> {data.editora}</li>}
+              {(data.ano_publicacao || data.ano_defesa) && <li><span className={styles.icon}>📅</span> <strong>Ano:</strong> {data.ano_publicacao || data.ano_defesa}</li>}
+              {data.tipo && <li><span className={styles.icon}>📚</span> <strong>Tipo:</strong> {data.tipo === 'fisico' ? 'Livro Físico' : data.tipo}</li>}
+            </ul>
 
-            <li>
-              <strong>Disponibilidade:</strong>{' '}
-              <span style={{ color: corStatus, fontWeight: 'bold' }}>
-                {textoDisponibilidade}
-              </span>
-            </li>
-          </ul>
+          {/* DISPONIBILIDADE E BOTÕES DE AÇÃO */}
+          <div className={styles.actionsBox}>
+            <div className={styles.statusPill} style={{ backgroundColor: isPositivo ? 'rgba(40, 167, 69, 0.1)' : 'rgba(178, 0, 0, 0.1)', color: corStatus }}>
+              <strong>Status:</strong> {textoDisponibilidade}
+            </div>
 
-          {temArquivo && (
-            <a
-              href={LINK_DOWNLOAD}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.downloadBtn}
-              style={{
-                textDecoration: 'none',
-                display: 'inline-block',
-                textAlign: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              Visualizar / Download
-            </a>
-          )}
+            {temArquivo && (
+              <a
+                href={LINK_DOWNLOAD}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${styles.actionButton} ${styles.downloadBtn}`}
+              >
+                📥 Visualizar / Download
+              </a>
+            )}
 
-          {!temArquivo && data.tipo === 'fisico' && isPositivo && (
-            <button
-              type="button"
-              className={styles.downloadBtn}
-              style={{ backgroundColor: '#28a745', marginTop: '10px' }}
-              onClick={() => {
-                setErroReserva('');
-                setDataRetirada('');
-                setEtapaReserva('data');
-                setReservaModalAberto(true);
-              }}
-            >
-              Reservar Livro
-            </button>
-          )}
-
-          <div style={{ marginTop: '30px' }}>
+            {!temArquivo && data.tipo === 'fisico' && isPositivo && (
+              <button
+                type="button"
+                className={`${styles.actionButton} ${styles.reserveBtn}`}
+                onClick={() => {
+                  setErroReserva('');
+                  setDataRetirada('');
+                  setEtapaReserva('data');
+                  setReservaModalAberto(true);
+                }}
+              >
+                📅 Reservar Livro
+              </button>
+            )}
+          </div>
+          
+          {/* SEÇÃO DE AVALIAÇÕES */}
+          <div className={styles.ratingSection}>
             <RatingStars
               itemId={data.item_id || id}
               publicacaoId={id}
@@ -219,7 +211,7 @@ export default function PublicacaoPage({ params }) {
         </article>
       </section>
 
-      {/* MODAL DE RESERVA */}
+      {/* MODAL DE RESERVA (sem alterações de estilo) */}
       {reservaModalAberto && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px', maxWidth: '480px', width: '100%', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>

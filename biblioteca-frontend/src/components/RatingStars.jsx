@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import styles from './RatingStars.module.css'; // O erro no chat acontece aqui, mas no seu PC vai funcionar
-import { api } from '@/services/api';          // O erro no chat acontece aqui, mas no seu PC vai funcionar
+import styles from './RatingStars.module.css'; 
+import { api } from '@/services/api';
 
 export default function RatingStars({ itemId, publicacaoId, onRatingChange, tipo = 'digital' }) {
   const [hoverRating, setHoverRating] = useState(0);
@@ -117,7 +117,8 @@ export default function RatingStars({ itemId, publicacaoId, onRatingChange, tipo
           {typeof average === 'number' ? average.toFixed(1) : '0.0'}
         </span>
         <span className={styles.count}>
-          ({count} avaliação{count !== 1 ? 'ões' : ''})
+          {/* CORREÇÃO AQUI EMBAIXO 👇 */}
+          ({count} {count === 1 ? 'avaliação' : 'avaliações'})
         </span>
       </div>
 

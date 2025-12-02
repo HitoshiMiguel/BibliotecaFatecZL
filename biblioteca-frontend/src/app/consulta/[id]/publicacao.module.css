@@ -1,121 +1,217 @@
 /* src/app/consulta/[id]/publicacao.module.css */
 
 .wrap {
-  padding-bottom: 48px;
-  font-family: sans-serif; /* Garante uma fonte limpa */
+    /* CORREÇÃO 1: Remove qualquer margem/padding superior que possa causar o gap */
+    margin-top: 0; 
+    padding-top: 0;
+    padding-bottom: 48px;
+    font-family: sans-serif;
+    background-color: #f8f8f8;
 }
 
 /* Banner Vermelho */
 .banner {
-  background: #b20000;
-  color: #fff;
-  font-weight: 700;
-  padding: 16px 24px;
-  font-size: 28px;
-  text-align: center;
-  border-radius: 0 0 4px 4px; /* Leve arredondamento embaixo se desejar */
+    background: #b20000;
+    color: #fff;
+    font-weight: 700;
+    padding: 16px 24px;
+    font-size: 28px;
+    text-align: center;
+    /* CORREÇÃO 1: Zera todas as margens e bordas */
+    margin: 0; 
+    border-radius: 0;
 }
 
 /* Título de Carregamento/Erro (usado fora do layout principal) */
 .title {
-  text-align: center;
-  margin-top: 40px;
-  font-size: 1.5rem;
-  color: #555;
+    text-align: center;
+    margin-top: 40px;
+    font-size: 1.5rem;
+    color: #555;
 }
 
 /* Layout Grid Principal */
 .content {
-  margin: 24px auto 0;
-  padding: 0 16px;
-  max-width: 1000px;
-  display: grid;
-  grid-template-columns: 140px 1fr; /* Coluna fixa pra capa + resto pro texto */
-  gap: 24px;
+    /* Garante que o layout fique lado a lado (capa 200px + info restante) */
+    margin: 24px auto 0;
+    padding: 0 16px;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 200px 1fr; 
+    gap: 30px;
+    align-items: flex-start;
 }
 
 /* Coluna da Capa */
 .thumb {
-  /* Se precisar alinhar o item dentro da coluna */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
 }
 
-/* Placeholder da Capa */
+/* Placeholder da Capa (Usado para Capa Padrão) */
 .coverStub {
-  width: 120px;
-  height: 180px;
-  border: 1px solid #ddd;
-  display: grid;
-  place-items: center;
-  color: #777;
-  font-size: 12px;
-  background: #fafafa;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Um leve sombreado para destacar */
+    width: 200px; 
+    /* CORREÇÃO 2: Mantém uma altura que simula a proporção de um livro (2:3) */
+    height: 300px; 
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+    font-size: 1.2rem;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 8px;
+}
+
+/* Usado para o componente CapaLivro */
+.coverBox {
+    width: 200px; 
+    /* CORREÇÃO 2: Remove a altura fixa para respeitar a proporção da imagem original */
+    height: auto; 
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    /* A imagem dentro do coverBox (se for uma tag <img>) deve ter width: 100% e height: auto. */
 }
 
 /* Coluna de Informações */
 .info {
-  /* Ocupa o espaço restante */
+    /* Ocupa o espaço restante */
 }
 
 /* Título do Livro */
 .h1 {
-  margin: 0 0 8px;
-  font-size: 24px;
-  color: #333;
-  line-height: 1.2;
+    margin: 0 0 8px;
+    font-size: 2rem;
+    color: #333;
+    line-height: 1.2;
 }
 
-/* Lista de Detalhes */
-.descList {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 16px;
+/* Descrição (nova classe) */
+.description {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: #555;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
 }
 
-.descList li {
-  margin: 6px 0;
-  color: #333;
-  line-height: 1.5;
+/* --- LISTA DE METADADOS ESSENCIAIS (Autor, Ano, etc.) --- */
+.metadataList {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 25px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 25px;
 }
 
-.descList li strong {
-  font-weight: 600;
-  margin-right: 4px;
+.metadataList li {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
 }
 
-/* Botão (Azul para Download, Verde para Reserva via inline style) */
+.metadataList li strong {
+    font-weight: 600;
+    margin-right: 5px;
+}
+
+/* Estilo para os ícones/emojis */
+.icon {
+    font-size: 1.1em;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+/* --- Caixa de Ações (Status e Botões) --- */
+.actionsBox {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+/* Estilo para o pill de status */
+.statusPill {
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Botões */
+.actionButton {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+}
+
 .downloadBtn {
-  display: inline-block;
-  background: #0b63ce;
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 999px; /* Pílula */
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: opacity 0.2s;
-  margin-right: 10px; /* Espaço caso tenha mais de um botão */
+    background: #0b63ce;
+    color: #fff;
 }
 
 .downloadBtn:hover {
-  opacity: 0.9;
+    background: #0056b3;
+}
+
+.reserveBtn {
+    background-color: #28a745;
+    color: white;
+}
+
+.reserveBtn:hover {
+    background-color: #1e7e34;
+}
+
+/* Seção de Avaliação (Card) */
+.ratingSection {
+    margin-top: 10px;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 /* Responsividade Mobile */
 @media (max-width: 700px) {
-  .content {
-    grid-template-columns: 1fr; /* Vira uma coluna só */
-  }
-  
-  .thumb {
-    order: 1; /* Joga a capa para baixo do texto (conforme seu css base) */
-    /* Se quiser a capa em cima, mude para order: -1 ou remova essa linha */
-    margin-top: 20px; 
-    justify-content: center;
-  }
+    .content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .thumb {
+        order: -1; 
+        margin-top: 20px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .coverStub, .coverBox {
+        width: 180px;
+        height: auto;
+        margin: 0 auto;
+    }
+
+    .metadataList {
+        grid-template-columns: 1fr;
+    }
+
+    .actionsBox {
+        justify-content: center;
+    }
 }

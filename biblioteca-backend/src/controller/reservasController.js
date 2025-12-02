@@ -25,11 +25,20 @@ const criarReserva = async (req, res) => {
         .json({ message: 'submissaoId e dataRetirada são obrigatórios.' });
     }
 
+    // Cálculo da Data de devolução
+
+    const dataRef = new Date(dataRetirada);
+
+    dataRef.setDate(dataRef.getDate() + 7);
+
+    const dataPrevistaDevolucao = dataRef.toISOString().split('T')[0];
+
     // COMMAND → O controller só dispara um comando
     const command = new CriarReservaCommand({
       usuarioId,
       submissaoId,
       dataRetirada,
+      dataPrevistaDevolucao,
     });
 
     const reservaCriada = await command.execute();

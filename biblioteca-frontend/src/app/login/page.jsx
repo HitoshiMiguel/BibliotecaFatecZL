@@ -155,15 +155,42 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className={styles.inputGroup} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', marginTop: '-10px', marginBottom: '15px' }}>
+          {/* BLOCO CORRIGIDO: Checkbox e Texto na mesma linha */}
+          <div 
+            className={styles.inputGroup} 
+            style={{ 
+              display: 'flex',              // Garante que fiquem lado a lado
+              flexDirection: 'row',         // Linha horizontal
+              alignItems: 'center',         // Centraliza verticalmente
+              gap: '10px',                  // Espaço entre a caixa e o texto
+              marginTop: '-5px', 
+              marginBottom: '20px' 
+            }}
+          >
             <input 
               type="checkbox" 
               id="rememberMe" 
               checked={rememberMe} 
               onChange={(e) => setRememberMe(e.target.checked)} 
-              style={{ width: 'auto', cursor: 'pointer', accentColor: 'var(--primary-color, #007bff)' }}
+              style={{ 
+                width: '18px',              
+                height: '18px',             
+                cursor: 'pointer', 
+                accentColor: '#b20000',     
+                margin: 0                   
+              }}
             />
-            <label htmlFor="rememberMe" style={{ cursor: 'pointer', margin: 0, fontWeight: 'normal', fontSize: '0.9rem', color: '#555' }}>
+            <label 
+              htmlFor="rememberMe" 
+              style={{ 
+                cursor: 'pointer', 
+                margin: 0, 
+                fontWeight: '400', 
+                fontSize: '0.95rem', 
+                color: '#333',
+                userSelect: 'none'          
+              }}
+            >
               Lembrar de mim
             </label>
           </div>

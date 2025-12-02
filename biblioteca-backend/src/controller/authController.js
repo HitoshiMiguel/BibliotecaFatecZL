@@ -36,7 +36,7 @@ const postCadastro = async (req, res) => {
             if (!dadosParaSalvar.senha_hash) throw new Error("Falha na construção do hash da senha.");
 
             await UserModel.insertUser(dadosParaSalvar);
-            res.status(201).json({ message: 'Utilizador Aluno criado com sucesso!' });
+            res.status(201).json({ message: 'Usuário Aluno criado com sucesso!' });
         } else {
              return res.status(400).json({ message: 'Perfil solicitado inválido.' });
         }
@@ -45,7 +45,7 @@ const postCadastro = async (req, res) => {
         console.error("Erro em postCadastro:", error);
         if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) return res.status(409).json({ message: 'Email ou RA já cadastrado.' });
         if (error.message?.includes('obrigatório')) return res.status(400).json({ message: error.message });
-        return res.status(500).json({ message: 'Erro interno no servidor ao criar utilizador.' });
+        return res.status(500).json({ message: 'Erro interno no servidor ao criar usuário.' });
     }
 };
 

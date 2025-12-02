@@ -39,8 +39,10 @@ class ReservaMediator {
    * @param {number} payload.usuarioId
    * @param {string} payload.submissaoId (ex: "LEGACY_105")
    * @param {string} payload.dataRetirada (AAAA-MM-DD)
+   * @param {string} payload.dataPrevistaDevolucao (AAAA-MM-DD) <--- ADICIONADO
    */
-  async criarReserva({ usuarioId, submissaoId, dataRetirada }) {
+  // 1. Recebemos a nova data aqui
+  async criarReserva({ usuarioId, submissaoId, dataRetirada, dataPrevistaDevolucao }) {
     // validações básicas de entrada
     if (!usuarioId) {
       const err = new Error('Usuário não informado para a reserva.');
@@ -63,7 +65,7 @@ class ReservaMediator {
       throw err;
     }
 
-    // 1) Verificar bloqueio do usuário (regra de negócio: bloqueado não pode reservar)
+    // 1) Verificar bloqueio do usuário
     const blockedInfo = await isUserBlocked(usuarioId);
     if (blockedInfo.blocked) {
       const until = blockedInfo.bloqueadoAte ? blockedInfo.bloqueadoAte.toISOString().slice(0,10) : 'indefinido';
@@ -72,7 +74,7 @@ class ReservaMediator {
       throw err;
     }
 
-    // 2) Buscar usuário (classe UserModel)
+    // 2) Buscar usuário
     const usuario = await UserModel.findById(usuarioId);
     if (!usuario) {
       const err = new Error('Usuário não encontrado.');
@@ -80,7 +82,7 @@ class ReservaMediator {
       throw err;
     }
 
-    // 3) Buscar livro físico no acervo legado (OpenBiblio)
+    // 3) Buscar livro físico no acervo legado
     const legacyId = this._parseLegacyId(submissaoId);
     const livro = await acervoLegadoService.buscarPorId(legacyId);
     if (!livro) {
@@ -95,7 +97,7 @@ class ReservaMediator {
       throw err;
     }
 
-    // Validação básica de status: só permite reservar se estiver disponível
+    // Validação básica de status
     const statusLower = String(livro.status || '').toLowerCase();
     const estaDisponivel =
       statusLower.startsWith('dispon') || statusLower === 'disponível' || statusLower === 'disponivel';
@@ -108,7 +110,7 @@ class ReservaMediator {
       throw err;
     }
 
-    // 4) Evitar duplicidade: já existe reserva ativa para o mesmo bibid?
+    // 4) Evitar duplicidade geral
     const [existRows] = await poolSistemaNovo.query(
       'SELECT reserva_id FROM dg_reservas WHERE legacy_bibid = ? AND status = "ativa" LIMIT 1',
       [legacyId]
@@ -119,7 +121,7 @@ class ReservaMediator {
       throw e;
     }
 
-    // 5) Evitar que o mesmo usuário tenha reserva ativa duplicada para o mesmo item
+    // 5) Evitar duplicidade do usuário
     const [userRows] = await poolSistemaNovo.query(
       'SELECT reserva_id FROM dg_reservas WHERE legacy_bibid = ? AND usuario_id = ? AND status = "ativa" LIMIT 1',
       [legacyId, usuarioId]
@@ -131,6 +133,7 @@ class ReservaMediator {
     }
 
     // 6) Inserir reserva no sistema novo
+    // CORREÇÃO AQUI: Trocamos o NULL por ? na query SQL
     const sqlInsert = `
     INSERT INTO dg_reservas (
         usuario_id,
@@ -139,24 +142,27 @@ class ReservaMediator {
         titulo,
         origem,
         data_prevista_retirada,
-        data_prevista_devolucao,
+        data_prevista_devolucao, 
         status,
         data_reserva
     )
-    VALUES (?, ?, ?, ?, ?, ?, NULL, 'ativa', NOW())
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'ativa', NOW()) 
     `;
+    
+    // CORREÇÃO AQUI: Adicionamos a variável no array de parâmetros
     const paramsInsert = [
       usuarioId,
       legacyId,
       livro.codigo_barras,
       livro.titulo,
       'FISICO',
-      dataRetirada // data_prevista_retirada
+      dataRetirada,
+      dataPrevistaDevolucao || null // Salva a data calculada (ou null se der erro no cálculo)
     ];
 
     const [result] = await poolSistemaNovo.query(sqlInsert, paramsInsert);
 
-    // 7) Tentar marcar exemplar no OpenBiblio como "hld" (reservado) - não fatal se falhar
+    // 7) Tentar marcar exemplar no OpenBiblio
     try {
       await poolOpenBiblio.query(
         'UPDATE biblio_copy SET status_cd = ? WHERE bibid = ? AND barcode_nmbr = ?',
@@ -166,9 +172,7 @@ class ReservaMediator {
       console.warn('ReservaMediator: falha ao atualizar OpenBiblio (não crítico):', err.message);
     }
 
-    // =====================================================
-    // [NOVO] 8. Enviar e-mail de notificação
-    // =====================================================
+    // 8. Enviar e-mail de notificação
     try {
       console.log(`[ReservaMediator] Disparando e-mail para: ${usuario.email}`);
       emailService.enviarEmailReservaRealizada(
@@ -181,7 +185,6 @@ class ReservaMediator {
     } catch (emailErr) {
       console.warn('[ReservaMediator] Falha ao tentar enviar e-mail:', emailErr);
     }
-    // =====================================================
 
     // 9) Retornar DTO da reserva criada
     return {
@@ -193,12 +196,12 @@ class ReservaMediator {
       origem: 'FISICO',
       status: 'ativa',
       data_prevista_retirada: dataRetirada,
-      data_prevista_devolucao: null,
+      data_prevista_devolucao: dataPrevistaDevolucao, // Retornamos o valor correto agora
       usuario_nome: usuario.nome,
       usuario_email: usuario.email,
       usuario_ra: usuario.ra
     };
-  } // criarReserva
-} // class
+  } 
+}
 
 module.exports = new ReservaMediator();

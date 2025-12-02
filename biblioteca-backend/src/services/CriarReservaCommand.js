@@ -11,10 +11,11 @@ const reservaMediator = require('./ReservaMediator');
  * ele só dispara esse comando.
  */
 class CriarReservaCommand {
-  constructor({ usuarioId, submissaoId, dataRetirada }) {
+  constructor({ usuarioId, submissaoId, dataRetirada, dataPrevistaDevolucao }) {
     this.usuarioId = usuarioId;
     this.submissaoId = submissaoId; // ex: "LEGACY_105"
     this.dataRetirada = dataRetirada; // "AAAA-MM-DD"
+    this.dataPrevistaDevolucao = dataPrevistaDevolucao;
     this.mediator = reservaMediator; // NÃO usamos "new" aqui
   }
 
@@ -38,6 +39,7 @@ class CriarReservaCommand {
       usuarioId: this.usuarioId,
       submissaoId: this.submissaoId,
       dataRetirada: this.dataRetirada,
+      dataPrevistaDevolucao: this.dataPrevistaDevolucao,
     });
   }
 }

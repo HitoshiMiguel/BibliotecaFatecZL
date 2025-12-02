@@ -246,42 +246,67 @@ export default function PublicacaoPage({ params }) {
             )}
 
             {etapaReserva === 'confirmacao' && (
-              <>
-                <div style={{ marginTop: '16px', marginBottom: '16px', padding: '12px', borderRadius: '6px', backgroundColor: '#f9f9f9', fontSize: '0.95rem' }}>
-                  <p style={{ margin: '4px 0' }}><strong>Livro:</strong> {data.titulo_proposto}</p>
-                  {data.autor && <p style={{ margin: '4px 0' }}><strong>Autor:</strong> {data.autor}</p>}
-                  <p style={{ margin: '4px 0' }}><strong>Data de retirada:</strong> {formatarDataBR(dataRetirada)}</p>
-                  {dataDevolucaoFormatada && <p style={{ margin: '4px 0' }}><strong>Data prevista para devolução:</strong> {dataDevolucaoFormatada}</p>}
-                </div>
-                {erroReserva && <p style={{ color: '#b20000', marginTop: 0, marginBottom: '12px' }}>{erroReserva}</p>}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-                  <button type="button" onClick={() => setEtapaReserva('data')} style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#f5f5f5' }} disabled={criandoReserva}>Voltar</button>
-                  <button type="button" onClick={async () => {
-                    if (!dataRetirada) { setErroReserva('Data de retirada não informada.'); setEtapaReserva('data'); return; }
-                    setErroReserva(''); setCriandoReserva(true);
-                    try {
-                      const res = await fetch(`${API_BASE}/api/reservas`, {
-                        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ submissaoId: id, dataRetirada: dataRetirada }),
-                      });
-                      const json = await res.json();
-                      if (!res.ok) {
-                        const msg = json?.message || json?.error || (res.status === 401 ? 'Você precisa estar logado para fazer uma reserva.' : 'Falha ao criar reserva.');
-                        setErroReserva(msg); return;
-                      }
-                      setReservaModalAberto(false); setCriandoReserva(false);
-                      Swal.fire({
-                        title: 'Reserva Confirmada!',
-                        html: `<div style="text-align: left; font-size: 0.95rem;"><p>Sua reserva foi realizada com sucesso.</p><hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;"><p><strong>📘 Livro:</strong> ${data.titulo_proposto}</p><p><strong>📅 Data de retirada:</strong> ${formatarDataBR(dataRetirada)}</p>${dataDevolucaoFormatada ? `<p><strong>🔄 Devolução prevista:</strong> ${dataDevolucaoFormatada}</p>` : ''}<br/><p style="color: #555; font-size: 0.85rem;">Apresente-se à biblioteca nesta data para concluir o empréstimo.</p></div>`,
-                        icon: 'success', confirmButtonText: 'Entendi, obrigado!', confirmButtonColor: '#28a745', allowOutsideClick: false,
-                      }).then((result) => { if (result.isConfirmed) { window.location.reload(); } });
-                    } catch (err) { setErroReserva('Erro de conexão.'); console.error(err); } finally { setCriandoReserva(false); }
-                  }} style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', backgroundColor: '#28a745', color: '#fff', fontWeight: 500 }} disabled={criandoReserva}>
-                    {criandoReserva ? 'Reservando...' : 'Confirmar reserva'}
-                  </button>
-                </div>
-              </>
-            )}
+            <>
+              <div style={{ marginTop: '16px', marginBottom: '16px', padding: '12px', borderRadius: '6px', backgroundColor: '#f9f9f9', fontSize: '0.95rem' }}>
+                <p style={{ margin: '4px 0' }}><strong>Livro:</strong> {data.titulo_proposto}</p>
+                {data.autor && <p style={{ margin: '4px 0' }}><strong>Autor:</strong> {data.autor}</p>}
+                <p style={{ margin: '4px 0' }}><strong>Data de retirada:</strong> {formatarDataBR(dataRetirada)}</p>
+                
+                {/* 1. CORREÇÃO: Usar a variável local calculada, não a do banco ainda */}
+                {dataDevolucaoFormatada && <p style={{ margin: '4px 0' }}><strong>Data prevista para devolução:</strong> {dataDevolucaoFormatada}</p>}
+              
+              </div>
+              
+              {erroReserva && <p style={{ color: '#b20000', marginTop: 0, marginBottom: '12px' }}>{erroReserva}</p>}
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setEtapaReserva('data')} style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#f5f5f5' }} disabled={criandoReserva}>Voltar</button>
+                
+                <button type="button" onClick={async () => {
+                  if (!dataRetirada) { setErroReserva('Data de retirada não informada.'); setEtapaReserva('data'); return; }
+                  setErroReserva(''); setCriandoReserva(true);
+                  try {
+                    // O fetch envia apenas submissaoId e dataRetirada (o Back calcula a devolução agora)
+                    const res = await fetch(`${API_BASE}/api/reservas`, {
+                      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ submissaoId: id, dataRetirada: dataRetirada }),
+                    });
+                    const json = await res.json();
+                    
+                    if (!res.ok) {
+                      const msg = json?.message || json?.error || (res.status === 401 ? 'Você precisa estar logado para fazer uma reserva.' : 'Falha ao criar reserva.');
+                      setErroReserva(msg); return;
+                    }
+
+                    // --- SUCESSO ---
+                    setReservaModalAberto(false); setCriandoReserva(false);
+
+                    // 2. CORREÇÃO: Pegar a data real que veio do banco de dados (garantia total)
+                    // O backend retorna: { message, reserva: { ..., data_prevista_devolucao: "2025-12-09", ... } }
+                    const devolucaoReal = json.reserva?.data_prevista_devolucao; 
+                    const dataDevolucaoConfirmada = devolucaoReal ? formatarDataBR(devolucaoReal) : dataDevolucaoFormatada;
+
+                    Swal.fire({
+                      title: 'Reserva Confirmada!',
+                      html: `<div style="text-align: left; font-size: 0.95rem;">
+                              <p>Sua reserva foi realizada com sucesso.</p>
+                              <hr style="margin: 10px 0; border: 0; border-top: 1px solid #eee;">
+                              <p><strong>📘 Livro:</strong> ${data.titulo_proposto}</p>
+                              <p><strong>📅 Data de retirada:</strong> ${formatarDataBR(dataRetirada)}</p>
+                              <p><strong>🔄 Devolução prevista:</strong> ${dataDevolucaoConfirmada}</p>
+                              <br/>
+                              <p style="color: #555; font-size: 0.85rem;">Apresente-se à biblioteca nesta data para concluir o empréstimo.</p>
+                            </div>`,
+                      icon: 'success', confirmButtonText: 'Entendi, obrigado!', confirmButtonColor: '#28a745', allowOutsideClick: false,
+                    }).then((result) => { if (result.isConfirmed) { window.location.reload(); } });
+                    
+                  } catch (err) { setErroReserva('Erro de conexão.'); console.error(err); } finally { setCriandoReserva(false); }
+                }} style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', backgroundColor: '#28a745', color: '#fff', fontWeight: 500 }} disabled={criandoReserva}>
+                  {criandoReserva ? 'Reservando...' : 'Confirmar reserva'}
+                </button>
+              </div>
+            </>
+          )}
           </div>
         </div>
       )}

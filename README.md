@@ -52,5 +52,5 @@ Miguel Hitoshi Takahashi || Email: miguelhitoshi@gmail.com || Linkedin: https://
 
 ----
 
-Projeto Acadêmico desenvolvido para o curso de **Desenvolvimento de Software Multiplataforma - Fatec Zona Leste**.
+Projeto Acadêmico desenvolvido para o curso de **Desenvolvimento de Software em Multiplataforma - Fatec Zona Leste**.
 

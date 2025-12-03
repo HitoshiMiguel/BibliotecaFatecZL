@@ -13,11 +13,6 @@ A **Biblioteca Online da Fatec Zona Leste** é uma solução *Full Stack* robust
 
 Além da gestão do acervo físico, o sistema introduz um **Acervo Digital** integrado à **Google Drive API**, permitindo o upload, streaming e gestão de TCCs e artigos acadêmicos diretamente pela plataforma, com controle de versão e fluxo de aprovação de submissões.
 
-
-
-[Image of system dashboard interface]
-
-
 ---
 
 ### ✨ Destaques da Arquitetura
@@ -45,116 +40,17 @@ O projeto foi construído utilizando as versões mais recentes do ecossistema Ja
 * **Segurança:** JWT, BcryptJS, Better-Auth
 * **Integrações:** Googleapis (Drive API), Nodemailer (SMTP)
 
----
+----
 
-### 🗄️ Estrutura do Banco de Dados
+### 👨‍💻 Autores
 
-O sistema utiliza um banco relacional robusto. Abaixo, o esquema principal das tabelas desenvolvidas:
+Daniel Almeida de Souza || Email: dalmeidadesouza362@gmail.com || Linkedin: https://www.linkedin.com/in/daniel-souza2005/
 
-<details>
-<summary><strong>📄 Clique para expandir o Script SQL (Schema)</strong></summary>
+Eduardo Jimenes Junior || Email: eduardojimenesjunior@gmail.com || Linkedin: https://www.linkedin.com/in/eduardo-jimenes-junior-14837b23b?utm_source=share_via&utm_content=profile&utm_medium=member_ios
 
-```sql
-CREATE DATABASE IF NOT EXISTS acervo_digitalv2;
-USE acervo_digitalv2;
+Miguel Hitoshi Takahashi || Email: miguelhitoshi@gmail.com || Linkedin: https://www.linkedin.com/in/migueltakahashi
 
--- 1. Usuários e Perfis
-CREATE TABLE IF NOT EXISTS dg_usuarios (
-  usuario_id INT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(100) NOT NULL,
-  ra VARCHAR(20) UNIQUE NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  senha_hash VARCHAR(255) NULL,
-  perfil ENUM('comum','professor','bibliotecario','admin') NOT NULL DEFAULT 'comum',
-  status_conta ENUM('ativa', 'inativa', 'bloqueado', 'pendente_ativacao') NOT NULL DEFAULT 'ativa',
-  token_ativacao VARCHAR(255) UNIQUE NULL,
-  reset_token VARCHAR(255) UNIQUE NULL
-);
+----
 
--- 2. Submissões Acadêmicas (TCCs)
-CREATE TABLE IF NOT EXISTS dg_submissoes (
-  submissao_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  titulo_proposto VARCHAR(200) NOT NULL,
-  caminho_anexo VARCHAR(255),
-  status ENUM('pendente','aprovado','rejeitado') DEFAULT 'pendente',
-  -- Metadados Acadêmicos (Autor, Orientador, Ano, etc)
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id)
-);
+Projeto Acadêmico desenvolvido para o curso de **Desenvolvimento de Software Multiplataforma - Fatec Zona Leste**.
 
--- 3. Integração Google Drive (Itens Digitais)
-CREATE TABLE IF NOT EXISTS dg_itens_digitais (
-  item_id INT AUTO_INCREMENT PRIMARY KEY,
-  titulo VARCHAR(200) NOT NULL,
-  caminho_arquivo VARCHAR(255), -- ID do arquivo no Google Drive
-  status ENUM('publicado', 'agendado', 'rascunho') NOT NULL DEFAULT 'publicado',
-  total_downloads INT DEFAULT 0,
-  submissao_id INT UNIQUE NULL,
-  FOREIGN KEY (submissao_id) REFERENCES dg_submissoes(submissao_id)
-);
-
--- 4. Reservas Híbridas (Link com OpenBiblio)
-CREATE TABLE IF NOT EXISTS dg_reservas (
-  reserva_id INT AUTO_INCREMENT PRIMARY KEY,
-  usuario_id INT NOT NULL,
-  legacy_bibid INT NOT NULL,   -- Chave de ligação com OpenBiblio
-  status ENUM('ativa','atendida','cancelada','concluida') NOT NULL DEFAULT 'ativa',
-  data_reserva DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (usuario_id) REFERENCES dg_usuarios(usuario_id)
-);
-
--- (Tabelas adicionais: Avaliações, Favoritos, Notificações, Logs...)
-````
-
-\</details\>
-
------
-
-### 🚀 Instalação e Execução
-
-Pré-requisitos: `Node.js v18+`, `MySQL (Porta 3306)` e `Docker/XAMPP` (para o banco legado na porta 3307).
-
-#### 1\. Backend (API)
-
-```bash
-cd biblioteca-backend
-
-# Instalação das dependências (Express 5, Google APIs, Sequelize, etc)
-npm install bcrypt@6.0.0 better-auth@1.3.26 cookie-parser@1.4.7 cors@2.8.5 dotenv@17.2.3 express@5.1.0 googleapis@164.1.0 jsonwebtoken@9.0.2 multer@2.0.2 mysql2@3.15.3 node-cron@4.2.1 nodemailer@7.0.10 sequelize@6.37.7 sweetalert2@11.26.2 uuid@13.0.0
-
-# Rodar a API
-npm start
-```
-
-*Nota: Configure o arquivo `.env` com as credenciais do Banco e do Google Cloud Console.*
-
-#### 2\. Frontend (Next.js)
-
-```bash
-cd biblioteca-frontend
-
-# Instalação das dependências (Next 15, Tailwind v4, Framer Motion)
-npm install autoprefixer@10.4.21 bootstrap@5.3.8 framer-motion@12.23.24 jspdf-autotable@5.0.2 jspdf@3.0.4 lucide-react@0.553.0 multer@2.0.2 next@15.5.4 postcss@8.5.6 react-bootstrap@2.10.10 react-dom@19.1.0 react-icons@5.5.0 react-router-dom@7.9.3 react@19.1.0 recharts@3.5.0 sweetalert2@11.26.2 tailwindcss@4.1.16
-
-# Rodar o cliente
-npm run dev
-```
-
-O projeto estará acessível em: `http://localhost:3000`
-
------
-
-### 👨‍💻 Autor
-
-\<a href="https://www.google.com/search?q=https://github.com/SEU\_USUARIO"\>
-\<img style="border-radius: 50%;" src="https://www.google.com/search?q=https://avatars.githubusercontent.com/u/SEU\_ID\_AQUI%3Fv%3D4" width="100px;" alt=""/\>
-\<br /\>
-\<sub\>\<b\>Miguel Hitoshi Takahashi\</b\>\</sub\>
-\</a\>
-
-Desenvolvido para o curso de **Desenvolvimento de Software Multiplataforma - Fatec Zona Leste**.
-
-[](https://www.google.com/search?q=LINK_DO_SEU_LINKEDIN)
-
-```
-```
